@@ -1,6 +1,6 @@
 {
   "role": {
-    "name": "hmpps-template-kotlin"
+    "name": "hmpps-prisoner-finance-sync-api"
   },
   "customDimensions": {
     "service.version": "${BUILD_NUMBER}"
