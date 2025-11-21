@@ -39,7 +39,7 @@ kotlin {
 tasks {
   register<Test>("unitTest") {
     filter {
-      excludeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancepocapi.integration*")
+      excludeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration*")
     }
   }
 
@@ -48,7 +48,7 @@ tasks {
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["main"].output + configurations["testRuntimeClasspath"] + sourceSets["test"].output
     filter {
-      includeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancepocapi.integration*")
+      includeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration*")
     }
   }
 

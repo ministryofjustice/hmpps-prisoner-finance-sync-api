@@ -2,7 +2,7 @@ build-dev: update-environment
 	docker compose build
 
 build:
-	docker build -t hmpps-prisoner-finance-poc-api .
+	docker build -t hmpps-prisoner-finance-sync-api .
 
 update-dependencies:
 	./gradlew useLatestVersions
@@ -14,10 +14,10 @@ serve: build-dev
 	docker compose up -d --wait
 
 serve-environment:
-	docker compose up --scale hmpps-prisoner-finance-poc-api=0 -d --wait
+	docker compose up --scale hmpps-prisoner-finance-sync-api=0 -d --wait
 
 serve-clean-environment: stop-clean
-	docker compose up --scale hmpps-prisoner-finance-poc-api=0 -d --wait
+	docker compose up --scale hmpps-prisoner-finance-sync-api=0 -d --wait
 
 update-environment:
 	docker compose pull
