@@ -1,136 +1,95 @@
-# hmpps-prisoner-finance-sync-api
+# HMPPS Prisoner Finance API
 
-[![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/hmpps-prisoner-finance-sync-api/badge?style=flat)](https://github-community.service.justice.gov.uk/repository-standards/hmpps-prisoner-finance-sync-api)
+[![repo standards badge](https://img.shields.io/badge/endpoint.svg?&style=flat&logo=github&url=https%3A%2F%2Foperations-engineering-reports.cloud-platform.service.justice.gov.uk%2Fapi%2Fv1%2Fcompliant_public_repositories%2Fhmpps-prisoner-finance-sync-api)](https://operations-engineering-reports.cloud-platform.service.justice.gov.uk/public-report/hmpps-prisoner-finance-sync-api "Link to report")
 [![Docker Repository on ghcr](https://img.shields.io/badge/ghcr.io-repository-2496ED.svg?logo=docker)](https://ghcr.io/ministryofjustice/hmpps-prisoner-finance-sync-api)
 [![API docs](https://img.shields.io/badge/API_docs_-view-85EA2D.svg?logo=swagger)](https://prisoner-finance-sync-api-dev.hmpps.service.justice.gov.uk/swagger-ui/index.html)
 
-Template github repo used for new Kotlin based projects.
+## Contents
+- [About this project](#about-this-project)
+- [Project set up](#project-set-up)
+- [Running the application locally](#running-the-application-locally)
+  - [Running the application in intellij](#running-the-application-in-intellij)
+- [Architecture](#Architecture)
 
-# Instructions
+## About this project
 
-If this is a HMPPS project then the project will be created as part of bootstrapping -
-see [hmpps-project-bootstrap](https://github.com/ministryofjustice/hmpps-project-bootstrap). You are able to specify a
-template application using the `github_template_repo` attribute to clone without the need to manually do this yourself
-within GitHub.
+An API used by the NOMIS application to sync with the Prisoner Finance Ledger.
 
-This project is community managed by the mojdt `#kotlin-dev` slack channel.
-Please raise any questions or queries there. Contributions welcome!
+It is built using [Spring Boot](https://spring.io/projects/spring-boot/) and [Kotlin](https://kotlinlang.org/) as well as the following technologies for its infrastructure:
 
-Our security policy is located [here](https://github.com/ministryofjustice/hmpps-prisoner-finance-sync-api/security/policy).
+- [AWS](https://aws.amazon.com/) - Services utilise AWS features through Cloud Platform.
+- [Cloud Platform](https://user-guide.cloud-platform.service.justice.gov.uk/#cloud-platform-user-guide) - Ministry of Justice's (MOJ) cloud hosting platform built on top of AWS which offers numerous tools such as logging, monitoring and alerting for our services.
+- [Docker](https://www.docker.com/) - The API is built into docker images which are deployed to our containers.
+- [Kubernetes](https://kubernetes.io/docs/home/) - Creates 'pods' to host our environment. Manages auto-scaling, load balancing and networking to our application.
 
-Documentation to create new service is located [here](https://tech-docs.hmpps.service.justice.gov.uk/creating-new-services/).
+## Project set up
 
-## Creating a Cloud Platform namespace
+Enable pre-commit hooks for formatting and linting code with the following command;
 
-When deploying to a new namespace, you may wish to use the
-[templates project namespace](https://github.com/ministryofjustice/cloud-platform-environments/tree/main/namespaces/live.cloud-platform.service.justice.gov.uk/hmpps-templates-dev)
-as the basis for your new namespace. This namespace contains both the kotlin and typescript template projects,
-which is the usual way that projects are setup.
-
-Copy this folder and update all the existing namespace references to correspond to the environment to which you're deploying.
-
-If you only need the kotlin configuration then remove all typescript references and remove the elasticache configuration.
-
-To ensure the correct github teams can approve releases, you will need to make changes to the configuration in `resources/service-account-github` where the appropriate team names will need to be added (based on [lines 98-100](https://github.com/ministryofjustice/cloud-platform-environments/blob/main/namespaces/live.cloud-platform.service.justice.gov.uk/hmpps-templates-dev/resources/serviceaccount-github.tf#L98) and the reference appended to the teams list below [line 112](https://github.com/ministryofjustice/cloud-platform-environments/blob/main/namespaces/live.cloud-platform.service.justice.gov.uk/hmpps-templates-dev/resources/serviceaccount-github.tf#L112)). Note: hmpps-sre is in this list to assist with deployment issues.
-
-Submit a PR to the Cloud Platform team in [#ask-cloud-platform](https://moj.enterprise.slack.com/archives/C57UPMZLY).
-Further instructions from the Cloud Platform team can be found in the [Cloud Platform User Guide](https://user-guide.cloud-platform.service.justice.gov.uk/#cloud-platform-user-guide)
-
-## Renaming from HMPPS Prisoner Finance Sync Api - github Actions
-
-Once the new repository is deployed. Navigate to the repository in github, and select the `Actions` tab.
-Click the link to `Enable Actions on this repository`.
-
-Find the Action workflow named: `rename-project-create-pr` and click `Run workflow`. This workflow will
-execute the `rename-project.bash` and create Pull Request for you to review. Review the PR and merge.
-
-Note: ideally this workflow would run automatically however due to a recent change github Actions are not
-enabled by default on newly created repos. There is no way to enable Actions other then to click the button in the UI.
-If this situation changes we will update this project so that the workflow is triggered during the bootstrap project.
-Further reading: <https://github.community/t/workflow-isnt-enabled-in-repos-generated-from-template/136421>
-
-The script takes six arguments:
-
-### New project name
-
-This should start with `hmpps-` e.g. `hmpps-prison-visits` so that it can be easily distinguished in github from
-other departments projects. Try to avoid using abbreviations so that others can understand easily what your project is.
-
-### Slack channel for release notifications
-
-By default, release notifications are only enabled for production. The circleci configuration can be amended to send
-release notifications for deployments to other environments if required. Note that if the configuration is amended,
-the slack channel should then be amended to your own team's channel as `dps-releases` is strictly for production release
-notifications. If the slack channel is set to something other than `dps-releases`, production release notifications
-will still automatically go to `dps-releases` as well. This is configured by `releases-slack-channel` in
-`.circleci/config.yml`.
-
-### Slack channel for pipeline security notifications
-
-Ths channel should be specific to your team and is for daily / weekly security scanning job results. It is your team's
-responsibility to keep up-to-date with security issues and update your application so that these jobs pass. You will
-only be notified if the jobs fail. The scan results can always be found in circleci for your project. This is
-configured by `alerts-slack-channel` in `.circleci/config.yml`.
-
-### Non production kubernetes alerts
-
-By default Prometheus alerts are created in the application namespaces to monitor your application e.g. if your
-application is crash looping, there are a significant number of errors from the ingress. Since Prometheus runs in
-cloud platform AlertManager needs to be setup first with your channel. Please see
-[Create your own custom alerts](https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/how-to-create-alarms.html)
-in the Cloud Platform user guide. Once that is setup then the `custom severity label` can be used for
-`alertSeverity` in the `helm_deploy/values-*.yaml` configuration.
-
-Normally it is worth setting up two separate labels and therefore two separate slack channels - one for your production
-alerts and one for your non-production alerts. Using the same channel can mean that production alerts are sometimes
-lost within non-production issues.
-
-### Production kubernetes alerts
-
-This is the severity label for production, determined by the `custom severity label`. See the above
-[Non production kubernetes alerts section](non-production-kubernetes-alerts) for more information. This is configured in `helm_deploy/values-prod.yaml`.
-
-### Product ID
-
-This is so that we can link a component to a product and thus provide team and product information in the Developer
-Portal. Refer to the developer portal at <https://developer-portal.hmpps.service.justice.gov.uk/products> to find your
-product id. This is configured in `helm_deploy/<project_name>/values.yaml`.
-
-## Manually branding from template app
-
-Run the `rename-project.bash` without any arguments. This will prompt for the six required parameters and create a PR.
-The script requires a recent version of `bash` to be installed, as well as GNU `sed` in the path.
-
-## Common Kotlin patterns
-
-Many patterns have evolved for HMPPS Kotlin applications. Using these patterns provides consistency across our suite of
-Kotlin microservices and allows you to concentrate on building your business needs rather than reinventing the
-technical approach.
-
-Documentation for these patterns can be found in the [HMPPS tech docs](https://tech-docs.hmpps.service.justice.gov.uk/common-kotlin-patterns/).
-If this documentation is incorrect or needs improving please report to [#ask-prisons-digital-sre](https://moj.enterprise.slack.com/archives/C06MWP0UKDE)
-or [raise a PR](https://github.com/ministryofjustice/hmpps-tech-docs).
+```bash
+./gradlew addKtlintFormatGitPreCommitHook addKtlintCheckGitPreCommitHook
+```
 
 ## Running the application locally
 
-The application comes with a `dev` spring profile that includes default settings for running locally. This is not
-necessary when deploying to kubernetes as these values are included in the helm configuration templates -
-e.g. `values-dev.yaml`.
+The application comes with a `local` spring profile that includes default settings for running locally.
 
-There is also a `docker-compose.yml` that can be used to run a local instance of the template in docker and also an
-instance of HMPPS Auth (required if your service calls out to other services using a token).
+There is also a `docker-compose.yml` that can be used to run a local instance in docker and also an
+instance of HMPPS Auth.
 
 ```bash
-docker compose pull && docker compose up
+make serve
 ```
 
 will build the application and run it and HMPPS Auth within a local docker instance.
 
+To verify the app has started, 
+1. ensure the containers are visible (and running) in Docker, and 
+2. visit http://localhost:8080/health ensuring the result contains "status: UP"  
+
 ### Running the application in Intellij
 
 ```bash
-docker compose pull && docker compose up --scale hmpps-prisoner-finance-sync-api=0
+make serve-environment
 ```
 
-will just start a docker instance of HMPPS Auth. The application should then be started with a `dev` active profile
-in Intellij.
+will just start a docker instance of HMPPS Auth with a PostgreSQL database. The application should then be started with 
+a `local` active profile in Intellij.
+
+```bash
+make serve-clean-environment
+```
+
+will also reset the database
+
+## Architecture
+
+For details of the current proposed architecture [view our C4 documentation](./docs/architecture)
+
+## API Documentation
+Is available on a running local server at http://localhost:8080/swagger-ui/index.html#/
+
+### Health
+- `/health`: provides information about the application health and its dependencies. 
+- `/info`: provides information about the version of deployed application.
+
+## Using local API endpoints
+
+### Generating an auth token
+- Use this command to request a local auth token:
+  ```bash
+  curl -X POST "http://localhost:8090/auth/oauth/token?grant_type=client_credentials" -H 'Content-Type: application/json' -H "Authorization: Basic $(echo -n hmpps-prisoner-finance-sync-api-1:clientsecret | base64)"
+  ```
+  
+- The response body will contain an access token something like this:
+
+  ```json
+  {
+    "access_token": "eyJhbGciOiJSUzI1NiIsInR5...BAtWD653XpCzn8A",
+    "token_type": "bearer",
+    "expires_in": 3599,
+    "scope": "read write",
+    "sub": "hmpps-prisoner-finance-sync-api-1"        
+  }
+  ```
+- Use the value of `access_token` as a Bearer Token to authenticate when calling the local API endpoints.

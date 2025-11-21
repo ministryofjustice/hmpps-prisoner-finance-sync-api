@@ -1,4 +1,3 @@
-version: "3"
 services:
   hmpps-prisoner-finance-sync-api:
     build:
@@ -13,7 +12,34 @@ services:
     environment:
       - SERVER_PORT=8080
       - HMPPS_AUTH_URL=http://hmpps-auth:8080/auth
-      - SPRING_PROFILES_ACTIVE=dev
+      - DB_SERVER=hmpps-prisoner-finance-sync-db
+      - DB_NAME=nomis_sync
+      - DB_USER=postgres
+      - DB_PASS=postgres
+    depends_on:
+      hmpps-auth:
+        condition: service_started
+      hmpps-prisoner-finance-sync-db:
+        condition: service_healthy
+        restart: true
+
+  hmpps-prisoner-finance-sync-db:
+    container_name: hmpps-prisoner-finance-sync-db
+    image: postgres:latest
+    restart: always
+    networks:
+      - hmpps
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=nomis_sync
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   hmpps-auth:
     image: quay.io/hmpps/hmpps-auth:latest
@@ -31,3 +57,6 @@ services:
 
 networks:
   hmpps:
+
+volumes:
+  postgres_data:

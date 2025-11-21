@@ -1,0 +1,57 @@
+{
+  "name" : "HMPPS Electronic Monitoring",
+  "description" : "This theme includes element styles with icons for each of the Electronic Monitoring services, it includes the AWS Architecture Icons (https://aws.amazon.com/architecture/icons/).",
+  "elements" : [ {
+    "tag" : "Amazon Web Services - Simple Notification Service SNS Topic",
+    "shape" : "Pipe"
+  }, {
+    "tag" : "Amazon Web Services - Simple Queue Service SQS Queue",
+    "shape" : "Pipe"
+  }, {
+    "tag" : "Application",
+    "background" : "#1168bd",
+    "color" : "#ffffff"
+  }, {
+    "tag" : "Datastore",
+    "background" : "#84a6b8",
+    "shape" : "Cylinder"
+  }, {
+    "tag" : "Element",
+    "shape" : "RoundedBox"
+  }, {
+    "tag" : "External API",
+    "background" : "#84a6b8",
+    "color" : "#000000"
+  }, {
+    "tag" : "External System",
+    "background" : "#3598ee",
+    "color" : "#000000"
+  }, {
+    "tag" : "Lambda",
+    "background" : "#ffac33",
+    "shape" : "Circle"
+  }, {
+    "tag" : "Legacy System",
+    "background" : "#cccccc",
+    "color" : "#000000"
+  }, {
+    "tag" : "Person",
+    "background" : "#08427b",
+    "color" : "#ffffff",
+    "shape" : "Person"
+  }, {
+    "tag" : "Queue",
+    "background" : "#84a6b8",
+    "color" : "#000000",
+    "shape" : "Pipe"
+  }, {
+    "tag" : "Software System",
+    "background" : "#1168bd",
+    "color" : "#ffffff"
+  }, {
+    "tag" : "Team",
+    "background" : "#1168bd",
+    "color" : "#ffffff",
+    "shape" : "Person"
+  } ]
+}

@@ -1,0 +1,3 @@
+ALTER TABLE nomis_sync_payloads ADD COLUMN synchronized_transaction_id UUID;
+
+CREATE INDEX idx_nomis_sync_payloads_synchronized_transaction_id ON nomis_sync_payloads (synchronized_transaction_id);
