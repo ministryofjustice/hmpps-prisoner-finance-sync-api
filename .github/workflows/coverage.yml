@@ -69,6 +69,7 @@ jobs:
             echo "combined_coverage=$COMBINED_COVERAGE" >> $GITHUB_OUTPUT
 
       - name: Find existing comment
+        if: github.event_name == 'pull_request'
         id: find_comment
         uses: peter-evans/find-comment@v3
         with:
