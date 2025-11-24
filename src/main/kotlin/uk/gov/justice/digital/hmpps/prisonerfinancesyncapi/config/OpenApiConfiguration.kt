@@ -37,13 +37,13 @@ class OpenApiConfiguration(buildProperties: BuildProperties) {
   )
 
   private fun apiInfo(): Info = Info()
-    .title("HMPPS Prisoner Finance API - ALPHA")
+    .title("HMPPS Prisoner Finance Sync API")
     .version(version)
     .description(apiDescription())
     .contact(apiContact())
 
   private fun apiDescription(): String = """
-    |API for retrieving and managing transactions and balance information related to prisoner finance.
+    |API for synchronising NOMIS transactions with the Prisoner Finance Ledger.
     |
     |## Authentication
     |This API uses **OAuth2 with JWTs**. Pass your JWT in the `Authorization` header using the `Bearer` scheme.
@@ -53,8 +53,6 @@ class OpenApiConfiguration(buildProperties: BuildProperties) {
     |Access to API endpoints is controlled by roles. The required roles are documented with each endpoint.
     |Integrations should request one of the following roles based on their needs:
     |
-    |* `ROLE_PRISONER_FINANCE__RO`: Grants **read-only access** (e.g., retrieving transactions, balances).
-    |* `ROLE_PRISONER_FINANCE__RW`: Grants **read/write access** (e.g., creating transactions, adding amendments).
     |* `ROLE_PRISONER_FINANCE_SYNC__RW`: Grants **read/write access** to the NOMIS sync endpoints.
   """.trimMargin()
 
