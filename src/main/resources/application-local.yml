@@ -9,3 +9,14 @@ spring:
 
 hmpps-auth:
   url: "http://localhost:8090/auth"
+
+hmpps.sqs:
+  provider: localstack
+  queues:
+    domainevents:
+      queueName: de_rp_api_queue
+      dlqName: de_rp_api_dlq
+      subscribeTopicId: domaineventsqueue
+  topics:
+    domaineventsqueue:
+      arn: arn:aws:sns:eu-west-2:000000000000:domain_events_queue
