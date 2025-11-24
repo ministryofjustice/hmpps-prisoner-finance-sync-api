@@ -68,11 +68,21 @@ jobs:
             echo "integration_coverage=$INTEGRATION_COVERAGE" >> $GITHUB_OUTPUT
             echo "combined_coverage=$COMBINED_COVERAGE" >> $GITHUB_OUTPUT
 
+      - name: Find existing comment
+        id: find_comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: "Code Coverage Report"  # or another unique text in your comment
+          comment-author: github-actions[bot]
+
       - name: Add PR Comment with Coverage
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find_comment.outputs.comment-id }}
+          edit-mode: replace
           body: |
             ## 🔍 Code Coverage Report
 
