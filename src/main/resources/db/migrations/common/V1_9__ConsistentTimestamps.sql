@@ -1,0 +1,5 @@
+ALTER TABLE nomis_sync_payloads
+ALTER COLUMN timestamp SET DATA TYPE TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE nomis_sync_payloads
+ALTER COLUMN transaction_timestamp SET DATA TYPE TIMESTAMP WITH TIME ZONE;

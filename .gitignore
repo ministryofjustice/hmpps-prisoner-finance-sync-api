@@ -74,3 +74,9 @@ sonar-project.properties
 
 #Everything else:
 .DS_Store
+
+#C4
+**/.structurizr
+docs/architecture/plantuml
+docs/architecture/mermaid
+docs/architecture/**/*.json

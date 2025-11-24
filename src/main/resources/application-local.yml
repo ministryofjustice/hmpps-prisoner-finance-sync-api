@@ -1,0 +1,11 @@
+spring:
+  jpa:
+    show-sql: true
+
+  datasource:
+    url: 'jdbc:postgresql://localhost:5432/nomis_sync?sslmode=prefer'
+    username: postgres
+    password: postgres
+
+hmpps-auth:
+  url: "http://localhost:8090/auth"
