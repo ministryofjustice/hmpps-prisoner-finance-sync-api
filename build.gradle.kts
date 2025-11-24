@@ -43,7 +43,7 @@ tasks {
     description = "Runs unit tests excluding integration tests"
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["main"].output + configurations["testRuntimeClasspath"] + sourceSets["test"].output
-    filter { excludeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancepocapi.integration*") }
+    filter { excludeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration*") }
 
     extensions.configure(JacocoTaskExtension::class) {
       destinationFile = layout.buildDirectory.file("jacoco/unitTest.exec").get().asFile
@@ -55,7 +55,7 @@ tasks {
     description = "Runs the integration tests, make sure that dependencies are available first by running `make serve`."
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["main"].output + configurations["testRuntimeClasspath"] + sourceSets["test"].output
-    filter { includeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancepocapi.integration*") }
+    filter { includeTestsMatching("uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration*") }
 
     extensions.configure(JacocoTaskExtension::class) {
       destinationFile = layout.buildDirectory.file("jacoco/integrationTest.exec").get().asFile
