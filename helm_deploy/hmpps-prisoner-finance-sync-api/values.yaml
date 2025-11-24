@@ -29,6 +29,12 @@ generic-service:
     hmpps-prisoner-finance-sync-api-application-insights:
       APPLICATIONINSIGHTS_CONNECTION_STRING: "APPLICATIONINSIGHTS_CONNECTION_STRING"
 
+    rds-postgresql-instance-output:
+      DB_SERVER: "rds_instance_endpoint"
+      DB_NAME: "database_name"
+      DB_USER: "database_username"
+      DB_PASS: "database_password"
+
   allowlist:
     groups:
       - internal
