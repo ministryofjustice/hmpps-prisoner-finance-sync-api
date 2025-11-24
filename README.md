@@ -66,6 +66,21 @@ will also reset the database
 
 For details of the current proposed architecture [view our C4 documentation](./docs/architecture)
 
+
+## Coverage
+### Show coverage in intellij
+- Build the project
+- Go to Run in the main menu.
+- Select Manage Coverage Reports
+- Add the files in build/jacoco/
+- Click OK. The coverage report will now appear in the Coverage Tool Window and the code will be highlighted in the editor.
+
+### Open Coverage report in the browser
+To visualize the reports in the browser:
+- Build the project
+- Open the `index.html` files in the folders under `build/reports/jacoco`
+
+
 ## API Documentation
 Is available on a running local server at http://localhost:8080/swagger-ui/index.html#/
 
