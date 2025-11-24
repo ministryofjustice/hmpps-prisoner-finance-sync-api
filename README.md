@@ -88,6 +88,12 @@ Is available on a running local server at http://localhost:8080/swagger-ui/index
 - `/health`: provides information about the application health and its dependencies. 
 - `/info`: provides information about the version of deployed application.
 
+### Mocking AWS locally 
+DPS event driven architecture require subscription to queues.
+To emulate this enviroment for local development we have a "localstack" container running in docker compose.
+
+TODO - the sqs service is currently disabled for all test, it will need appropriate configuration to run integration tests
+
 ## Using local API endpoints
 
 ### Generating an auth token
