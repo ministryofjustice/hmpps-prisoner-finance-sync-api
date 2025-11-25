@@ -8,7 +8,6 @@ import org.mockito.kotlin.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.json.JsonTest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.PrisonerEvent
 
 fun makePrisonerMergeEvent(removedPrisonerNumber: String = "A4432FD", prisonerNumber: String) =
   """
@@ -26,7 +25,7 @@ fun makePrisonerMergeEvent(removedPrisonerNumber: String = "A4432FD", prisonerNu
     }
   """.trimIndent()
 
-fun makeFakeEventType(removedPrisonerNumber: String = "A4432FD", prisonerNumber: String) =
+fun makeUnexpectedEventTypeJson(removedPrisonerNumber: String = "A4432FD", prisonerNumber: String) =
   """
     {
         "Type": "Notification",
@@ -44,18 +43,18 @@ fun makeFakeEventType(removedPrisonerNumber: String = "A4432FD", prisonerNumber:
 
 @JsonTest
 class DomainEventSubscriberTest(@Autowired gson: Gson) {
-  private val prisonerEvent: PrisonerEvent = mock()
+  private val prisonerEvent: PrisonerService = mock()
   private val domainEventSubscriber = DomainEventSubscriber(gson, prisonerEvent)
 
   @Test
-  fun `calls merge restricted patient when two prisoner records are merged`() {
+  fun `calls mergePrisonerNumber when two prisoner records are merged`() {
     domainEventSubscriber.handleEvents(makePrisonerMergeEvent("A12345", "A23456"))
-    verify(prisonerEvent).mergeAccounts("A12345", "A23456")
+    verify(prisonerEvent).mergePrisonerNumber("A12345", "A23456")
   }
 
   @Test
-  fun `calls not merge Event does not trigger merge accounts`() {
-    domainEventSubscriber.handleEvents(makeFakeEventType("A12345", "A23456"))
-    verify(prisonerEvent, never()).mergeAccounts("A12345", "A23456")
+  fun `mergePrisonerNumber is not called when eventType is not prison-offender-events prisoner merged`() {
+    domainEventSubscriber.handleEvents(makeUnexpectedEventTypeJson("A12345", "A23456"))
+    verify(prisonerEvent, never()).mergePrisonerNumber("A12345", "A23456")
   }
 }
