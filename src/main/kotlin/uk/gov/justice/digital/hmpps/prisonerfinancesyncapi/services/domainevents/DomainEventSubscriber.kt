@@ -1,11 +1,13 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents
 
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import io.awspring.cloud.sqs.annotation.SqsListener
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerService
 
 data class HmppsDomainEvent(
   val eventType: String,
@@ -14,30 +16,31 @@ data class HmppsDomainEvent(
 
 data class AdditionalInformation(
   val nomsNumber: String,
-  val removedNomsNumber: String? = null,
+  val removedNomsNumber: String,
   val reason: String? = null,
 )
 
-interface EventSubscriber
-
-data class Event(val Message: String)
+data class Event(
+  @SerializedName("Message")
+  val message: String,
+)
 
 @Service
 @Profile("!test")
 class DomainEventSubscriber(
   private val gson: Gson,
-  private val prisonerEvent: PrisonerEvent,
-) : EventSubscriber {
+  private val prisonerService: PrisonerService,
+) {
 
   @SqsListener("domainevents", factory = "hmppsQueueContainerFactoryProxy")
   fun handleEvents(requestJson: String?) {
     val event = gson.fromJson(requestJson, Event::class.java)
-    with(gson.fromJson(event.Message, HmppsDomainEvent::class.java)) {
+    with(gson.fromJson(event.message, HmppsDomainEvent::class.java)) {
       when (eventType) {
         "prison-offender-events.prisoner.merged" -> {
           log.info("Merged event: $event")
-          prisonerEvent.mergeAccounts(
-            additionalInformation.removedNomsNumber!!,
+          prisonerService.mergePrisonerNumber(
+            additionalInformation.removedNomsNumber,
             additionalInformation.nomsNumber,
           )
         }
