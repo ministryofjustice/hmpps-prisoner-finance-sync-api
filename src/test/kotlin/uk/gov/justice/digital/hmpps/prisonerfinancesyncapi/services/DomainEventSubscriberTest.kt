@@ -9,33 +9,17 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.json.JsonTest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
 
-fun makePrisonerMergeEvent(removedPrisonerNumber: String = "A4432FD", prisonerNumber: String) =
+fun makePrisonerMergeEvent(removedPrisonerNumber: String, prisonerNumber: String, eventType: String = "prison-offender-events.prisoner.merged") =
   """
     {
         "Type": "Notification",
         "MessageId": "5b90ee7d-67bc-5959-a4d8-b7d420180853",
-        "Message":"{\"eventType\":\"prison-offender-events.prisoner.merged\",\"version\":\"1.0\", \"occurredAt\":\"2020-02-12T15:14:24.125533+00:00\", \"publishedAt\":\"2020-02-12T15:15:09.902048716+00:00\", \"description\":\"A prisoner has been merged from $removedPrisonerNumber to $prisonerNumber\", \"additionalInformation\":{\"nomsNumber\":\"$prisonerNumber\", \"removedNomsNumber\":\"$removedPrisonerNumber\", \"reason\":\"MERGE\"}}",
+        "Message":"{\"eventType\":\"$eventType\",\"version\":\"1.0\", \"occurredAt\":\"2020-02-12T15:14:24.125533+00:00\", \"publishedAt\":\"2020-02-12T15:15:09.902048716+00:00\", \"description\":\"A prisoner has been merged from $removedPrisonerNumber to $prisonerNumber\", \"additionalInformation\":{\"nomsNumber\":\"$prisonerNumber\", \"removedNomsNumber\":\"$removedPrisonerNumber\", \"reason\":\"MERGE\"}}",
         "Timestamp": "2021-09-01T09:18:28.725Z",
         "MessageAttributes": {
             "eventType": {
                 "Type": "String",
-                "Value": "prison-offender-events.prisoner.merged"
-            }
-        }
-    }
-  """.trimIndent()
-
-fun makeUnexpectedEventTypeJson(removedPrisonerNumber: String = "A4432FD", prisonerNumber: String) =
-  """
-    {
-        "Type": "Notification",
-        "MessageId": "5b90ee7d-67bc-5959-a4d8-b7d420180853",
-        "Message":"{\"eventType\":\"fake-event-test\",\"version\":\"1.0\", \"occurredAt\":\"2020-02-12T15:14:24.125533+00:00\", \"publishedAt\":\"2020-02-12T15:15:09.902048716+00:00\", \"description\":\"A prisoner has been merged from $removedPrisonerNumber to $prisonerNumber\", \"additionalInformation\":{\"nomsNumber\":\"$prisonerNumber\", \"removedNomsNumber\":\"$removedPrisonerNumber\", \"reason\":\"MERGE\"}}",
-        "Timestamp": "2021-09-01T09:18:28.725Z",
-        "MessageAttributes": {
-            "eventType": {
-                "Type": "String",
-                "Value": "prison-offender-events.prisoner.merged"
+                "Value": "$eventType"
             }
         }
     }
@@ -54,7 +38,7 @@ class DomainEventSubscriberTest(@Autowired gson: Gson) {
 
   @Test
   fun `mergePrisonerNumber is not called when eventType is not prison-offender-events prisoner merged`() {
-    domainEventSubscriber.handleEvents(makeUnexpectedEventTypeJson("A12345", "A23456"))
+    domainEventSubscriber.handleEvents(makePrisonerMergeEvent("A12345", "A23456", "UnexpectedType"))
     verify(prisonerEvent, never()).mergePrisonerNumber("A12345", "A23456")
   }
 }
