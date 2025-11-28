@@ -27,7 +27,13 @@ class OpenApiConfiguration(buildProperties: BuildProperties) {
   fun customOpenAPI(): OpenAPI = OpenAPI()
     .servers(serviceServers())
     .info(apiInfo())
-    .components(securityComponents())
+    .components(
+      Components()
+        .addSecuritySchemes(
+          "bearer-jwt",
+          SecurityScheme().addBearerJwtRequirement(ROLE_PRISONER_FINANCE_SYNC),
+        ),
+    )
     .addSecurityItem(SecurityRequirement().addList("bearer-jwt"))
     .tags(apiTags())
 
@@ -60,15 +66,12 @@ class OpenApiConfiguration(buildProperties: BuildProperties) {
     .name("HMPPS Digital Studio")
     .email("feedback@digital.justice.gov.uk")
 
-  private fun securityComponents(): Components = Components().addSecuritySchemes(
-    "bearer-jwt",
-    SecurityScheme()
-      .type(SecurityScheme.Type.HTTP)
-      .scheme("bearer")
-      .bearerFormat("JWT")
-      .`in`(SecurityScheme.In.HEADER)
-      .name("Authorization"),
-  )
+  private fun SecurityScheme.addBearerJwtRequirement(role: String): SecurityScheme = type(SecurityScheme.Type.HTTP)
+    .scheme("bearer")
+    .bearerFormat("JWT")
+    .`in`(SecurityScheme.In.HEADER)
+    .name("Authorization")
+    .description("A HMPPS Auth access token with the `$role` role.")
 
   private fun apiTags(): List<Tag> = listOf(
     Tag()
