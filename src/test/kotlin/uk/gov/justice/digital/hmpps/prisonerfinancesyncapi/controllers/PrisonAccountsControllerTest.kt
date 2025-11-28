@@ -86,35 +86,7 @@ class PrisonAccountsControllerTest {
 
     @Test
     fun `should return OK when TransactionDetailsList is returned`() {
-      `when`(ledgerQueryService.getPrisonAccountTransaction("MDI", 1111, transactionId)).thenReturn(
-        listOf(
-          TransactionDetails(
-            id = transactionId,
-            date = "2024-01-01",
-            type = "CREDIT",
-            description = "Some description",
-            reference = "ABC123",
-            clientRequestId = null,
-            postings = listOf(
-              TransactionDetails.TransactionPosting(
-                account = TransactionDetails.TransactionAccountDetails(
-                  code = accountCode,
-                  name = "Some Account Name",
-                  transactionType = "CREDIT",
-                  transactionDescription = "Desc",
-                  prison = prisonId,
-                  prisoner = "12345",
-                  classification = "General",
-                  postingType = PostingType.CR,
-                ),
-                address = "somewhere",
-                postingType = PostingType.CR,
-                amount = BigDecimal(10),
-              ),
-            ),
-          ),
-        ),
-      )
+      `when`(ledgerQueryService.getPrisonAccountTransaction("MDI", 1111, transactionId)).thenReturn(createTransactionDetailsList().items)
 
       val response = prisonAccountsController.getPrisonAccountTransaction(prisonId, accountCode, transactionId)
 
