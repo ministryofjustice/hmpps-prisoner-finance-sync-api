@@ -204,14 +204,7 @@ class PrisonAccountsControllerTest {
 
       `when`(ledgerQueryService.listPrisonAccountDetails("MDI")).thenReturn(
         listOf(
-          PrisonAccountDetails(
-            code = 1000,
-            name = "Cash",
-            classification = "Asset",
-            postingType = "CR",
-            balance = BigDecimal(0),
-            prisonId = "MDI",
-          ),
+          createPrisonAccountDetails()
         ),
       )
 
@@ -229,14 +222,7 @@ class PrisonAccountsControllerTest {
     @Test
     fun `should return OK when PrisonAccountDetails is returned`() {
       `when`(ledgerQueryService.getPrisonAccountDetails("MDI", 1111)).thenReturn(
-        PrisonAccountDetails(
-          code = 1000,
-          name = "Cash",
-          classification = "Asset",
-          postingType = "CR",
-          balance = BigDecimal(0),
-          prisonId = "MDI",
-        ),
+        createPrisonAccountDetails()
       )
 
       val response = prisonAccountsController.getPrisonAccountDetails(prisonId, accountCode)
