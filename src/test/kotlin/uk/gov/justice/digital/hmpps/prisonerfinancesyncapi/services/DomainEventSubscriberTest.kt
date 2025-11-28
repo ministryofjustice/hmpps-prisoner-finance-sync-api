@@ -1,13 +1,16 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.AppenderBase
 import com.google.gson.Gson
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
-import org.springframework.beans.factory.annotation.Autowired
+import org.slf4j.LoggerFactory
 import org.springframework.boot.test.autoconfigure.json.JsonTest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.Event
 
 fun makePrisonerMergeEvent(removedPrisonerNumber: String, prisonerNumber: String, eventType: String = "prison-offender-events.prisoner.merged") =
   """
@@ -26,19 +29,62 @@ fun makePrisonerMergeEvent(removedPrisonerNumber: String, prisonerNumber: String
   """.trimIndent()
 
 @JsonTest
-class DomainEventSubscriberTest(@Autowired gson: Gson) {
+class DomainEventSubscriberTest {
   private val prisonerEvent: PrisonerService = mock()
+  private val mockUnexpectedEventType = "UnexceptedEventType"
+  private val mockPrisonerNumberA = "AAA123"
+  private val mockPrisonerNumberB = "BBB123"
+  val gson = Gson()
   private val domainEventSubscriber = DomainEventSubscriber(gson, prisonerEvent)
+
+  class TestAppender : AppenderBase<ILoggingEvent>() {
+    val events = mutableListOf<ILoggingEvent>()
+
+    override fun append(event: ILoggingEvent) {
+      events.add(event)
+    }
+  }
+
+  fun mock_logger(): TestAppender {
+    val logger = LoggerFactory.getLogger(
+      DomainEventSubscriber::class.java,
+    ) as ch.qos.logback.classic.Logger
+    val testAppender = TestAppender().apply {
+      context = logger.loggerContext
+      start()
+    }
+    logger.addAppender(testAppender)
+    return testAppender
+  }
 
   @Test
   fun `calls mergePrisonerNumber when two prisoner records are merged`() {
-    domainEventSubscriber.handleEvents(makePrisonerMergeEvent("A12345", "A23456"))
-    verify(prisonerEvent).mergePrisonerNumber("A12345", "A23456")
+    val logger = mock_logger()
+    val mockEventString = makePrisonerMergeEvent(
+      mockPrisonerNumberA,
+      mockPrisonerNumberB,
+    )
+    val mockEvent = gson.fromJson(mockEventString, Event::class.java)
+
+    domainEventSubscriber.handleEvents(mockEventString)
+
+    verify(prisonerEvent).mergePrisonerNumber(mockPrisonerNumberA, mockPrisonerNumberB)
+    assert(logger.events.any { it.formattedMessage.contains("Merged event: $mockEvent") })
   }
 
   @Test
   fun `mergePrisonerNumber is not called when eventType is not prison-offender-events prisoner merged`() {
-    domainEventSubscriber.handleEvents(makePrisonerMergeEvent("A12345", "A23456", "UnexpectedType"))
-    verify(prisonerEvent, never()).mergePrisonerNumber("A12345", "A23456")
+    val logger = mock_logger()
+    val mockEventString = makePrisonerMergeEvent(
+      mockPrisonerNumberA,
+      mockPrisonerNumberB,
+      eventType = mockUnexpectedEventType,
+    )
+    val mockEvent = gson.fromJson(mockEventString, Event::class.java)
+
+    domainEventSubscriber.handleEvents(mockEventString)
+
+    verify(prisonerEvent, never()).mergePrisonerNumber(mockPrisonerNumberA, mockPrisonerNumberB)
+    assert(logger.events.any { it.formattedMessage.contains("Unexpected event type: $mockUnexpectedEventType for event: $mockEvent") })
   }
 }

@@ -42,7 +42,7 @@ class DomainEventSubscriber(
             additionalInformation.nomsNumber,
           )
         }
-        else -> log.error("Unexpected event type: $eventType")
+        else -> log.error("Unexpected event type: $eventType for event: $event")
       }
     }
   }
