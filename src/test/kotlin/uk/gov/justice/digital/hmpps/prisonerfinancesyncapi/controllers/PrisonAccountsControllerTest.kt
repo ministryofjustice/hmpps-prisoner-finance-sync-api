@@ -31,6 +31,10 @@ class PrisonAccountsControllerTest {
   @InjectMocks
   private lateinit var prisonAccountsController: PrisonAccountsController
 
+  val prisonId = "MDI"
+  val accountCode = 1111
+  val transactionId = "111222333"
+
   private fun createPrisonAccountDetailsList() = PrisonAccountDetailsList(
     items = listOf(
       createPrisonAccountDetails(),
@@ -82,10 +86,6 @@ class PrisonAccountsControllerTest {
 
     @Test
     fun `should return OK when TransactionDetailsList is returned`() {
-      val prisonId = "MDI"
-      val accountCode = 1111
-      val transactionId = "111222333"
-
       `when`(ledgerQueryService.getPrisonAccountTransaction("MDI", 1111, transactionId)).thenReturn(
         listOf(
           TransactionDetails(
@@ -124,10 +124,6 @@ class PrisonAccountsControllerTest {
 
     @Test
     fun `should throw NoResourceFoundException when TransactionDetailsList is empty`() {
-      val prisonId = "MDI"
-      val accountCode = 1111
-      val transactionId = "111222333"
-
       `when`(ledgerQueryService.getPrisonAccountTransaction("MDI", 1111, transactionId)).thenReturn(
         listOf(),
       )
@@ -174,8 +170,6 @@ class PrisonAccountsControllerTest {
 
     @Test
     fun `should return OK when listOf TransactionDetails is returned`() {
-      val prisonId = "MDI"
-      val accountCode = 1111
       val date = LocalDate.now()
 
       `when`(ledgerQueryService.listPrisonAccountTransactions("MDI", 1111, date)).thenReturn(
@@ -216,8 +210,6 @@ class PrisonAccountsControllerTest {
 
     @Test
     fun `should throw NoResourceFoundException when listOf TransactionDetails is empty`() {
-      val prisonId = "MDI"
-      val accountCode = 1111
       val date = LocalDate.now()
 
       `when`(ledgerQueryService.listPrisonAccountTransactions("MDI", 1111, date)).thenReturn(
@@ -264,9 +256,6 @@ class PrisonAccountsControllerTest {
 
     @Test
     fun `should return OK when PrisonAccountDetails is returned`() {
-      val prisonId = "MDI"
-      val accountCode = 1111
-
       `when`(ledgerQueryService.getPrisonAccountDetails("MDI", 1111)).thenReturn(
         PrisonAccountDetails(
           code = 1000,
@@ -286,9 +275,6 @@ class PrisonAccountsControllerTest {
 
     @Test
     fun `should throw NoResourceFoundException when PrisonAccountDetails is null`() {
-      val prisonId = "MDI"
-      val accountCode = 1111
-
       `when`(ledgerQueryService.getPrisonAccountDetails(prisonId, accountCode))
         .thenReturn(null)
 
