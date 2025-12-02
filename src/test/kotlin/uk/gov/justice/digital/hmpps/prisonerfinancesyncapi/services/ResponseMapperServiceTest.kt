@@ -220,7 +220,7 @@ class ResponseMapperServiceTest {
     }
 
     @Test
-    fun `should return OffenderTransactionResponse when NomisSyncPayload contains a valid General Ledger Request body`() {
+    fun `should return SyncOffenderTransactionResponse when NomisSyncPayload contains a valid Offender Transaction Request body`() {
       val bodySyncOffenderTransactionRequest = objectMapper.writeValueAsString(dummySyncOffenderTransactionRequest)
 
       val nomisPayload = NomisSyncPayload(
@@ -255,7 +255,7 @@ class ResponseMapperServiceTest {
     }
 
     @Test
-    fun `should return OffenderTransactionResponse with null values when General Ledger Request has null fields`() {
+    fun `should return SyncOffenderTransactionResponse with null values when Offender Transaction Request has null fields`() {
       val bodySyncOffenderTransactionRequest = objectMapper.writeValueAsString(dummySyncOffenderTransactionRequestNullFields)
 
       val nomisPayload = NomisSyncPayload(
