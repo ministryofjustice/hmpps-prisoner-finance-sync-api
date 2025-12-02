@@ -103,11 +103,11 @@ class ResponseMapperServiceTest {
   }
 
   @Nested
-  @DisplayName("General Ledger Transaction Mapping Tests")
+  @DisplayName("mapToGeneralLedgerTransactionResponse")
   inner class GeneralLedgerTransactionTests {
 
     @Test
-    fun `given SyncGeneralLedgerTransactionResponse an empty body when deserializing should throw MismatchedInputException`() {
+    fun `should throw MismatchedInputException when deserializing an empty body for General Ledger Request`() {
       val nomisPayload = NomisSyncPayload(
         timestamp = Instant.now(),
         legacyTransactionId = 1002,
@@ -125,7 +125,7 @@ class ResponseMapperServiceTest {
     }
 
     @Test
-    fun `should return true when NomisSyncPayload maps to SyncGeneralLedgerTransactionResponse`() {
+    fun `should return SyncGeneralLedgerTransactionResponse when NomisSyncPayload contains a valid General Ledger Request body`() {
       val bodySyncGeneralLedgerTransaction = objectMapper.writeValueAsString(dummySyncGeneralLedgerTransactionRequest)
 
       val nomisPayload = NomisSyncPayload(
@@ -176,7 +176,7 @@ class ResponseMapperServiceTest {
     }
 
     @Test
-    fun `should return true if all nullable fields are null`() {
+    fun `should return SyncGeneralLedgerTransactionResponse with null values when General Ledger Request has null fields`() {
       val bodySyncGeneralLedgerTransaction = objectMapper.writeValueAsString(dummySyncGeneralLedgerTransactionRequestNullFields)
 
       val nomisPayload = NomisSyncPayload(
@@ -198,11 +198,11 @@ class ResponseMapperServiceTest {
   }
 
   @Nested
-  @DisplayName("Offender Transaction Mapping Tests")
+  @DisplayName("mapToOffenderTransactionResponse")
   inner class OffenderTransactionTests {
 
     @Test
-    fun `given GeneralLedgerTransactionResponse an empty body when deserializing should throw MismatchedInputException`() {
+    fun `should throw MismatchedInputException when deserializing an empty body for Offender Transaction Request`() {
       val nomisPayload = NomisSyncPayload(
         timestamp = Instant.now(),
         legacyTransactionId = 1002,
@@ -214,13 +214,13 @@ class ResponseMapperServiceTest {
         transactionTimestamp = Instant.now(),
       )
       val ex = assertThrows(MismatchedInputException::class.java) {
-        responseMapperService.mapToGeneralLedgerTransactionResponse(nomisPayload)
+        responseMapperService.mapToOffenderTransactionResponse(nomisPayload)
       }
       assert(ex.message!!.contains("No content to map"))
     }
 
     @Test
-    fun `should return true when NomisSyncPayload maps to OffenderTransactionResponse`() {
+    fun `should return OffenderTransactionResponse when NomisSyncPayload contains a valid General Ledger Request body`() {
       val bodySyncOffenderTransactionRequest = objectMapper.writeValueAsString(dummySyncOffenderTransactionRequest)
 
       val nomisPayload = NomisSyncPayload(
@@ -238,24 +238,24 @@ class ResponseMapperServiceTest {
       assertThat(mapperResponse).isNotNull
       assertThat(mapperResponse.synchronizedTransactionId).isEqualTo(nomisPayload.synchronizedTransactionId)
       assertThat(mapperResponse.legacyTransactionId).isEqualTo(nomisPayload.legacyTransactionId)
-      assertThat(mapperResponse.caseloadId).isEqualTo(dummySyncGeneralLedgerTransactionRequest.caseloadId)
+      assertThat(mapperResponse.caseloadId).isEqualTo(dummySyncOffenderTransactionRequest.caseloadId)
       assertThat(mapperResponse.transactionTimestamp)
         .isCloseTo(
-          dummySyncGeneralLedgerTransactionRequest.transactionTimestamp,
+          dummySyncOffenderTransactionRequest.transactionTimestamp,
           Assertions.byLessThan(50, ChronoUnit.MILLIS),
         )
       assertThat(mapperResponse.createdAt)
         .isCloseTo(
-          dummySyncGeneralLedgerTransactionRequest.createdAt,
+          dummySyncOffenderTransactionRequest.createdAt,
           Assertions.byLessThan(50, ChronoUnit.MILLIS),
         )
-      assertThat(mapperResponse.createdByDisplayName).isEqualTo(dummySyncGeneralLedgerTransactionRequest.createdByDisplayName)
-      assertThat(mapperResponse.lastModifiedBy).isEqualTo(dummySyncGeneralLedgerTransactionRequest.lastModifiedBy)
-      assertThat(mapperResponse.lastModifiedByDisplayName).isEqualTo(dummySyncGeneralLedgerTransactionRequest.lastModifiedByDisplayName)
+      assertThat(mapperResponse.createdByDisplayName).isEqualTo(dummySyncOffenderTransactionRequest.createdByDisplayName)
+      assertThat(mapperResponse.lastModifiedBy).isEqualTo(dummySyncOffenderTransactionRequest.lastModifiedBy)
+      assertThat(mapperResponse.lastModifiedByDisplayName).isEqualTo(dummySyncOffenderTransactionRequest.lastModifiedByDisplayName)
     }
 
     @Test
-    fun `should return true if all nullable fields are null`() {
+    fun `should return OffenderTransactionResponse with null values when General Ledger Request has null fields`() {
       val bodySyncOffenderTransactionRequest = objectMapper.writeValueAsString(dummySyncOffenderTransactionRequestNullFields)
 
       val nomisPayload = NomisSyncPayload(
