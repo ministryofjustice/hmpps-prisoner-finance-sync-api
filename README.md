@@ -90,9 +90,7 @@ Is available on a running local server at http://localhost:8080/swagger-ui/index
 
 ### Mocking AWS locally 
 DPS event driven architecture require subscription to queues.
-To emulate this enviroment for local development we have a "localstack" container running in docker compose.
-
-TODO - the sqs service is currently disabled for all test, it will need appropriate configuration to run integration tests
+To emulate this environment for local development we have a "localstack" container running in docker compose.
 
 ## Using local API endpoints
 
