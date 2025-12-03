@@ -2,6 +2,8 @@ generic-service:
   nameOverride: hmpps-prisoner-finance-sync-api
   productId: "DPS099" # productId for the product that this belongs too, i.e. DPS001, see README.md for details
 
+  serviceAccountName: hmpps-prisoner-finance-sync-api
+
   replicaCount: 4
 
   image:
