@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import ch.qos.logback.classic.Level
 import com.google.gson.Gson
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
@@ -47,7 +48,7 @@ class DomainEventSubscriberTest {
     domainEventSubscriber.handleEvents(eventString)
 
     verify(prisonerService).merge(prisonerNumberA, prisonerNumberB)
-    assert(logger.events.any { it.formattedMessage.contains("Merged event: $event") })
+    assert(logger.events.any { it.formattedMessage.contains("Merged event: $event") && it.level == Level.INFO })
   }
 
   @Test
@@ -63,6 +64,11 @@ class DomainEventSubscriberTest {
     domainEventSubscriber.handleEvents(eventString)
 
     verify(prisonerService, never()).merge(prisonerNumberA, prisonerNumberB)
-    assert(logger.events.any { it.formattedMessage.contains("Unexpected event type: $unexpectedEventType for event: $event") })
+    assert(
+      logger.events.any {
+        it.formattedMessage.contains("Unexpected event type: $unexpectedEventType for event: $event") &&
+          it.level == Level.ERROR
+      },
+    )
   }
 }
