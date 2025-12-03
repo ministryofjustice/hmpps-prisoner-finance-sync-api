@@ -17,7 +17,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Transact
   ],
 )
 class TransactionTypeJpaTest(
-  @Autowired val entityManager: TestEntityManager,
+  @param:Autowired val entityManager: TestEntityManager,
 ) {
 
   @Test
@@ -41,17 +41,17 @@ class TransactionTypeJpaTest(
     val loaded = entityManager.find(TransactionType::class.java, "FT")
 
     assertThat(loaded).isNotNull
-    assertThat(loaded.txnType).isEqualTo("FT")
-    assertThat(loaded.description).isEqualTo("Some description")
-    assertThat(loaded.activeFlag).isEqualTo("Y")
-    assertThat(loaded.txnUsage).isEqualTo("R")
-    assertThat(loaded.allCaseloadFlag).isEqualTo("Y")
-    assertThat(loaded.expiryDate).isEqualTo("2025-1-12")
-    assertThat(loaded.updateAllowedFlag).isEqualTo("Y")
-    assertThat(loaded.manualInvoiceFlag).isEqualTo("Y")
-    assertThat(loaded.creditObligationType).isEqualTo("")
-    assertThat(loaded.listSeq).isEqualTo(99)
-    assertThat(loaded.grossNetFlag).isEqualTo("N")
-    assertThat(loaded!!.caseloadType).isEqualTo("INST")
+    assertThat(loaded.txnType).isEqualTo(entity.txnType)
+    assertThat(loaded.description).isEqualTo(entity.description)
+    assertThat(loaded.activeFlag).isEqualTo(entity.activeFlag)
+    assertThat(loaded.txnUsage).isEqualTo(entity.txnUsage)
+    assertThat(loaded.allCaseloadFlag).isEqualTo(entity.allCaseloadFlag)
+    assertThat(loaded.expiryDate).isEqualTo(entity.expiryDate)
+    assertThat(loaded.updateAllowedFlag).isEqualTo(entity.updateAllowedFlag)
+    assertThat(loaded.manualInvoiceFlag).isEqualTo(entity.manualInvoiceFlag)
+    assertThat(loaded.creditObligationType).isEqualTo(entity.creditObligationType)
+    assertThat(loaded.listSeq).isEqualTo(entity.listSeq)
+    assertThat(loaded.grossNetFlag).isEqualTo(entity.grossNetFlag)
+    assertThat(loaded.caseloadType).isEqualTo(entity.caseloadType)
   }
 }

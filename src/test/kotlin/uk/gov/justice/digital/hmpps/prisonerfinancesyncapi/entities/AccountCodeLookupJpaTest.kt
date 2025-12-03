@@ -18,7 +18,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingT
   ],
 )
 class AccountCodeLookupJpaTest(
-  @Autowired val entityManager: TestEntityManager,
+  @param:Autowired val entityManager: TestEntityManager,
 ) {
 
   @Test
@@ -36,14 +36,15 @@ class AccountCodeLookupJpaTest(
     val loaded = entityManager.find(AccountCodeLookup::class.java, 100)
 
     assertThat(loaded).isNotNull
-    assertThat(loaded!!.name).isEqualTo("Cash")
-    assertThat(loaded.postingType).isEqualTo(PostingType.CR)
-    assertThat(loaded.parentAccountCode).isEqualTo(10)
-    assertThat(loaded.accountCode).isEqualTo(100)
+    assertThat(loaded.name).isEqualTo(entity.name)
+    assertThat(loaded.classification).isEqualTo(entity.classification)
+    assertThat(loaded.postingType).isEqualTo(entity.postingType)
+    assertThat(loaded.parentAccountCode).isEqualTo(entity.parentAccountCode)
+    assertThat(loaded.accountCode).isEqualTo(entity.accountCode)
   }
 
   @Test
-  fun `postingType should be stored as string`() {
+  fun `postingType should be mapped as an Enum in JPA metamodel`() {
     val metadata = entityManager
       .entityManager
       .metamodel
@@ -64,10 +65,14 @@ class AccountCodeLookupJpaTest(
       parentAccountCode = null,
     )
 
-    assertThat(entity.accountCode).isEqualTo(1)
-    assertThat(entity.name).isEqualTo("Cash")
-    assertThat(entity.classification).isEqualTo("Asset")
-    assertThat(entity.postingType).isEqualTo(PostingType.CR)
-    assertThat(entity.parentAccountCode).isNull()
+    entityManager.persistAndFlush(entity)
+
+    val loaded = entityManager.find(AccountCodeLookup::class.java, 1)
+
+    assertThat(loaded.accountCode).isEqualTo(entity.accountCode)
+    assertThat(loaded.name).isEqualTo(entity.name)
+    assertThat(loaded.classification).isEqualTo(entity.classification)
+    assertThat(loaded.postingType).isEqualTo(entity.postingType)
+    assertThat(loaded.parentAccountCode).isNull()
   }
 }
