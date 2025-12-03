@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component
 @Component
 class PrisonerService {
 
-  fun mergePrisonerNumber(prisonerNumberFrom: String, prisonerNumberTo: String) {
+  fun merge(prisonNumberFrom: String, prisonNumberTo: String) {
     return
   }
 }
