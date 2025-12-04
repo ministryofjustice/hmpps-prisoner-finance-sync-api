@@ -24,12 +24,14 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
   @Test
   fun `should not create duplicate prisoner accounts in race-condition and transfer transaction`() {
     val testOffenderId = 123L
+    val testOffenderDisplayId = "AA12345"
     val transferReq1 = createSyncOffenderTransactionRequest(
       caseloadId = "MDI",
       offenderTransactions = listOf(
-        createMockOffenderTransaction(
+        createTestOffenderTransaction(
           type = "TOR",
           amount = 0.00,
+          offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "REG",
@@ -38,9 +40,10 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
             GeneralLedgerEntry(entrySequence = 2, code = 1101, postingType = "CR", amount = 0.00),
           ),
         ),
-        createMockOffenderTransaction(
+        createTestOffenderTransaction(
           type = "TOR",
           amount = 324.00,
+          offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SPND",
@@ -49,9 +52,10 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
             GeneralLedgerEntry(entrySequence = 4, code = 1101, postingType = "CR", amount = 324.00),
           ),
         ),
-        createMockOffenderTransaction(
+        createTestOffenderTransaction(
           type = "TOR",
           amount = 0.00,
+          offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SAV",
@@ -66,9 +70,10 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
     val transferReq2 = createSyncOffenderTransactionRequest(
       caseloadId = "KMI",
       offenderTransactions = listOf(
-        createMockOffenderTransaction(
+        createTestOffenderTransaction(
           type = "TIR",
           amount = 0.00,
+          offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "CR",
           subaccountType = "REG",
@@ -77,9 +82,10 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
             GeneralLedgerEntry(entrySequence = 2, code = 2101, postingType = "CR", amount = 0.00),
           ),
         ),
-        createMockOffenderTransaction(
+        createTestOffenderTransaction(
           type = "TOR",
           amount = 324.00,
+          offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SPND",
@@ -88,9 +94,10 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
             GeneralLedgerEntry(entrySequence = 4, code = 2102, postingType = "CR", amount = 324.00),
           ),
         ),
-        createMockOffenderTransaction(
+        createTestOffenderTransaction(
           type = "TOR",
           amount = 0.00,
+          offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SAV",
@@ -137,7 +144,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts", "AA001AA")
+      .uri("/prisoners/{prisonNumber}/accounts", testOffenderId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
@@ -149,10 +156,11 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
       }
   }
 
-  private fun createMockOffenderTransaction(
+  private fun createTestOffenderTransaction(
     type: String = "OT",
     subaccountType: String = "REG",
     postingType: String = "DR",
+    offenderDisplayId: String = "AA001AA",
     amount: Double = 162.00,
     offenderId: Long = 1015388L,
     generalLedgerEntries: List<GeneralLedgerEntry> = listOf(
@@ -162,7 +170,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
   ): OffenderTransaction = OffenderTransaction(
     entrySequence = 1,
     offenderId = offenderId,
-    offenderDisplayId = "AA001AA",
+    offenderDisplayId = offenderDisplayId,
     offenderBookingId = 455987L,
     subAccountType = subaccountType,
     postingType = postingType,
@@ -175,7 +183,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
 
   private fun createSyncOffenderTransactionRequest(
     offenderTransactions: List<OffenderTransaction> = listOf(
-      createMockOffenderTransaction(),
+      createTestOffenderTransaction(),
     ),
     caseloadId: String = "GMI",
   ): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
