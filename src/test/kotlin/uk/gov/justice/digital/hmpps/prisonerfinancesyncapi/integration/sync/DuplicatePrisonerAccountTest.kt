@@ -108,7 +108,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
 
     executeInParallel(
       { postTransaction(transferReq1) },
-      { postTransaction(transferReq2) }
+      { postTransaction(transferReq2) },
     )
 
     webTestClient

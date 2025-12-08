@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -27,7 +28,6 @@ class SyncService(
     request: T,
   ): SyncTransactionReceipt {
     val existingPayloadByRequestId = syncQueryService.findByRequestId(request.requestId)
-
     if (existingPayloadByRequestId != null) {
       return SyncTransactionReceipt(
         requestId = request.requestId,
@@ -69,16 +69,15 @@ class SyncService(
       }
     }
 
-    var synchronizedTransactionId: UUID? = null
-
-    try {
-      when (request) {
-        is SyncOffenderTransactionRequest -> {
-          synchronizedTransactionId = ledgerSyncService.syncOffenderTransaction(request)
-        }
-        is SyncGeneralLedgerTransactionRequest -> {
-          synchronizedTransactionId = ledgerSyncService.syncGeneralLedgerTransaction(request)
-        }
+    val synchronizedTransactionId: UUID = try {
+      processLedgerRequest(request)
+    } catch (e: DataIntegrityViolationException) {
+      log.warn("Race condition detected for transactionId: ${request.transactionId}. Retrying operation...")
+      try {
+        processLedgerRequest(request)
+      } catch (retryEx: Exception) {
+        logRequestAsError(request, retryEx)
+        throw retryEx
       }
     } catch (e: Exception) {
       logRequestAsError(request, e)
@@ -91,6 +90,16 @@ class SyncService(
       synchronizedTransactionId = newPayload.synchronizedTransactionId,
       action = SyncTransactionReceipt.Action.CREATED,
     )
+  }
+
+  private fun <T : SyncRequest> processLedgerRequest(request: T): UUID = when (request) {
+    is SyncOffenderTransactionRequest -> {
+      ledgerSyncService.syncOffenderTransaction(request)
+    }
+    is SyncGeneralLedgerTransactionRequest -> {
+      ledgerSyncService.syncGeneralLedgerTransaction(request)
+    }
+    else -> throw IllegalArgumentException("Unknown request type: ${request::class.java.simpleName}")
   }
 
   private fun logRequestAsError(request: SyncRequest, exception: Exception) {
