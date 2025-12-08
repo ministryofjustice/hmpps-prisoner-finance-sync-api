@@ -1,7 +1,5 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents
 
-import com.google.gson.annotations.SerializedName
-
 data class HmppsDomainEvent(
   val eventType: String,
   val additionalInformation: AdditionalInformation,
@@ -14,6 +12,18 @@ data class AdditionalInformation(
 )
 
 data class Event(
-  @SerializedName("Message")
   val message: String,
+)
+
+data class MessageAttribute(val Value: String, val Type: String)
+typealias EventType = MessageAttribute
+class MessageAttributes() : HashMap<String, MessageAttribute>() {
+  constructor(attribute: EventType) : this() {
+    put(attribute.Value, attribute)
+  }
+}
+data class Message(
+  val Message: String,
+  val MessageId: String,
+  val MessageAttributes: MessageAttributes,
 )

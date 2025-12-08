@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.nimbusds.jose.shaded.gson.Gson
 import org.assertj.core.api.Assertions
 import org.awaitility.kotlin.await
@@ -11,6 +12,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Event
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
+
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Message
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
 import uk.gov.justice.hmpps.sqs.HmppsQueueService
@@ -27,6 +32,9 @@ class DomainEventSubscriberQueueSpyBeanTest {
 
   @MockitoSpyBean
   lateinit var prisonerService: PrisonerService
+
+  @Autowired
+  lateinit var objectMapper: ObjectMapper
 
   private val gson = Gson()
 
@@ -48,8 +56,8 @@ class DomainEventSubscriberQueueSpyBeanTest {
 
   @Test
   fun `should process merged event in DomainEventSubscriber and PrisonerService`() {
-    val queue = hmppsQueueService.findByQueueId("domainevents")!!
 
+    val queue = hmppsQueueService.findByQueueId("domainevents")!!
     val json = makePrisonerMergeEvent("AAA123", "BBB123")
 
     queue.sendMessage(eventType = "prison-offender-events.prisoner.merged", event = json)
@@ -66,10 +74,15 @@ class DomainEventSubscriberQueueSpyBeanTest {
 
     val messageReceived = captor.firstValue
 
-    Assertions.assertThat(messageReceived).contains("prisoner.merged")
-    Assertions.assertThat(messageReceived).contains("nomsNumber")
-    Assertions.assertThat(messageReceived).contains("AAA123")
-    Assertions.assertThat(messageReceived).contains("removedNomsNumber")
-    Assertions.assertThat(messageReceived).contains("BBB123")
+    val message = objectMapper.readValue(messageReceived.toString(), Message::class.java)
+
+    val event = objectMapper.readValue(message.Message, HmppsDomainEvent::class.java)
+
+    Assertions.assertThat(event).isNotNull
+    Assertions.assertThat(event.eventType).isEqualTo("prison-offender-events.prisoner.merged")
+    Assertions.assertThat(event.additionalInformation.nomsNumber).isEqualTo("BBB123")
+    Assertions.assertThat(event.additionalInformation.removedNomsNumber).isEqualTo("AAA123")
+    Assertions.assertThat(event.additionalInformation.reason).isEqualTo("MERGE")
+
   }
 }
