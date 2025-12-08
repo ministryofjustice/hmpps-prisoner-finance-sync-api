@@ -1,30 +1,27 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
-import org.springframework.test.web.reactive.server.EntityExchangeResult
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import java.time.LocalDateTime
-import java.util.Collections
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
-import kotlin.collections.List
+import java.util.concurrent.Executors
 
 class DuplicatePrisonerAccountTest : IntegrationTestBase() {
 
-  @Autowired
-  private lateinit var objectMapper: ObjectMapper
-
   @Test
-  fun `should not create duplicate prisoner accounts in race-condition and transfer transaction`() {
+  fun `should not create duplicate prisoner accounts in race-condition`() {
     val testOffenderId = 123L
-    val testOffenderDisplayId = "AA12345"
+    val testOffenderDisplayId = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val transferAmount = 324.00
+
     val transferReq1 = createSyncOffenderTransactionRequest(
       caseloadId = "MDI",
       offenderTransactions = listOf(
@@ -42,14 +39,14 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         ),
         createTestOffenderTransaction(
           type = "TOR",
-          amount = 324.00,
+          amount = transferAmount,
           offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SPND",
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 3, code = 2102, postingType = "DR", amount = 324.00),
-            GeneralLedgerEntry(entrySequence = 4, code = 1101, postingType = "CR", amount = 324.00),
+            GeneralLedgerEntry(entrySequence = 3, code = 2102, postingType = "DR", amount = transferAmount),
+            GeneralLedgerEntry(entrySequence = 4, code = 1101, postingType = "CR", amount = transferAmount),
           ),
         ),
         createTestOffenderTransaction(
@@ -84,14 +81,14 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         ),
         createTestOffenderTransaction(
           type = "TOR",
-          amount = 324.00,
+          amount = transferAmount,
           offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SPND",
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 3, code = 1101, postingType = "DR", amount = 324.00),
-            GeneralLedgerEntry(entrySequence = 4, code = 2102, postingType = "CR", amount = 324.00),
+            GeneralLedgerEntry(entrySequence = 3, code = 1101, postingType = "DR", amount = transferAmount),
+            GeneralLedgerEntry(entrySequence = 4, code = 2102, postingType = "CR", amount = transferAmount),
           ),
         ),
         createTestOffenderTransaction(
@@ -109,42 +106,14 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
       ),
     )
 
-    val latch = CountDownLatch(1)
-    val results = Collections.synchronizedList(
-      mutableListOf<EntityExchangeResult<ByteArray>>(),
+    executeInParallel(
+      { postTransaction(transferReq1) },
+      { postTransaction(transferReq2) }
     )
-
-    fun fire(request: Any) = Runnable {
-      latch.await()
-
-      val result = webTestClient
-        .post()
-        .uri("/sync/offender-transactions")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(request)
-        .exchange()
-        .expectStatus().isCreated
-        .expectBody()
-        .returnResult()
-
-      results += result
-    }
-
-    val t1 = Thread(fire(transferReq1))
-    val t2 = Thread(fire(transferReq2))
-
-    t1.start()
-    t2.start()
-    latch.countDown()
-
-    t1.join()
-    t2.join()
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts", testOffenderId)
+      .uri("/prisoners/{prisonNumber}/accounts", testOffenderDisplayId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
@@ -152,8 +121,51 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
       .jsonPath("$.items[*].code")
       .value<List<Int>> { codes ->
         val duplicates = codes.groupBy { it }.filter { it.value.size > 1 }
-        assert(duplicates.isEmpty()) { "Duplicate account codes found: $duplicates" }
+        assertThat(duplicates)
+          .withFailMessage("Duplicate account codes found: $duplicates")
+          .isEmpty()
+        assertThat(codes).containsExactlyInAnyOrder(2101, 2102, 2103)
       }
+      .jsonPath("$.items.length()")
+      .isEqualTo(3)
+  }
+
+  /**
+   * Helper to run two tasks in parallel starting at the exact same moment.
+   * Handles thread cleanup and propagates exceptions to the main test thread.
+   */
+  private fun executeInParallel(task1: () -> Unit, task2: () -> Unit) {
+    val executor = Executors.newFixedThreadPool(2)
+    val latch = CountDownLatch(1)
+
+    try {
+      val futures = listOf(task1, task2).map { task ->
+        CompletableFuture.runAsync({
+          try {
+            latch.await() // Wait for signal
+            task()
+          } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+          }
+        }, executor)
+      }
+
+      latch.countDown() // Start both threads
+      // Wait for completion and rethrow any exceptions (like assertion errors)
+      CompletableFuture.allOf(*futures.toTypedArray()).join()
+    } finally {
+      executor.shutdown()
+    }
+  }
+
+  private fun postTransaction(request: SyncOffenderTransactionRequest) {
+    webTestClient.post()
+      .uri("/sync/offender-transactions")
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(request)
+      .exchange()
+      .expectStatus().isCreated
   }
 
   private fun createTestOffenderTransaction(
