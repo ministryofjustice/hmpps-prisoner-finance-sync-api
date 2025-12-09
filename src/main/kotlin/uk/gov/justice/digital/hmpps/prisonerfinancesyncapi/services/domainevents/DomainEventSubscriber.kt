@@ -20,7 +20,7 @@ class DomainEventSubscriber(
     val event = gson.fromJson(requestJson, Event::class.java)
     with(gson.fromJson(event.message, HmppsDomainEvent::class.java)) {
       when (eventType) {
-        "prison-offender-events.prisoner.merged" -> {
+        PRISONER_MERGE_EVENT_TYPE -> {
           log.info("Merged event: $event")
           prisonerService.merge(
             additionalInformation.removedNomsNumber,
@@ -32,7 +32,9 @@ class DomainEventSubscriber(
     }
   }
 
-  private companion object {
+  companion object {
     private val log: Logger = LoggerFactory.getLogger(this::class.java)
+
+    const val PRISONER_MERGE_EVENT_TYPE = "prison-offender-events.prisoner.merged"
   }
 }

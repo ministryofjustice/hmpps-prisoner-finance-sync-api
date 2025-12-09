@@ -1,23 +1,23 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.merge
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
+import software.amazon.awssdk.services.sns.model.MessageAttributeValue
+import software.amazon.awssdk.services.sns.model.PublishRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.SqsIntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.AdditionalInformation
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
 
-class PrisonerAccountMergeTest : IntegrationTestBase() {
-
-  @Autowired
-  private lateinit var objectMapper: ObjectMapper
+class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
 
   private val spendsAccountCode = 2102
   private val earningsAccountCode = 1501
@@ -55,7 +55,29 @@ class PrisonerAccountMergeTest : IntegrationTestBase() {
     // Expected final balance is the sum of the two transactions
     val expectedTotalBalance = amount1.add(amount2) // 3.50 + 1.50 = 5.00
 
-    // TODO: Call the account merge function here (e.g., merge prisoner1 into prisoner2)
+    domainEventsTopicSnsClient.publish(
+      PublishRequest.builder()
+        .topicArn(domainEventsTopicArn)
+        .message(
+          jsonString(
+            HmppsDomainEvent(
+              eventType = DomainEventSubscriber.PRISONER_MERGE_EVENT_TYPE,
+              additionalInformation = AdditionalInformation(
+                nomsNumber = prisoner1,
+                removedNomsNumber = prisoner2,
+                reason = "MERGE",
+              ),
+            ),
+          ),
+        )
+        .messageAttributes(
+          mapOf(
+            "eventType" to MessageAttributeValue.builder().dataType("String")
+              .stringValue(DomainEventSubscriber.PRISONER_MERGE_EVENT_TYPE).build(),
+          ),
+        )
+        .build(),
+    )
 
     // Verify initial balance for prisoner2
     verifyBalance(prisoner2, expectedTotalBalance)
