@@ -12,9 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Event
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
-
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Message
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
@@ -56,7 +54,6 @@ class DomainEventSubscriberQueueSpyBeanTest {
 
   @Test
   fun `should process merged event in DomainEventSubscriber and PrisonerService`() {
-
     val queue = hmppsQueueService.findByQueueId("domainevents")!!
     val json = makePrisonerMergeEvent("AAA123", "BBB123")
 
@@ -83,6 +80,5 @@ class DomainEventSubscriberQueueSpyBeanTest {
     Assertions.assertThat(event.additionalInformation.nomsNumber).isEqualTo("BBB123")
     Assertions.assertThat(event.additionalInformation.removedNomsNumber).isEqualTo("AAA123")
     Assertions.assertThat(event.additionalInformation.reason).isEqualTo("MERGE")
-
   }
 }
