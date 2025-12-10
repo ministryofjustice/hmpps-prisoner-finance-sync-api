@@ -52,5 +52,5 @@ interface TransactionEntryRepository : JpaRepository<TransactionEntry, Long> {
   @Query(
     "UPDATE TransactionEntry te SET te.accountId = :targetAccountId WHERE te.accountId = :oldAccountId",
   )
-    fun reassignEntries(oldAccountId: Long, targetAccountId: Long)
+  fun reassignEntries(oldAccountId: Long, targetAccountId: Long)
 }

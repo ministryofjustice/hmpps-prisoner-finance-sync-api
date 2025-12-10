@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.merge
 
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
+import org.testcontainers.shaded.org.awaitility.Awaitility
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue
 import software.amazon.awssdk.services.sns.model.PublishRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
@@ -13,6 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
@@ -79,10 +81,12 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
         .build(),
     )
 
-    Thread.sleep(1000)
-
-    // Verify final balance for toPrisoner
-    verifyBalance(toPrisoner, expectedTotalBalance)
+    Awaitility.await()
+      .atMost(Duration.ofSeconds(1))
+      .pollInterval(Duration.ofMillis(100))
+      .untilAsserted {
+        verifyBalance(toPrisoner, expectedTotalBalance)
+      }
 
     // TODO: Should we verify the final balance of prisoner1 is 0 (or do we check for 1 404 Not Found
   }
