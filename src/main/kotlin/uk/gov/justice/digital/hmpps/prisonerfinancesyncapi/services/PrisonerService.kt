@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
@@ -11,6 +12,7 @@ class PrisonerService(
   private val accountRepository: AccountRepository,
 ) {
 
+  @Transactional
   fun merge(prisonNumberFrom: String, prisonNumberTo: String) {
     val accountsToMerge = accountRepository.findByPrisonNumber(prisonNumberFrom)
 
@@ -27,7 +29,6 @@ class PrisonerService(
       val targetAccount = accountRepository.findByPrisonNumberAndAccountCode(prisonNumberTo, oldAccount.accountCode)
 
       if (targetAccount != null) {
-
         log.info("Merge account ${oldAccount.accountCode} ${oldAccount.name} to ${targetAccount.accountCode} ${targetAccount.name}")
 
         transactionEntryRepository.reassignEntries(oldAccount.id!!, targetAccount.id!!)
