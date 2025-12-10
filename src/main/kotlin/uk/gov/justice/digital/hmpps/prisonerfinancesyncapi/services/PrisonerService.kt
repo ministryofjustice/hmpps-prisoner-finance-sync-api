@@ -19,14 +19,18 @@ class PrisonerService(
       return
     }
 
+    // Loop through each of the prisoners sub-accounts up tp 3 (2101, 2102, 2103)
+
     accountsToMerge.forEach { oldAccount ->
 
+      // Find the account of target prisoner to merge
       val targetAccount = accountRepository.findByPrisonNumberAndAccountCode(prisonNumberTo, oldAccount.accountCode)
 
       if (targetAccount != null) {
+
         log.info("Merge account ${oldAccount.accountCode} ${oldAccount.name} to ${targetAccount.accountCode} ${targetAccount.name}")
 
-        // transactionEntryRepository.reassignEntries(oldAccount.id, targetAccount.id)
+        transactionEntryRepository.reassignEntries(oldAccount.id!!, targetAccount.id!!)
       }
     }
 
