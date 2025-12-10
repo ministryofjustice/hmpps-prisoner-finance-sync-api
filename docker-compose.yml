@@ -25,7 +25,7 @@ services:
 
   hmpps-prisoner-finance-sync-db:
     container_name: hmpps-prisoner-finance-sync-db
-    image: postgres:latest
+    image: postgres:18
     restart: always
     networks:
       - hmpps
