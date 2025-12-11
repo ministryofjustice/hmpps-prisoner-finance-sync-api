@@ -13,6 +13,7 @@ import java.util.*
 interface TransactionRepository : JpaRepository<Transaction, Long> {
   fun findByUuid(uuid: UUID): Transaction?
   fun findByDateBetween(dateStart: Timestamp, dateEnd: Timestamp): List<Transaction>
+
   @Modifying
   @Query(
     """
