@@ -40,4 +40,11 @@ data class Transaction(
 
   @Column(name = "created_at")
   val createdAt: Instant? = null,
+
+  @Column(name = "audit_status")
+  val auditStatus: String? = null,
+
+  @Column(name = "modified_at")
+  val modifiedAt: Instant? = null,
+
 )
