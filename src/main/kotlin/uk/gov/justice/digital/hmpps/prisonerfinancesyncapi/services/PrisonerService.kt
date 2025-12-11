@@ -5,11 +5,14 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
+import java.time.Instant
 
 @Component
 class PrisonerService(
   private val transactionEntryRepository: TransactionEntryRepository,
   private val accountRepository: AccountRepository,
+  private val transactionRepository: TransactionRepository,
 ) {
 
   @Transactional
@@ -23,15 +26,17 @@ class PrisonerService(
 
     // Loop through each of the prisoners sub-accounts up tp 3 (2101, 2102, 2103)
 
-    accountsToMerge.forEach { oldAccount ->
+    accountsToMerge.forEach { fromAccount ->
 
       // Find the account of target prisoner to merge
-      val targetAccount = accountRepository.findByPrisonNumberAndAccountCode(prisonNumberTo, oldAccount.accountCode)
+      val toAccount = accountRepository.findByPrisonNumberAndAccountCode(prisonNumberTo, fromAccount.accountCode)
 
-      if (targetAccount != null) {
-        log.info("Merge account ${oldAccount.accountCode} ${oldAccount.name} to ${targetAccount.accountCode} ${targetAccount.name}")
+      if (toAccount != null) {
+        log.info("Merge account ${fromAccount.accountCode} ${fromAccount.name} to ${toAccount.accountCode} ${toAccount.name}")
 
-        transactionEntryRepository.reassignEntries(oldAccount.id!!, targetAccount.id!!)
+        transactionRepository.recordTransactionsMerged(toAccount.id!!, Instant.now())
+
+        transactionEntryRepository.reassignEntries(fromAccount.id!!, toAccount.id)
       }
     }
 
