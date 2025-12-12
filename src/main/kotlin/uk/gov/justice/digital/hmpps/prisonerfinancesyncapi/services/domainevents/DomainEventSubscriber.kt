@@ -7,12 +7,12 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Event
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerAccountMergeService
 
 @Service
 class DomainEventSubscriber(
   private val gson: Gson,
-  private val prisonerService: PrisonerService,
+  private val prisonerAccountMergeService: PrisonerAccountMergeService,
 ) {
 
   @SqsListener("domainevents", factory = "hmppsQueueContainerFactoryProxy")
@@ -20,9 +20,9 @@ class DomainEventSubscriber(
     val event = gson.fromJson(requestJson, Event::class.java)
     with(gson.fromJson(event.message, HmppsDomainEvent::class.java)) {
       when (eventType) {
-        "prison-offender-events.prisoner.merged" -> {
+        PRISONER_MERGE_EVENT_TYPE -> {
           log.info("Merged event: $event")
-          prisonerService.merge(
+          prisonerAccountMergeService.consolidateAccounts(
             additionalInformation.removedNomsNumber,
             additionalInformation.nomsNumber,
           )
@@ -32,7 +32,9 @@ class DomainEventSubscriber(
     }
   }
 
-  private companion object {
+  companion object {
     private val log: Logger = LoggerFactory.getLogger(this::class.java)
+
+    const val PRISONER_MERGE_EVENT_TYPE = "prison-offender-events.prisoner.merged"
   }
 }
