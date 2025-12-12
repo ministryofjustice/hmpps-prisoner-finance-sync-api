@@ -29,15 +29,15 @@ fun makePrisonerMergeEvent(removedPrisonerNumber: String, prisonerNumber: String
 
 @JsonTest
 class DomainEventSubscriberTest {
-  private val prisonerService: PrisonerService = mock()
+  private val prisonerAccountMergeService: PrisonerAccountMergeService = mock()
   private val unexpectedEventType = "UnexceptedEventType"
   private val prisonerNumberA = "AAA123"
   private val prisonerNumberB = "BBB123"
   val gson = Gson()
-  private val domainEventSubscriber = DomainEventSubscriber(gson, prisonerService)
+  private val domainEventSubscriber = DomainEventSubscriber(gson, prisonerAccountMergeService)
 
   @Test
-  fun `should call merge when event is prison-offender-events prisoner merged`() {
+  fun `should call consolidateAccounts when event is prison-offender-events prisoner merged`() {
     val logger = mockLogger()
     val eventString = makePrisonerMergeEvent(
       prisonerNumberA,
@@ -47,12 +47,12 @@ class DomainEventSubscriberTest {
 
     domainEventSubscriber.handleEvents(eventString)
 
-    verify(prisonerService).merge(prisonerNumberA, prisonerNumberB)
+    verify(prisonerAccountMergeService).consolidateAccounts(prisonerNumberA, prisonerNumberB)
     assert(logger.events.any { it.formattedMessage.contains("Merged event: $event") && it.level == Level.INFO })
   }
 
   @Test
-  fun `should not call merge and should log error when eventType is not prison-offender-events prisoner merged`() {
+  fun `should not call consolidateAccounts and should log error when eventType is not prison-offender-events prisoner merged`() {
     val logger = mockLogger()
     val eventString = makePrisonerMergeEvent(
       prisonerNumberA,
@@ -63,7 +63,7 @@ class DomainEventSubscriberTest {
 
     domainEventSubscriber.handleEvents(eventString)
 
-    verify(prisonerService, never()).merge(prisonerNumberA, prisonerNumberB)
+    verify(prisonerAccountMergeService, never()).consolidateAccounts(prisonerNumberA, prisonerNumberB)
     assert(
       logger.events.any {
         it.formattedMessage.contains("Unexpected event type: $unexpectedEventType for event: $event") &&

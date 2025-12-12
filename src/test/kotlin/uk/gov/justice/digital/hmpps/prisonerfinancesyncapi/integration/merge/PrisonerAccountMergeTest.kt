@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.merge
 
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue
@@ -13,6 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
@@ -26,31 +28,31 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
   @Test
   fun `should correctly calculate prisoner balances after merging two accounts`() {
     // Generate two distinct prisoner numbers
-    val prisoner1 = UUID.randomUUID().toString().substring(0, 8).uppercase()
-    val prisoner2 = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
 
     val amount1 = BigDecimal("3.50")
     val transactionRequest1 = createSyncRequest(
-      offenderDisplayId = prisoner1,
+      offenderDisplayId = toPrisoner,
       timestamp = LocalDateTime.now(),
       amount = amount1,
     )
     postSyncTransaction(transactionRequest1)
 
     // Verify initial balance for prisoner1
-    verifyBalance(prisoner1, amount1)
+    verifyBalance(toPrisoner, amount1)
 
     // Transaction 2 for prisoner2
     val amount2 = BigDecimal("1.50")
     val transactionRequest2 = createSyncRequest(
-      offenderDisplayId = prisoner2,
+      offenderDisplayId = fromPrisoner,
       timestamp = LocalDateTime.now().minusMinutes(5),
       amount = amount2,
     )
     postSyncTransaction(transactionRequest2)
 
     // Verify initial balance for prisoner2
-    verifyBalance(prisoner2, amount2)
+    verifyBalance(fromPrisoner, amount2)
 
     // Expected final balance is the sum of the two transactions
     val expectedTotalBalance = amount1.add(amount2) // 3.50 + 1.50 = 5.00
@@ -63,8 +65,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
             HmppsDomainEvent(
               eventType = DomainEventSubscriber.PRISONER_MERGE_EVENT_TYPE,
               additionalInformation = AdditionalInformation(
-                nomsNumber = prisoner1,
-                removedNomsNumber = prisoner2,
+                nomsNumber = toPrisoner,
+                removedNomsNumber = fromPrisoner,
                 reason = "MERGE",
               ),
             ),
@@ -79,10 +81,16 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
         .build(),
     )
 
-    // Verify initial balance for prisoner2
-    verifyBalance(prisoner2, expectedTotalBalance)
+    await()
+      .atMost(Duration.ofSeconds(5))
+      .pollInterval(Duration.ofMillis(100))
+      .untilAsserted {
+        // Check Survivor has full balance
+        verifyBalance(toPrisoner, expectedTotalBalance)
+      }
 
-    // TODO: Should we verify the final balance of prisoner1 is 0 (or do we check for 1 404 Not Found
+    // Check Removed Prisoner is zeroed out
+    verifyBalance(fromPrisoner, BigDecimal("0.00"))
   }
 
   private fun verifyBalance(prisonNumber: String, expectedAmount: BigDecimal) {
