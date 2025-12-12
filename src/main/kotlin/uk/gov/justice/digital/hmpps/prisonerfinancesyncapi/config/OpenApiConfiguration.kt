@@ -39,6 +39,7 @@ class OpenApiConfiguration(buildProperties: BuildProperties) {
 
   private fun serviceServers(): List<Server> = listOf(
     Server().url("https://prisoner-finance-sync-api-dev.hmpps.service.justice.gov.uk/").description("Development"),
+    Server().url("https://prisoner-finance-sync-api-preprod.hmpps.service.justice.gov.uk/").description("Pre-Production"),
     Server().url("http://localhost:8080").description("Local"),
   )
 
