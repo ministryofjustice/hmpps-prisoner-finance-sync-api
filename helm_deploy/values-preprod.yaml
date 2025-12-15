@@ -20,4 +20,4 @@ generic-prometheus-alerts:
     - "hmpps-prisoner-finance-preprod-prisoner_finance_sync_queue_for_domain_events_dl"
   sqsAlertsOldestThreshold: 2
   sqsAlertsTotalMessagesThreshold: 1
-  alertSeverity: hmpps-prisoner-finance-sync-preprod
+  alertSeverity: info-hmpps-prisoner-finance-sync-preprod
