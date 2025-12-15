@@ -5,14 +5,7 @@ generic-service:
   replicaCount: 2
 
   ingress:
-    enabled: true
     host: prisoner-finance-sync-api-dev.hmpps.service.justice.gov.uk
-    annotations:
-      nginx.ingress.kubernetes.io/server-snippet: |
-        more_set_headers "Strict-Transport-Security: \"max-age=63072000; includeSubdomains; preload\"";
-        if ($server_protocol !~ "^HTTP/2") {
-          return 426;
-        }
 
   env:
     APPLICATIONINSIGHTS_CONFIGURATION_FILE: "applicationinsights.dev.json"
