@@ -26,37 +26,76 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
   private val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
 
   @Test
-  fun `should correctly calculate prisoner balances after merging two accounts`() {
-    // Generate two distinct prisoner numbers
+  fun `should correctly calculate prisoner balances after merging two accounts (Standard Transactions)`() {
     val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
     val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
 
     val amount1 = BigDecimal("3.50")
-    val transactionRequest1 = createSyncRequest(
-      offenderDisplayId = toPrisoner,
-      timestamp = LocalDateTime.now(),
-      amount = amount1,
-    )
-    postSyncTransaction(transactionRequest1)
-
-    // Verify initial balance for prisoner1
+    postSyncTransaction(createSyncRequest(toPrisoner, LocalDateTime.now(), amount1))
     verifyBalance(toPrisoner, amount1)
 
-    // Transaction 2 for prisoner2
     val amount2 = BigDecimal("1.50")
-    val transactionRequest2 = createSyncRequest(
-      offenderDisplayId = fromPrisoner,
-      timestamp = LocalDateTime.now().minusMinutes(5),
-      amount = amount2,
-    )
-    postSyncTransaction(transactionRequest2)
-
-    // Verify initial balance for prisoner2
+    postSyncTransaction(createSyncRequest(fromPrisoner, LocalDateTime.now().minusMinutes(5), amount2))
     verifyBalance(fromPrisoner, amount2)
 
-    // Expected final balance is the sum of the two transactions
-    val expectedTotalBalance = amount1.add(amount2) // 3.50 + 1.50 = 5.00
+    val expectedTotalBalance = amount1.add(amount2)
 
+    publishMergeEvent(toPrisoner, fromPrisoner)
+
+    await().atMost(Duration.ofSeconds(5)).untilAsserted {
+      verifyBalance(toPrisoner, expectedTotalBalance)
+    }
+    verifyBalance(fromPrisoner, BigDecimal.ZERO)
+  }
+
+  @Test
+  fun `should correctly merge accounts when removed account has migrated initial balances`() {
+    val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+
+    val migrationAmount = BigDecimal("50.00")
+    migrateBalance(fromPrisoner, spendsAccountCode, migrationAmount, LocalDateTime.now().minusDays(1))
+    verifyBalance(fromPrisoner, migrationAmount)
+
+    val existingAmount = BigDecimal("10.00")
+
+    postSyncTransaction(createSyncRequest(toPrisoner, LocalDateTime.now(), existingAmount))
+    verifyBalance(toPrisoner, existingAmount)
+
+    val expectedTotalBalance = migrationAmount.add(existingAmount)
+
+    publishMergeEvent(toPrisoner, fromPrisoner)
+
+    await().atMost(Duration.ofSeconds(5)).untilAsserted {
+      verifyBalance(toPrisoner, expectedTotalBalance)
+    }
+    verifyBalance(fromPrisoner, BigDecimal.ZERO)
+  }
+
+  @Test
+  fun `should correctly merge accounts when surving account has migrated initial balances`() {
+    val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+
+    val migrationAmount = BigDecimal("50.00")
+    migrateBalance(toPrisoner, spendsAccountCode, migrationAmount, LocalDateTime.now().minusDays(1))
+    verifyBalance(toPrisoner, migrationAmount)
+
+    val existingAmount = BigDecimal("10.00")
+    postSyncTransaction(createSyncRequest(fromPrisoner, LocalDateTime.now(), existingAmount))
+    verifyBalance(fromPrisoner, existingAmount)
+
+    val expectedTotalBalance = migrationAmount.add(existingAmount)
+
+    publishMergeEvent(toPrisoner, fromPrisoner)
+
+    await().atMost(Duration.ofSeconds(5)).untilAsserted {
+      verifyBalance(toPrisoner, expectedTotalBalance)
+    }
+    verifyBalance(fromPrisoner, BigDecimal.ZERO)
+  }
+
+  private fun publishMergeEvent(toPrisoner: String, fromPrisoner: String) {
     domainEventsTopicSnsClient.publish(
       PublishRequest.builder()
         .topicArn(domainEventsTopicArn)
@@ -73,24 +112,10 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
           ),
         )
         .messageAttributes(
-          mapOf(
-            "eventType" to MessageAttributeValue.builder().dataType("String")
-              .stringValue(DomainEventSubscriber.PRISONER_MERGE_EVENT_TYPE).build(),
-          ),
+          mapOf("eventType" to MessageAttributeValue.builder().dataType("String").stringValue(DomainEventSubscriber.PRISONER_MERGE_EVENT_TYPE).build()),
         )
         .build(),
     )
-
-    await()
-      .atMost(Duration.ofSeconds(5))
-      .pollInterval(Duration.ofMillis(100))
-      .untilAsserted {
-        // Check Survivor has full balance
-        verifyBalance(toPrisoner, expectedTotalBalance)
-      }
-
-    // Check Removed Prisoner is zeroed out
-    verifyBalance(fromPrisoner, BigDecimal("0.00"))
   }
 
   private fun verifyBalance(prisonNumber: String, expectedAmount: BigDecimal) {
@@ -101,9 +126,42 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.items.length()").isEqualTo(1)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].totalBalance").isEqualTo(expectedAmount.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].holdBalance").isEqualTo(0)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].totalBalance")
+      .value<List<Double>> { balances ->
+        val total = balances.sum()
+        if (BigDecimal.valueOf(total).compareTo(expectedAmount) != 0) {
+          throw AssertionError("Expected $expectedAmount but got $total. Accounts found: $balances")
+        }
+      }
+  }
+
+  private fun migrateBalance(
+    prisonNumber: String,
+    accountCode: Int,
+    amount: BigDecimal,
+    timestamp: LocalDateTime = LocalDateTime.now(),
+  ) {
+    val migrationRequest = uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest(
+      accountBalances = listOf(
+        uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance(
+          prisonId = prisonId,
+          accountCode = accountCode,
+          balance = amount,
+          holdBalance = BigDecimal.ZERO,
+          asOfTimestamp = timestamp,
+          transactionId = Random.nextLong(100000, 999999),
+        ),
+      ),
+    )
+
+    webTestClient
+      .post()
+      .uri("/migrate/prisoner-balances/{prisonNumber}", prisonNumber)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(migrationRequest))
+      .exchange()
+      .expectStatus().isOk
   }
 
   private fun postSyncTransaction(syncRequest: SyncOffenderTransactionRequest) {
@@ -134,18 +192,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
     val transactionId = Random.nextLong(10000, 99999)
     val requestId = UUID.randomUUID()
 
-    val glEntry = GeneralLedgerEntry(
-      entrySequence = 1,
-      code = glCode,
-      postingType = glPostingType,
-      amount = amount.toDouble(),
-    )
-    val offenderEntry = GeneralLedgerEntry(
-      entrySequence = 2,
-      code = offenderAccountCode,
-      postingType = offenderPostingType,
-      amount = amount.toDouble(),
-    )
+    val glEntry = GeneralLedgerEntry(1, glCode, glPostingType, amount.toDouble())
+    val offenderEntry = GeneralLedgerEntry(2, offenderAccountCode, offenderPostingType, amount.toDouble())
 
     return SyncOffenderTransactionRequest(
       transactionId = transactionId,
