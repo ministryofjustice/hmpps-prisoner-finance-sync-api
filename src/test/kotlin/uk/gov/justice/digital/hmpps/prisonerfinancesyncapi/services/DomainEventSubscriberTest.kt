@@ -3,11 +3,13 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import ch.qos.logback.classic.Level
 import com.google.gson.Gson
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
-import org.springframework.boot.test.autoconfigure.json.JsonTest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Event
+import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.util.mockLogger
 
@@ -27,48 +29,68 @@ fun makePrisonerMergeEvent(removedPrisonerNumber: String, prisonerNumber: String
     }
   """.trimIndent()
 
-@JsonTest
 class DomainEventSubscriberTest {
   private val prisonerAccountMergeService: PrisonerAccountMergeService = mock()
-  private val unexpectedEventType = "UnexceptedEventType"
-  private val prisonerNumberA = "AAA123"
-  private val prisonerNumberB = "BBB123"
-  val gson = Gson()
+  private val removedPrisoner = "AAA123"
+  private val targetPrisoner = "BBB123"
+  private val gson = Gson()
   private val domainEventSubscriber = DomainEventSubscriber(gson, prisonerAccountMergeService)
 
   @Test
-  fun `should call consolidateAccounts when event is prison-offender-events prisoner merged`() {
+  fun `should call consolidateAccounts with correct order when event is prisoner merged`() {
     val logger = mockLogger()
-    val eventString = makePrisonerMergeEvent(
-      prisonerNumberA,
-      prisonerNumberB,
-    )
-    val event = gson.fromJson(eventString, Event::class.java)
+    val eventString = makePrisonerMergeEvent(removedPrisoner, targetPrisoner)
 
     domainEventSubscriber.handleEvents(eventString)
 
-    verify(prisonerAccountMergeService).consolidateAccounts(prisonerNumberA, prisonerNumberB)
-    assert(logger.events.any { it.formattedMessage.contains("Merged event: $event") && it.level == Level.INFO })
+    verify(prisonerAccountMergeService).consolidateAccounts(removedPrisoner, targetPrisoner)
+
+    assert(
+      logger.events.any {
+        it.formattedMessage.contains(removedPrisoner) &&
+          it.formattedMessage.contains(targetPrisoner) &&
+          it.level == Level.INFO
+      },
+    )
   }
 
   @Test
-  fun `should not call consolidateAccounts and should log error when eventType is not prison-offender-events prisoner merged`() {
+  fun `should not call merge service and log warn for unhandled event types`() {
     val logger = mockLogger()
-    val eventString = makePrisonerMergeEvent(
-      prisonerNumberA,
-      prisonerNumberB,
-      eventType = unexpectedEventType,
-    )
-    val event = gson.fromJson(eventString, Event::class.java)
+    val unexpectedType = "some.other.event"
+    val eventString = makePrisonerMergeEvent(removedPrisoner, targetPrisoner, eventType = unexpectedType)
 
     domainEventSubscriber.handleEvents(eventString)
 
-    verify(prisonerAccountMergeService, never()).consolidateAccounts(prisonerNumberA, prisonerNumberB)
+    verify(prisonerAccountMergeService, never()).consolidateAccounts(any(), any())
+
     assert(
       logger.events.any {
-        it.formattedMessage.contains("Unexpected event type: $unexpectedEventType for event: $event") &&
-          it.level == Level.ERROR
+        it.formattedMessage.contains("unexpected event type") &&
+          it.formattedMessage.contains(unexpectedType) &&
+          it.level == Level.WARN
       },
     )
+  }
+
+  @Test
+  fun `should re-throw exceptions to trigger SQS retry when merge service fails`() {
+    val eventString = makePrisonerMergeEvent(removedPrisoner, targetPrisoner)
+
+    whenever(prisonerAccountMergeService.consolidateAccounts(removedPrisoner, targetPrisoner))
+      .doThrow(RuntimeException("Boom"))
+
+    assertThrows<RuntimeException> {
+      domainEventSubscriber.handleEvents(eventString)
+    }
+  }
+
+  @Test
+  fun `should throw exception when JSON is malformed to ensure message goes to DLQ`() {
+    val malformedJson = "{ \"invalid\": \"json\" " // Missing closing brace
+
+    assertThrows<Exception> {
+      domainEventSubscriber.handleEvents(malformedJson)
+    }
   }
 }

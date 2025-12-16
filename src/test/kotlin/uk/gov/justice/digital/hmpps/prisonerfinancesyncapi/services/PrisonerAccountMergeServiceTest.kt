@@ -105,7 +105,7 @@ class PrisonerAccountMergeServiceTest {
       )
 
       // Transfer Check
-      assertThat(descriptions[1]).contains("MERGE TRANSFER 100: Canteen Spends")
+      assertThat(descriptions[1]).contains("TRANSFER TRANSACTION 100: Canteen Spends")
       val transfer = capturedEntries[1]
       assertThat(transfer).contains(
         Triple(toAccount.id!!, BigDecimal("5.00"), PostingType.DR),
@@ -149,7 +149,7 @@ class PrisonerAccountMergeServiceTest {
   }
 
   @Test
-  fun `should remap opening balance transaction type (OB) to OT during reinstatement`() {
+  fun `should remap opening balance (OB) to ROB for reversal and TOB for reinstatement`() {
     val fromAccount = createPrisonerAccount(10L, fromPrisoner)
     val toAccount = createPrisonerAccount(20L, toPrisoner)
     val transaction = Transaction(id = 500L, transactionType = "OB", description = "Migration", date = Timestamp.from(Instant.now()), prison = "MDI")
@@ -180,11 +180,51 @@ class PrisonerAccountMergeServiceTest {
     val types = typeCaptor.allValues
     val descriptions = descriptionCaptor.allValues
 
-    assertThat(types[0]).isEqualTo("OT")
+    assertThat(types[0]).isEqualTo("ROB")
     assertThat(descriptions[0]).contains("REVERSE TRANSACTION")
 
-    assertThat(types[1]).isEqualTo("OT")
-    assertThat(descriptions[1]).contains("MERGE TRANSFER")
+    assertThat(types[1]).isEqualTo("TOB")
+    assertThat(descriptions[1]).contains("TRANSFER TRANSACTION")
+  }
+
+  @Test
+  fun `should remap opening hold balance (OHB) to ROHB for reversal and TOHB for transfer`() {
+    val fromAccount = createPrisonerAccount(10L, fromPrisoner)
+    val toAccount = createPrisonerAccount(20L, toPrisoner)
+
+    val transaction = Transaction(id = 600L, transactionType = "OHB", description = "Hold Migration", date = Timestamp.from(Instant.now()), prison = "MDI")
+    val entry = TransactionEntry(id = 1, transactionId = 600L, accountId = 10L, amount = BigDecimal("5.00"), entryType = PostingType.DR)
+
+    whenever(accountRepository.findByPrisonNumber(fromPrisoner)).thenReturn(listOf(fromAccount))
+    whenever(accountRepository.findByPrisonNumberAndAccountCode(toPrisoner, 2102)).thenReturn(toAccount)
+    whenever(transactionEntryRepository.findByAccountId(10L)).thenReturn(listOf(entry))
+    whenever(transactionEntryRepository.findByTransactionId(600L)).thenReturn(listOf(entry))
+    whenever(transactionRepository.findById(600L)).thenReturn(Optional.of(transaction))
+
+    service.consolidateAccounts(fromPrisoner, toPrisoner)
+
+    val typeCaptor = argumentCaptor<String>()
+    val descriptionCaptor = argumentCaptor<String>()
+
+    verify(transactionService, times(2)).recordTransaction(
+      transactionType = typeCaptor.capture(),
+      description = descriptionCaptor.capture(),
+      entries = any(),
+      transactionTimestamp = anyOrNull(),
+      legacyTransactionId = anyOrNull(),
+      synchronizedTransactionId = anyOrNull(),
+      prison = eq("MDI"),
+      createdAt = anyOrNull(),
+    )
+
+    val types = typeCaptor.allValues
+    val descriptions = descriptionCaptor.allValues
+
+    assertThat(types[0]).isEqualTo("ROHB")
+    assertThat(descriptions[0]).contains("REVERSE TRANSACTION")
+
+    assertThat(types[1]).isEqualTo("TOHB")
+    assertThat(descriptions[1]).contains("TRANSFER TRANSACTION")
   }
 
   private fun createPrisonerAccount(id: Long, prisonNumber: String): Account = Account(

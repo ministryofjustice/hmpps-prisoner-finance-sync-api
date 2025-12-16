@@ -17,18 +17,25 @@ class DomainEventSubscriber(
 
   @SqsListener("domainevents", factory = "hmppsQueueContainerFactoryProxy")
   fun handleEvents(requestJson: String?) {
-    val event = gson.fromJson(requestJson, Event::class.java)
-    with(gson.fromJson(event.message, HmppsDomainEvent::class.java)) {
-      when (eventType) {
+    try {
+      val event = gson.fromJson(requestJson, Event::class.java)
+      val domainEvent = gson.fromJson(event.message, HmppsDomainEvent::class.java)
+
+      when (domainEvent.eventType) {
         PRISONER_MERGE_EVENT_TYPE -> {
-          log.info("Merged event: $event")
+          log.info("Processing merge for ${domainEvent.additionalInformation.removedNomsNumber} -> ${domainEvent.additionalInformation.nomsNumber}")
           prisonerAccountMergeService.consolidateAccounts(
-            additionalInformation.removedNomsNumber,
-            additionalInformation.nomsNumber,
+            domainEvent.additionalInformation.removedNomsNumber,
+            domainEvent.additionalInformation.nomsNumber,
           )
         }
-        else -> log.error("Unexpected event type: $eventType for event: $event")
+        else -> {
+          log.warn("Ignored unexpected event type: ${domainEvent.eventType}")
+        }
       }
+    } catch (e: Exception) {
+      log.error("Failed to process domain event. Message will be retried. Payload: $requestJson", e)
+      throw e
     }
   }
 

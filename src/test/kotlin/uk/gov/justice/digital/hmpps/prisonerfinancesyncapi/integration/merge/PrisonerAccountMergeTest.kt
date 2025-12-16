@@ -42,57 +42,107 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
 
     publishMergeEvent(toPrisoner, fromPrisoner)
 
-    await().atMost(Duration.ofSeconds(5)).untilAsserted {
+    await().atMost(Duration.ofSeconds(1)).untilAsserted {
       verifyBalance(toPrisoner, expectedTotalBalance)
+      verifyBalance(fromPrisoner, BigDecimal.ZERO)
     }
-    verifyBalance(fromPrisoner, BigDecimal.ZERO)
   }
 
   @Test
-  fun `should correctly merge accounts when removed account has migrated initial balances`() {
+  fun `should correctly reflect a Hold Allocation (HOA) after merge`() {
     val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
     val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val initialCash = BigDecimal("50.00")
+    val holdAmount = BigDecimal("10.00")
 
-    val migrationAmount = BigDecimal("50.00")
-    migrateBalance(fromPrisoner, spendsAccountCode, migrationAmount, LocalDateTime.now().minusDays(1))
-    verifyBalance(fromPrisoner, migrationAmount)
+    migrateBalance(fromPrisoner, spendsAccountCode, initialCash, BigDecimal.ZERO)
 
-    val existingAmount = BigDecimal("10.00")
+    postSyncTransaction(
+      createSyncRequest(
+        offenderDisplayId = fromPrisoner,
+        timestamp = LocalDateTime.now(),
+        amount = holdAmount,
+        transactionType = "HOA",
+        offenderPostingType = "DR",
+        glCode = 2199,
+        glPostingType = "CR",
+      ),
+    )
 
-    postSyncTransaction(createSyncRequest(toPrisoner, LocalDateTime.now(), existingAmount))
-    verifyBalance(toPrisoner, existingAmount)
-
-    val expectedTotalBalance = migrationAmount.add(existingAmount)
+    verifyBalance(fromPrisoner, BigDecimal(40.0), holdAmount)
 
     publishMergeEvent(toPrisoner, fromPrisoner)
 
-    await().atMost(Duration.ofSeconds(5)).untilAsserted {
-      verifyBalance(toPrisoner, expectedTotalBalance)
+    await().atMost(Duration.ofSeconds(1)).untilAsserted {
+      verifyBalance(toPrisoner, BigDecimal("40.00"), holdAmount)
+      verifyBalance(fromPrisoner, BigDecimal.ZERO, BigDecimal.ZERO)
     }
-    verifyBalance(fromPrisoner, BigDecimal.ZERO)
   }
 
   @Test
-  fun `should correctly merge accounts when surving account has migrated initial balances`() {
+  fun `should correctly reflect reversal of a Hold Removal (HOR) after merge`() {
     val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
     val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val initialHold = BigDecimal("10.00")
 
-    val migrationAmount = BigDecimal("50.00")
-    migrateBalance(toPrisoner, spendsAccountCode, migrationAmount, LocalDateTime.now().minusDays(1))
-    verifyBalance(toPrisoner, migrationAmount)
+    migrateBalance(fromPrisoner, spendsAccountCode, BigDecimal("40.00"), initialHold)
 
-    val existingAmount = BigDecimal("10.00")
-    postSyncTransaction(createSyncRequest(fromPrisoner, LocalDateTime.now(), existingAmount))
-    verifyBalance(fromPrisoner, existingAmount)
-
-    val expectedTotalBalance = migrationAmount.add(existingAmount)
+    postSyncTransaction(
+      createSyncRequest(
+        offenderDisplayId = fromPrisoner,
+        timestamp = LocalDateTime.now(),
+        amount = initialHold,
+        transactionType = "HOR",
+        offenderPostingType = "CR",
+        glPostingType = "DR",
+        glCode = 2199,
+      ),
+    )
+    verifyBalance(fromPrisoner, BigDecimal("50.00"), BigDecimal.ZERO)
 
     publishMergeEvent(toPrisoner, fromPrisoner)
 
-    await().atMost(Duration.ofSeconds(5)).untilAsserted {
-      verifyBalance(toPrisoner, expectedTotalBalance)
+    postSyncTransaction(
+      createSyncRequest(
+        offenderDisplayId = fromPrisoner,
+        timestamp = LocalDateTime.now(),
+        amount = initialHold,
+        transactionType = "HOR",
+        offenderPostingType = "DR",
+        glPostingType = "CR",
+      ),
+    )
+
+    publishMergeEvent(toPrisoner, fromPrisoner)
+
+    await().atMost(Duration.ofSeconds(1)).untilAsserted {
+      verifyBalance(toPrisoner, BigDecimal("40.00"), initialHold)
     }
-    verifyBalance(fromPrisoner, BigDecimal.ZERO)
+  }
+
+  @Test
+  fun `should correctly handle sequential and recursive merges`() {
+    val prisonerA = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonerB = UUID.randomUUID().toString().substring(0, 8).uppercase()
+
+    val initialCash = BigDecimal("50.00")
+    val initialHold = BigDecimal("5.00")
+
+    migrateBalance(prisonerA, spendsAccountCode, initialCash, initialHold, LocalDateTime.now().minusDays(1))
+
+    //  Merge (A -> B)
+    publishMergeEvent(toPrisoner = prisonerB, fromPrisoner = prisonerA)
+    await().atMost(Duration.ofSeconds(1)).untilAsserted {
+      verifyBalance(prisonerB, initialCash, initialHold)
+      verifyBalance(prisonerA, BigDecimal.ZERO, BigDecimal.ZERO)
+    }
+
+    // Merge (B -> A)
+    publishMergeEvent(toPrisoner = prisonerA, fromPrisoner = prisonerB)
+    await().atMost(Duration.ofSeconds(1)).untilAsserted {
+      verifyBalance(prisonerA, initialCash, initialHold)
+      verifyBalance(prisonerB, BigDecimal.ZERO, BigDecimal.ZERO)
+    }
   }
 
   private fun publishMergeEvent(toPrisoner: String, fromPrisoner: String) {
@@ -118,7 +168,7 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
     )
   }
 
-  private fun verifyBalance(prisonNumber: String, expectedAmount: BigDecimal) {
+  private fun verifyBalance(prisonNumber: String, expectedAmount: BigDecimal, expectedHold: BigDecimal = BigDecimal.ZERO) {
     webTestClient
       .get()
       .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
@@ -130,7 +180,14 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
       .value<List<Double>> { balances ->
         val total = balances.sum()
         if (BigDecimal.valueOf(total).compareTo(expectedAmount) != 0) {
-          throw AssertionError("Expected $expectedAmount but got $total. Accounts found: $balances")
+          throw AssertionError("Expected Total $expectedAmount but got $total. Accounts found: $balances")
+        }
+      }
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].holdBalance")
+      .value<List<Double>> { balances ->
+        val totalHold = balances.sum()
+        if (BigDecimal.valueOf(totalHold).compareTo(expectedHold) != 0) {
+          throw AssertionError("Expected Hold $expectedHold but got $totalHold. Accounts found: $balances")
         }
       }
   }
@@ -139,6 +196,7 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
     prisonNumber: String,
     accountCode: Int,
     amount: BigDecimal,
+    holdAmount: BigDecimal = BigDecimal.ZERO,
     timestamp: LocalDateTime = LocalDateTime.now(),
   ) {
     val migrationRequest = uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest(
@@ -147,7 +205,7 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
           prisonId = prisonId,
           accountCode = accountCode,
           balance = amount,
-          holdBalance = BigDecimal.ZERO,
+          holdBalance = holdAmount,
           asOfTimestamp = timestamp,
           transactionId = Random.nextLong(100000, 999999),
         ),

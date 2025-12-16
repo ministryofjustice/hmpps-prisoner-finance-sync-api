@@ -34,11 +34,10 @@ class PrisonerAccountMergeService(
     val accountsToConsolidate = accountRepository.findByPrisonNumber(prisonNumberFrom)
     if (accountsToConsolidate.isEmpty()) {
       log.warn("No accounts found for source prisoner: $prisonNumberFrom")
+      return
     }
 
-    accountsToConsolidate.forEach { fromAccount ->
-      consolidateSingleAccount(fromAccount, prisonNumberTo)
-    }
+    accountsToConsolidate.forEach { consolidateSingleAccount(it, prisonNumberTo) }
   }
 
   private fun consolidateSingleAccount(fromAccount: Account, prisonNumberTo: String) {
@@ -58,71 +57,45 @@ class PrisonerAccountMergeService(
   }
 
   private fun processTransactionMigration(transactionId: Long, fromAccount: Account, toAccount: Account) {
-    val originalTxn = transactionRepository.findById(transactionId)
+    val transaction = transactionRepository.findById(transactionId)
       .orElseThrow { IllegalStateException("Transaction not found: $transactionId") }
 
-    val allEntriesInTxn = transactionEntryRepository.findByTransactionId(transactionId)
+    val transactionEntries = transactionEntryRepository.findByTransactionId(transactionId)
 
-    // Remap Opening Balance 'OB' to Sub Account Transfer 'OT
-    val transactionType = if (originalTxn.transactionType == "OB") {
-      "OT"
-    } else {
-      originalTxn.transactionType
+    val reverseTransactionType = when (transaction.transactionType) {
+      "OB", "TOB" -> "ROB"
+      "OHB", "TOHB" -> "ROHB"
+      else -> transaction.transactionType
     }
 
-    // 1. REVERSAL: Use ORIGINAL type
-    recordReversal(originalTxn, allEntriesInTxn, transactionType)
+    val transferTransactionType = when (transaction.transactionType) {
+      "OB", "TOB" -> "TOB"
+      "OHB", "TOHB" -> "TOHB"
+      else -> transaction.transactionType
+    }
 
-    // 2. TRANSFER: Use SAFE type
-    recordTransfer(originalTxn, allEntriesInTxn, fromAccount, toAccount, transactionType)
+    recordReversal(transaction, transactionEntries, reverseTransactionType)
+    recordTransfer(transaction, transactionEntries, fromAccount, toAccount, transferTransactionType)
   }
 
-  private fun recordReversal(
-    originalTxn: Transaction,
-    entries: List<TransactionEntry>,
-    transactionType: String,
-  ) {
-    val reversalEntries = entries.map { entry ->
-      Triple(
-        entry.accountId,
-        entry.amount,
-        flipPostingType(entry.entryType),
-      )
-    }
-
+  private fun recordReversal(originalTxn: Transaction, entries: List<TransactionEntry>, transactionType: String) {
     transactionService.recordTransaction(
       transactionType = transactionType,
       description = "REVERSE TRANSACTION ${originalTxn.id}: ${originalTxn.description}",
-      entries = reversalEntries,
+      entries = entries.map { Triple(it.accountId, it.amount, it.entryType.flipped()) },
       prison = originalTxn.prison!!,
-      transactionTimestamp = Instant.now(), // Ensure date is recorded as Today
+      transactionTimestamp = Instant.now(),
     )
   }
 
-  private fun recordTransfer(
-    originalTxn: Transaction,
-    entries: List<TransactionEntry>,
-    fromAccount: Account,
-    toAccount: Account,
-    transactionType: String,
-  ) {
+  private fun recordTransfer(originalTxn: Transaction, entries: List<TransactionEntry>, fromAccount: Account, toAccount: Account, transactionType: String) {
     val reinstatementEntries = entries.map { entry ->
-      val targetAccountId = if (entry.accountId == fromAccount.id) {
-        toAccount.id!!
-      } else {
-        entry.accountId
-      }
-
-      Triple(
-        targetAccountId,
-        entry.amount,
-        entry.entryType,
-      )
+      val targetAccountId = if (entry.accountId == fromAccount.id) toAccount.id!! else entry.accountId
+      Triple(targetAccountId, entry.amount, entry.entryType)
     }
-
     transactionService.recordTransaction(
       transactionType = transactionType,
-      description = "MERGE TRANSFER ${originalTxn.id}: ${originalTxn.description}",
+      description = "TRANSFER TRANSACTION ${originalTxn.id}: ${originalTxn.description}",
       entries = reinstatementEntries,
       prison = originalTxn.prison!!,
       transactionTimestamp = Instant.now(),
@@ -142,5 +115,5 @@ class PrisonerAccountMergeService(
     )
   }
 
-  private fun flipPostingType(type: PostingType): PostingType = if (type == PostingType.DR) PostingType.CR else PostingType.DR
+  private fun PostingType.flipped() = if (this == PostingType.DR) PostingType.CR else PostingType.DR
 }

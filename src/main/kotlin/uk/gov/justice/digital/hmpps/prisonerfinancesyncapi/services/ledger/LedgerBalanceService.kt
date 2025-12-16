@@ -22,9 +22,10 @@ class LedgerBalanceService(
 ) {
 
   private val prisonerSubAccountCodes = listOf(2101, 2102, 2103)
-  private val holdCreditTransactionTypes = setOf("HOA", "WHF", "OHB")
+  private val holdCreditTransactionTypes = setOf("HOA", "WHF")
   private val holdDebitTransactionTypes = setOf("HOR", "WFR")
-  private val holdTransactionTypes = holdCreditTransactionTypes + holdDebitTransactionTypes
+  private val biDirectionalHoldTransactionTypes = setOf("OHB", "TOHB", "ROHB")
+  private val holdTransactionTypes = holdCreditTransactionTypes + holdDebitTransactionTypes + biDirectionalHoldTransactionTypes
 
   /**
    * Calculates the total and hold balances for a prisoner's account by aggregating
@@ -184,34 +185,25 @@ class LedgerBalanceService(
     .mapValues { (_, pairs) -> pairs.map { it.first } }
 
   /**
-   * Contains the core logic for calculating total and hold balances from a list of entries.
+   * Contains the core logic for calculating total and hold balances.
+   * Total Balance: CR increases, DR decreases.
+   * Hold Balance: DR increases, CR decreases (since DR moves money INTO the Hold GL).
    */
   private fun calculateBalances(
     transactionEntries: List<TransactionEntry>,
     allTransactions: Map<Long, Transaction>,
   ): Pair<BigDecimal, BigDecimal> {
-    val nonHoldEntries = transactionEntries.filter {
-      allTransactions[it.transactionId]?.transactionType != "OHB"
-    }
-
-    val totalBalance = nonHoldEntries.sumOf { entry ->
-      when (entry.entryType) {
-        PostingType.CR -> entry.amount
-        PostingType.DR -> entry.amount.negate()
+    val totalBalance = transactionEntries
+      .filter { allTransactions[it.transactionId]?.transactionType !in biDirectionalHoldTransactionTypes }
+      .sumOf { entry ->
+        if (entry.entryType == PostingType.CR) entry.amount else entry.amount.negate()
       }
-    }
 
-    val holdEntries = transactionEntries.filter { entry ->
-      allTransactions[entry.transactionId]?.transactionType in holdTransactionTypes
-    }
-
-    val holdBalance = holdEntries.sumOf { entry ->
-      when (allTransactions[entry.transactionId]?.transactionType) {
-        in holdCreditTransactionTypes -> entry.amount
-        in holdDebitTransactionTypes -> entry.amount.negate()
-        else -> BigDecimal.ZERO
+    val holdBalance = transactionEntries
+      .filter { allTransactions[it.transactionId]?.transactionType in holdTransactionTypes }
+      .sumOf { entry ->
+        if (entry.entryType == PostingType.DR) entry.amount else entry.amount.negate()
       }
-    }
 
     return Pair(totalBalance, holdBalance)
   }
