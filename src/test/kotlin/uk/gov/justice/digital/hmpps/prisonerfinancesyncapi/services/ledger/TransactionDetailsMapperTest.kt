@@ -16,8 +16,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Acco
 import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.Instant
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.util.Optional
 
 class TransactionDetailsMapperTest {
@@ -32,12 +30,6 @@ class TransactionDetailsMapperTest {
     accountCodeLookupRepositoryMock = mock()
     transactionDetailsMapper = TransactionDetailsMapper(accountRepositoryMock, accountCodeLookupRepositoryMock)
   }
-
-  private fun timeStampToString(timestamp: Timestamp, format: String = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"): String = timestamp.toInstant()
-    .atOffset(ZoneOffset.UTC)
-    .format(
-      DateTimeFormatter.ofPattern(format),
-    )
 
   @Test
   fun `mapToTransactionDetails should map entries correctly`() {
@@ -124,8 +116,8 @@ class TransactionDetailsMapperTest {
     assertThat(transactionDetails.description).isEqualTo(transaction.description)
     assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
 
-    assertThat(transactionDetails.date).isEqualTo(
-      timeStampToString(transaction.date),
+    assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
+      transaction.date,
     )
   }
 }
