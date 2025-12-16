@@ -26,7 +26,7 @@ class MigrationFilterServiceTest {
   private lateinit var migrationFilterService: MigrationFilterService
 
   @Test
-  fun `should return LatestMigrationInfo when findLatestMigrationInfo returns latest OB transaction date`() {
+  fun `should return LatestMigrationInfo when findLatestMigrationInfo returns latest OB transaction`() {
     val accountId: Long = 3
     val transactionMap = mutableMapOf<Long, Transaction>()
     val transactionDate = Timestamp.from(Instant.now())
@@ -60,5 +60,41 @@ class MigrationFilterServiceTest {
 
     assertThat(result?.transactionDate).isEqualTo(transactionDate.toInstant())
     assertThat(result?.createdAt).isEqualTo(createdAt)
+  }
+
+  @Test
+  fun `should return null when findLatestMigrationInfo returns no migrationType transactions`() {
+    val accountId: Long = 3
+    val transactionMap = mutableMapOf<Long, Transaction>()
+    val transactionDate = Timestamp.from(Instant.now())
+    val createdAt = Instant.now()
+
+    transactionMap[1L] = Transaction(
+      3,
+      UUID.randomUUID(),
+      "CREDIT",
+      "Description",
+      date = transactionDate,
+      legacyTransactionId = 3,
+      synchronizedTransactionId = UUID.randomUUID(),
+      prison = "KMI",
+      createdAt = createdAt,
+    )
+
+    `when`(transactionEntryRepository.findByAccountId(accountId)).thenReturn(
+      listOf(
+        TransactionEntry(
+          id = 1,
+          transactionId = 3,
+          accountId = accountId,
+          amount = BigDecimal("3.00"),
+          entryType = PostingType.CR,
+        ),
+      ),
+    )
+
+    val result = migrationFilterService.findLatestMigrationInfo(accountId, transactionMap)
+
+    assertThat(result).isNull()
   }
 }

@@ -58,19 +58,14 @@ class MigrationFilterService(
   fun findLatestMigrationInfo(accountId: Long, allTransactions: Map<Long, Transaction>): LatestMigrationInfo? {
     val transactionIds = transactionEntryRepository.findByAccountId(accountId).map { it.transactionId }.distinct()
 
-    val latestCreatedAt = allTransactions.values
+    val latestTransaction = allTransactions.values
       .filter { it.id in transactionIds && it.transactionType in migrationTypes }
-      .mapNotNull { it.createdAt }
-      .maxOrNull()
-      ?: return null
+      .maxByOrNull { it.createdAt ?: Instant.MIN } ?: return null
 
-    val latestTransactionDate = allTransactions.values
-      .filter { it.transactionType in migrationTypes }
-      .filter { it.createdAt?.equals(latestCreatedAt) ?: false }
-      .maxOfOrNull { it.date.toInstant() }
-      ?: return null
-
-    return LatestMigrationInfo(latestCreatedAt, latestTransactionDate)
+    return LatestMigrationInfo(
+      latestTransaction.createdAt!!,
+      latestTransaction.date.toInstant(),
+    )
   }
 
   private fun findLatestMigrationInfoForPrison(
