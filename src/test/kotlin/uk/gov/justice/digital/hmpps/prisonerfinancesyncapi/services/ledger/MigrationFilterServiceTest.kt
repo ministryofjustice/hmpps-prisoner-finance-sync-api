@@ -1,6 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
@@ -25,76 +27,80 @@ class MigrationFilterServiceTest {
   @InjectMocks
   private lateinit var migrationFilterService: MigrationFilterService
 
-  @Test
-  fun `should return LatestMigrationInfo when findLatestMigrationInfo returns latest OB transaction`() {
-    val accountId: Long = 3
-    val transactionMap = mutableMapOf<Long, Transaction>()
-    val transactionDate = Timestamp.from(Instant.now())
-    val createdAt = Instant.now()
+  @Nested
+  @DisplayName("findLatestMigrationInfo")
+  inner class FindLatestMigrationInfo {
+    @Test
+    fun `should return LatestMigrationInfo when findLatestMigrationInfo returns latest OB transaction`() {
+      val accountId: Long = 3
+      val transactionMap = mutableMapOf<Long, Transaction>()
+      val transactionDate = Timestamp.from(Instant.now())
+      val createdAt = Instant.now()
 
-    transactionMap[1L] = Transaction(
-      3,
-      UUID.randomUUID(),
-      "OB",
-      "Description",
-      date = transactionDate,
-      legacyTransactionId = 3,
-      synchronizedTransactionId = UUID.randomUUID(),
-      prison = "KMI",
-      createdAt = createdAt,
-    )
+      transactionMap[1L] = Transaction(
+        3,
+        UUID.randomUUID(),
+        "OB",
+        "Description",
+        date = transactionDate,
+        legacyTransactionId = 3,
+        synchronizedTransactionId = UUID.randomUUID(),
+        prison = "KMI",
+        createdAt = createdAt,
+      )
 
-    `when`(transactionEntryRepository.findByAccountId(accountId)).thenReturn(
-      listOf(
-        TransactionEntry(
-          id = 1,
-          transactionId = 3,
-          accountId = accountId,
-          amount = BigDecimal("3.00"),
-          entryType = PostingType.CR,
+      `when`(transactionEntryRepository.findByAccountId(accountId)).thenReturn(
+        listOf(
+          TransactionEntry(
+            id = 1,
+            transactionId = 3,
+            accountId = accountId,
+            amount = BigDecimal("3.00"),
+            entryType = PostingType.CR,
+          ),
         ),
-      ),
-    )
+      )
 
-    val result = migrationFilterService.findLatestMigrationInfo(accountId, transactionMap)
+      val result = migrationFilterService.findLatestMigrationInfo(accountId, transactionMap)
 
-    assertThat(result?.transactionDate).isEqualTo(transactionDate.toInstant())
-    assertThat(result?.createdAt).isEqualTo(createdAt)
-  }
+      assertThat(result?.transactionDate).isEqualTo(transactionDate.toInstant())
+      assertThat(result?.createdAt).isEqualTo(createdAt)
+    }
 
-  @Test
-  fun `should return null when findLatestMigrationInfo returns no migrationType transactions`() {
-    val accountId: Long = 3
-    val transactionMap = mutableMapOf<Long, Transaction>()
-    val transactionDate = Timestamp.from(Instant.now())
-    val createdAt = Instant.now()
+    @Test
+    fun `should return null when findLatestMigrationInfo returns no migrationType transactions`() {
+      val accountId: Long = 3
+      val transactionMap = mutableMapOf<Long, Transaction>()
+      val transactionDate = Timestamp.from(Instant.now())
+      val createdAt = Instant.now()
 
-    transactionMap[1L] = Transaction(
-      3,
-      UUID.randomUUID(),
-      "CREDIT",
-      "Description",
-      date = transactionDate,
-      legacyTransactionId = 3,
-      synchronizedTransactionId = UUID.randomUUID(),
-      prison = "KMI",
-      createdAt = createdAt,
-    )
+      transactionMap[1L] = Transaction(
+        3,
+        UUID.randomUUID(),
+        "CREDIT",
+        "Description",
+        date = transactionDate,
+        legacyTransactionId = 3,
+        synchronizedTransactionId = UUID.randomUUID(),
+        prison = "KMI",
+        createdAt = createdAt,
+      )
 
-    `when`(transactionEntryRepository.findByAccountId(accountId)).thenReturn(
-      listOf(
-        TransactionEntry(
-          id = 1,
-          transactionId = 3,
-          accountId = accountId,
-          amount = BigDecimal("3.00"),
-          entryType = PostingType.CR,
+      `when`(transactionEntryRepository.findByAccountId(accountId)).thenReturn(
+        listOf(
+          TransactionEntry(
+            id = 1,
+            transactionId = 3,
+            accountId = accountId,
+            amount = BigDecimal("3.00"),
+            entryType = PostingType.CR,
+          ),
         ),
-      ),
-    )
+      )
 
-    val result = migrationFilterService.findLatestMigrationInfo(accountId, transactionMap)
+      val result = migrationFilterService.findLatestMigrationInfo(accountId, transactionMap)
 
-    assertThat(result).isNull()
+      assertThat(result).isNull()
+    }
   }
 }
