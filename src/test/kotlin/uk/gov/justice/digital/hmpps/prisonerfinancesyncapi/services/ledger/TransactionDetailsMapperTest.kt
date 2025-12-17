@@ -27,73 +27,6 @@ class TransactionDetailsMapperTest {
   private lateinit var accountRepositoryMock: AccountRepository
   private lateinit var accountCodeLookupRepositoryMock: AccountCodeLookupRepository
 
-  private val testId1 = 1L
-  private val testId2 = 2L
-  private val prisonId = "TESTPRSID"
-  private val account1 = Account(
-    id = testId1,
-    prisonId = 10L,
-    name = "Cash",
-    accountType = AccountType.PRISONER,
-    accountCode = 100,
-    postingType = PostingType.DR,
-    prisonNumber = prisonId,
-  )
-
-  private val account2 = Account(
-    id = testId2,
-    prisonId = 10L,
-    name = "Savings",
-    accountType = AccountType.PRISONER,
-    accountCode = 200,
-    postingType = PostingType.CR,
-    prisonNumber = prisonId,
-  )
-
-  private val accountIds = listOf(testId1, testId2)
-  private val accounts = listOf(account1, account2)
-  private val lookupCash = AccountCodeLookup(
-    accountCode = 100,
-    name = "Cash",
-    classification = "Asset",
-    postingType = PostingType.DR,
-    parentAccountCode = null,
-  )
-
-  private val lookupSavings = AccountCodeLookup(
-    accountCode = 200,
-    name = "Savings",
-    classification = "Asset",
-    postingType = PostingType.DR,
-    parentAccountCode = null,
-  )
-
-  private val transaction = Transaction(
-    id = 1L,
-    transactionType = "Test transaction",
-    description = "Test description",
-    date = Timestamp.from(Instant.now()),
-    prison = "TESTPRISON",
-  )
-
-  private val entry1 = TransactionEntry(
-    id = 567L,
-    transactionId = transaction.id!!,
-    accountId = 1L,
-    amount = BigDecimal("100.00"),
-    entryType = PostingType.DR,
-  )
-
-  private val entry2 = TransactionEntry(
-    id = 123L,
-    transactionId = transaction.id!!,
-    accountId = 2L,
-    amount = BigDecimal("200.00"),
-    entryType = PostingType.CR,
-  )
-
-  private val transactionEntries = listOf(entry1, entry2)
-
   @BeforeEach
   fun setUp() {
     accountRepositoryMock = mock()
@@ -104,6 +37,75 @@ class TransactionDetailsMapperTest {
   @Nested
   @DisplayName("mapToTransactionDetails")
   inner class MapToTransactionDetails {
+
+    private val testId1 = 1L
+    private val testId2 = 2L
+    private val prisonId = "TESTPRSID"
+    private val account1 = Account(
+      id = testId1,
+      prisonId = 10L,
+      name = "Cash",
+      accountType = AccountType.PRISONER,
+      accountCode = 100,
+      postingType = PostingType.DR,
+      prisonNumber = prisonId,
+    )
+
+    private val account2 = Account(
+      id = testId2,
+      prisonId = 10L,
+      name = "Savings",
+      accountType = AccountType.PRISONER,
+      accountCode = 200,
+      postingType = PostingType.CR,
+      prisonNumber = prisonId,
+    )
+
+    private val accountIds = listOf(testId1, testId2)
+    private val accounts = listOf(account1, account2)
+    private val lookupCash = AccountCodeLookup(
+      accountCode = 100,
+      name = "Cash",
+      classification = "Asset",
+      postingType = PostingType.DR,
+      parentAccountCode = null,
+    )
+
+    private val lookupSavings = AccountCodeLookup(
+      accountCode = 200,
+      name = "Savings",
+      classification = "Asset",
+      postingType = PostingType.DR,
+      parentAccountCode = null,
+    )
+
+    private val transaction = Transaction(
+      id = 1L,
+      transactionType = "Test transaction",
+      description = "Test description",
+      date = Timestamp.from(Instant.now()),
+      prison = "TESTPRISON",
+    )
+
+    private val entry1 = TransactionEntry(
+      id = 567L,
+      transactionId = transaction.id!!,
+      accountId = 1L,
+      amount = BigDecimal("100.00"),
+      entryType = PostingType.DR,
+    )
+
+    private val entry2 = TransactionEntry(
+      id = 123L,
+      transactionId = transaction.id!!,
+      accountId = 2L,
+      amount = BigDecimal("200.00"),
+      entryType = PostingType.CR,
+    )
+
+    private val transactionEntries = listOf(entry1, entry2)
+
+
     @Test
     fun `mapToTransactionDetails should map entries correctly`() {
       whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(accounts)
