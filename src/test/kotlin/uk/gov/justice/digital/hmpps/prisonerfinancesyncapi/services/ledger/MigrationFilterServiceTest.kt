@@ -194,13 +194,13 @@ class MigrationFilterServiceTest {
         type = "OB",
         prison = "MDI",
         createdAt = migrationCreatedAt,
-        date = migrationCreatedAt
+        date = migrationCreatedAt,
       )
 
       val normalTxn = makeTransaction(
         id = 99,
         type = "CREDIT",
-        prison = "MDI"
+        prison = "MDI",
       )
 
       val result = migrationFilterService.getPostMigrationTransactionEntriesForPrison(
@@ -209,8 +209,8 @@ class MigrationFilterServiceTest {
         allEntries = listOf(te1, te2),
         allTransactions = mapOf(
           98L to migrationTxn,
-          99L to normalTxn
-        )
+          99L to normalTxn,
+        ),
       )
 
       assertThat(result).hasSize(2)
