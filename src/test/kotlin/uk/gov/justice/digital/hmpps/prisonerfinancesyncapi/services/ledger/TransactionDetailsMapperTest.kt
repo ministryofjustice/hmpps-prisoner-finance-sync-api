@@ -41,35 +41,28 @@ class TransactionDetailsMapperTest {
   @DisplayName("mapToTransactionDetails")
   inner class MapToTransactionDetails {
 
-    private val testId1 = 1L
-    private val testId2 = 2L
+    private val accountCashId = 1L
+    private val accountSavingsId = 2L
     private val prisonId = "TESTPRSID"
     private val accountCashName = "Cash"
     private val accountSavingsName = "Savings"
     private val accountCashCode = 100
     private val accountSavingsCode = 200
 
-    private val accountCash = Account(
-      id = testId1,
+    private fun createAccount(id: Long, name: String, code: Int) = Account(
+      id = id,
       prisonId = 10L,
-      name = accountCashName,
+      name = name,
       accountType = AccountType.PRISONER,
-      accountCode = accountCashCode,
+      accountCode = code,
       postingType = PostingType.DR,
       prisonNumber = prisonId,
     )
 
-    private val accountSavings = Account(
-      id = testId2,
-      prisonId = 10L,
-      name = accountSavingsName,
-      accountType = AccountType.PRISONER,
-      accountCode = accountSavingsCode,
-      postingType = PostingType.CR,
-      prisonNumber = prisonId,
-    )
+    private val accountCash = createAccount(accountCashId, accountCashName, accountCashCode)
+    private val accountSavings = createAccount(accountSavingsId, accountSavingsName, accountSavingsCode)
 
-    private val accountIds = listOf(testId1, testId2)
+    private val accountIds = listOf(accountCashId, accountSavingsId)
     private val accounts = listOf(accountCash, accountSavings)
 
     private fun createAccountCodeLookup(accountCode: Int, name: String) = AccountCodeLookup(
