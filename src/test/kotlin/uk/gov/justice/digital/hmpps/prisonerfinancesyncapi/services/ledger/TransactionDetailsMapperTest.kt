@@ -18,6 +18,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Transact
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.TransactionEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountCodeLookupRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.TransactionDetails
 import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.Instant
@@ -105,6 +106,26 @@ class TransactionDetailsMapperTest {
 
     private val transactionEntries = listOf(entry1, entry2)
 
+    private fun assertThatTransactionDetailsDataMatches(transactionDetails: TransactionDetails) {
+      assertThat(transactionDetails.postings.count()).isEqualTo(transactionEntries.count())
+      assertThat(transactionDetails.postings).extracting("amount").containsOnly(BigDecimal("100.00"))
+      assertThat(transactionDetails.postings[0].account?.code).isEqualTo(accountCashCode)
+      assertThat(transactionDetails.postings[0].account?.name).isEqualTo(accountCashName)
+      assertThat(transactionDetails.postings[1].account?.code).isEqualTo(accountSavingsCode)
+      assertThat(transactionDetails.postings[1].account?.name).isEqualTo(accountSavingsName)
+      assertThat(transactionDetails.postings).extracting("account.postingType").containsOnly(PostingType.DR)
+      assertThat(transactionDetails.postings).extracting("account.prisoner").containsOnly(prisonId)
+      assertThat(transactionDetails.postings).extracting("account.prison").containsOnly(transaction.prison)
+      assertThat(transactionDetails.postings).extracting("account.transactionType").containsOnly(transaction.transactionType)
+      assertThat(transactionDetails.postings).extracting("account.transactionDescription").containsOnly(transaction.description)
+
+      assertThat(transactionDetails.description).isEqualTo(transaction.description)
+      assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
+      assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
+        transaction.date,
+      )
+    }
+
     @Test
     fun `mapToTransactionDetails should map entries correctly`() {
       whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(accounts)
@@ -118,18 +139,8 @@ class TransactionDetailsMapperTest {
 
       val transactionDetails = transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
 
-      assertThat(transactionDetails.postings.count()).isEqualTo(transactionEntries.count())
-      assertThat(transactionDetails.description).isEqualTo(transaction.description)
-      assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
-
-      assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
-        transaction.date,
-      )
-
-      for (transactionDetail in transactionDetails.postings) {
-        assertThat(transactionDetail.account?.classification)
-          .isNotEqualTo("Unknown")
-      }
+      assertThatTransactionDetailsDataMatches(transactionDetails)
+      assertThat(transactionDetails.postings).extracting("account.classification").containsOnly("Asset")
     }
 
     @Test
@@ -154,18 +165,8 @@ class TransactionDetailsMapperTest {
 
       val transactionDetails = transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
 
-      assertThat(transactionDetails.postings.count()).isEqualTo(transactionEntries.count())
-      assertThat(transactionDetails.description).isEqualTo(transaction.description)
-      assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
-
-      assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
-        transaction.date,
-      )
-
-      for (transactionDetail in transactionDetails.postings) {
-        assertThat(transactionDetail.account?.classification)
-          .isEqualTo("Unknown")
-      }
+      assertThatTransactionDetailsDataMatches(transactionDetails)
+      assertThat(transactionDetails.postings).extracting("account.classification").containsOnly("Unknown")
     }
   }
 }
