@@ -2,6 +2,8 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito.mock
@@ -99,66 +101,70 @@ class TransactionDetailsMapperTest {
     transactionDetailsMapper = TransactionDetailsMapper(accountRepositoryMock, accountCodeLookupRepositoryMock)
   }
 
-  @Test
-  fun `mapToTransactionDetails should map entries correctly`() {
-    whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(accounts)
+  @Nested
+  @DisplayName("mapToTransactionDetails")
+  inner class MapToTransactionDetails {
+    @Test
+    fun `mapToTransactionDetails should map entries correctly`() {
+      whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(accounts)
 
-    whenever(
-      accountCodeLookupRepositoryMock.findById(100),
-    ).thenReturn(Optional.of(lookupCash))
-    whenever(
-      accountCodeLookupRepositoryMock.findById(200),
-    ).thenReturn(Optional.of(lookupSavings))
+      whenever(
+        accountCodeLookupRepositoryMock.findById(100),
+      ).thenReturn(Optional.of(lookupCash))
+      whenever(
+        accountCodeLookupRepositoryMock.findById(200),
+      ).thenReturn(Optional.of(lookupSavings))
 
-    val transactionDetails = transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
+      val transactionDetails = transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
 
-    assertThat(transactionDetails.postings.count()).isEqualTo(transactionEntries.count())
-    assertThat(transactionDetails.description).isEqualTo(transaction.description)
-    assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
+      assertThat(transactionDetails.postings.count()).isEqualTo(transactionEntries.count())
+      assertThat(transactionDetails.description).isEqualTo(transaction.description)
+      assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
 
-    assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
-      transaction.date,
-    )
+      assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
+        transaction.date,
+      )
 
-    for (transactionDetail in transactionDetails.postings) {
-      assertThat(transactionDetail.account?.classification)
-        .isNotEqualTo("Unknown")
+      for (transactionDetail in transactionDetails.postings) {
+        assertThat(transactionDetail.account?.classification)
+          .isNotEqualTo("Unknown")
+      }
     }
-  }
 
-  @Test
-  fun `mapToTransactionDetails throw IllegalStateException when accountId is not found for transactionEntry`() {
-    whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(listOf())
+    @Test
+    fun `mapToTransactionDetails throw IllegalStateException when accountId is not found for transactionEntry`() {
+      whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(listOf())
 
-    assertThrows<IllegalStateException> {
-      transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
+      assertThrows<IllegalStateException> {
+        transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
+      }
     }
-  }
 
-  @Test
-  fun `mapToTransactionDetails should show Unknown classification when code is not in LookUp table`() {
-    whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(accounts)
+    @Test
+    fun `mapToTransactionDetails should show Unknown classification when code is not in LookUp table`() {
+      whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(accounts)
 
-    whenever(
-      accountCodeLookupRepositoryMock.findById(100),
-    ).thenReturn(Optional.empty())
-    whenever(
-      accountCodeLookupRepositoryMock.findById(200),
-    ).thenReturn(Optional.empty())
+      whenever(
+        accountCodeLookupRepositoryMock.findById(100),
+      ).thenReturn(Optional.empty())
+      whenever(
+        accountCodeLookupRepositoryMock.findById(200),
+      ).thenReturn(Optional.empty())
 
-    val transactionDetails = transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
+      val transactionDetails = transactionDetailsMapper.mapToTransactionDetails(transaction, transactionEntries)
 
-    assertThat(transactionDetails.postings.count()).isEqualTo(transactionEntries.count())
-    assertThat(transactionDetails.description).isEqualTo(transaction.description)
-    assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
+      assertThat(transactionDetails.postings.count()).isEqualTo(transactionEntries.count())
+      assertThat(transactionDetails.description).isEqualTo(transaction.description)
+      assertThat(transactionDetails.type).isEqualTo(transaction.transactionType)
 
-    assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
-      transaction.date,
-    )
+      assertThat(Timestamp.from(Instant.parse(transactionDetails.date))).isEqualTo(
+        transaction.date,
+      )
 
-    for (transactionDetail in transactionDetails.postings) {
-      assertThat(transactionDetail.account?.classification)
-        .isEqualTo("Unknown")
+      for (transactionDetail in transactionDetails.postings) {
+        assertThat(transactionDetail.account?.classification)
+          .isEqualTo("Unknown")
+      }
     }
   }
 }
