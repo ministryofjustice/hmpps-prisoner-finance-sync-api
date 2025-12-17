@@ -8,11 +8,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.constraints.Pattern
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
@@ -27,6 +29,7 @@ import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
 
 @Tag(name = TAG_PRISON_ACCOUNTS)
+@Validated
 @RestController
 class PrisonAccountsController(
   @param:Autowired private val ledgerQueryService: LedgerQueryService,
@@ -86,7 +89,12 @@ class PrisonAccountsController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun listPrisonAccounts(
-    @PathVariable prisonId: String,
+    @PathVariable
+    @Pattern(
+      regexp = "^[A-Za-z0-9]{1,10}\$",
+      message = "prisonId Must be alphanumeric with no spaces and max 10 characters"
+    )
+    prisonId: String,
   ): ResponseEntity<PrisonAccountDetailsList> {
     val items = ledgerQueryService.listPrisonAccountDetails(prisonId)
     val body = PrisonAccountDetailsList(items)
