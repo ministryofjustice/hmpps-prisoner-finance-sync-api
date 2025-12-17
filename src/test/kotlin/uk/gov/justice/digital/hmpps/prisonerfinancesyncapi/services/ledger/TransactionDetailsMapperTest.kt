@@ -22,6 +22,7 @@ import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.Optional
+import kotlin.random.Random
 
 @ExtendWith(MockitoExtension::class)
 class TransactionDetailsMapperTest {
@@ -42,44 +43,45 @@ class TransactionDetailsMapperTest {
     private val testId1 = 1L
     private val testId2 = 2L
     private val prisonId = "TESTPRSID"
-    private val account1 = Account(
+    private val accountCashName = "Cash"
+    private val accountSavingsName = "Savings"
+    private val accountCashCode = 100
+    private val accountSavingsCode = 200
+
+    private val accountCash = Account(
       id = testId1,
       prisonId = 10L,
-      name = "Cash",
+      name = accountCashName,
       accountType = AccountType.PRISONER,
-      accountCode = 100,
+      accountCode = accountCashCode,
       postingType = PostingType.DR,
       prisonNumber = prisonId,
     )
 
-    private val account2 = Account(
+    private val accountSavings = Account(
       id = testId2,
       prisonId = 10L,
-      name = "Savings",
+      name = accountSavingsName,
       accountType = AccountType.PRISONER,
-      accountCode = 200,
+      accountCode = accountSavingsCode,
       postingType = PostingType.CR,
       prisonNumber = prisonId,
     )
 
     private val accountIds = listOf(testId1, testId2)
-    private val accounts = listOf(account1, account2)
+    private val accounts = listOf(accountCash, accountSavings)
 
-    private val lookupCash = AccountCodeLookup(
-      accountCode = 100,
-      name = "Cash",
+    private fun createAccountCodeLookup(accountCode: Int, name: String) = AccountCodeLookup(
+      accountCode = accountCode,
+      name = name,
       classification = "Asset",
       postingType = PostingType.DR,
       parentAccountCode = null,
     )
 
-    private val lookupSavings = AccountCodeLookup(
-      accountCode = 200,
-      name = "Savings",
-      classification = "Asset",
-      postingType = PostingType.DR,
-      parentAccountCode = null,
-    )
+    private val lookupCash = createAccountCodeLookup(accountCashCode, accountCashName)
+
+    private val lookupSavings = createAccountCodeLookup(accountSavingsCode, accountSavingsName)
 
     private val transaction = Transaction(
       id = 1L,
@@ -89,21 +91,17 @@ class TransactionDetailsMapperTest {
       prison = "TESTPRISON",
     )
 
-    private val entry1 = TransactionEntry(
-      id = 567L,
+    private fun createTransactionEntry(accountId: Long) = TransactionEntry(
+      id = Random.nextLong(1, 10_000_000),
       transactionId = transaction.id!!,
-      accountId = 1L,
+      accountId = accountId,
       amount = BigDecimal("100.00"),
       entryType = PostingType.DR,
     )
 
-    private val entry2 = TransactionEntry(
-      id = 123L,
-      transactionId = transaction.id!!,
-      accountId = 2L,
-      amount = BigDecimal("200.00"),
-      entryType = PostingType.CR,
-    )
+    private val entry1 = createTransactionEntry(1L)
+
+    private val entry2 = createTransactionEntry(2L)
 
     private val transactionEntries = listOf(entry1, entry2)
 
