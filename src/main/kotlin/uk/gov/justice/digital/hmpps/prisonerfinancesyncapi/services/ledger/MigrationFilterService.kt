@@ -67,8 +67,7 @@ class MigrationFilterService(
     val latestTransactionDate = allTransactions.values
       .filter { it.transactionType in migrationTypes }
       .filter { it.createdAt?.equals(latestCreatedAt) ?: false }
-      .maxOfOrNull { it.date.toInstant() }
-      ?: return null
+      .maxOf { it.date.toInstant() }
 
     return LatestMigrationInfo(latestCreatedAt, latestTransactionDate)
   }
@@ -89,8 +88,7 @@ class MigrationFilterService(
     val latestTransactionDate = allTransactions.values
       .filter { it.transactionType in migrationTypes && it.prison == prisonCode }
       .filter { it.createdAt?.equals(latestCreatedAt) ?: false }
-      .maxOfOrNull { it.date.toInstant() }
-      ?: return null
+      .maxOf { it.date.toInstant() }
 
     return LatestMigrationInfo(latestCreatedAt, latestTransactionDate)
   }
