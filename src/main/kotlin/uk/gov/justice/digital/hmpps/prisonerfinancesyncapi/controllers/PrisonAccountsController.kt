@@ -92,7 +92,7 @@ class PrisonAccountsController(
     @PathVariable
     @Pattern(
       regexp = "^[A-Za-z0-9]{1,10}\$",
-      message = "prisonId Must be alphanumeric with no spaces and max 10 characters"
+      message = "prisonId Must be alphanumeric with no spaces and max 10 characters",
     )
     prisonId: String,
   ): ResponseEntity<PrisonAccountDetailsList> {
