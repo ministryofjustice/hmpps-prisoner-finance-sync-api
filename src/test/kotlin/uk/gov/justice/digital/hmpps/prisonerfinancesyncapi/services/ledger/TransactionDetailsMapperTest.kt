@@ -1,12 +1,14 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger
 
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import org.mockito.Mockito.mock
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.InjectMocks
+import org.mockito.Mock
+import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Account
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AccountCodeLookup
@@ -21,18 +23,17 @@ import java.sql.Timestamp
 import java.time.Instant
 import java.util.Optional
 
+@ExtendWith(MockitoExtension::class)
 class TransactionDetailsMapperTest {
 
-  private lateinit var transactionDetailsMapper: TransactionDetailsMapper
+  @Mock
   private lateinit var accountRepositoryMock: AccountRepository
+
+  @Mock
   private lateinit var accountCodeLookupRepositoryMock: AccountCodeLookupRepository
 
-  @BeforeEach
-  fun setUp() {
-    accountRepositoryMock = mock()
-    accountCodeLookupRepositoryMock = mock()
-    transactionDetailsMapper = TransactionDetailsMapper(accountRepositoryMock, accountCodeLookupRepositoryMock)
-  }
+  @InjectMocks
+  private lateinit var transactionDetailsMapper: TransactionDetailsMapper
 
   @Nested
   @DisplayName("mapToTransactionDetails")
@@ -63,6 +64,7 @@ class TransactionDetailsMapperTest {
 
     private val accountIds = listOf(testId1, testId2)
     private val accounts = listOf(account1, account2)
+
     private val lookupCash = AccountCodeLookup(
       accountCode = 100,
       name = "Cash",
