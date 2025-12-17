@@ -18,9 +18,10 @@ class TransactionDetailsMapper(
 
     val postings = transactionEntries.map { entry ->
       val entryAccount = allAccounts[entry.accountId]
-      val accountCodeLookup = entryAccount?.let { accountCodeLookupRepository.findById(it.accountCode).orElse(null) }
+        ?: throw IllegalStateException("Data Integrity Error: Account ID ${entry.accountId} not found for Transaction Entry")
+      val accountCodeLookup = entryAccount.let { accountCodeLookupRepository.findById(it.accountCode).orElse(null) }
 
-      val accountDetails = entryAccount?.let {
+      val accountDetails = entryAccount.let {
         TransactionDetails.TransactionAccountDetails(
           code = it.accountCode,
           name = it.name,
@@ -35,7 +36,7 @@ class TransactionDetailsMapper(
 
       TransactionDetails.TransactionPosting(
         account = accountDetails,
-        address = entryAccount?.name,
+        address = entryAccount.name,
         postingType = entry.entryType,
         amount = entry.amount,
       )
