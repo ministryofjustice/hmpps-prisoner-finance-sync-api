@@ -10,6 +10,8 @@ import com.github.tomakehurst.wiremock.client.WireMock.post
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
+import com.github.tomakehurst.wiremock.common.ConsoleNotifier
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import org.junit.jupiter.api.extension.AfterAllCallback
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
@@ -41,7 +43,12 @@ class GeneralLedgerApiExtension :
   }
 }
 
-class GeneralLedgerApiMockServer : WireMockServer(8091) {
+class GeneralLedgerApiMockServer :
+  WireMockServer(
+    WireMockConfiguration.wireMockConfig()
+      .port(8091)
+      .notifier(ConsoleNotifier(true)),
+  ) {
 
   private val mapper = ObjectMapper()
 
