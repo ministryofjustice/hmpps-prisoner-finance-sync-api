@@ -1,4 +1,4 @@
-package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents
+package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import ch.qos.logback.classic.Level
 import com.google.gson.Gson
@@ -8,7 +8,7 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.springframework.boot.test.autoconfigure.json.JsonTest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Event
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.util.mockLogger
 
 fun makePrisonerMergeEvent(removedPrisonerNumber: String, prisonerNumber: String, eventType: String = "prison-offender-events.prisoner.merged") =
