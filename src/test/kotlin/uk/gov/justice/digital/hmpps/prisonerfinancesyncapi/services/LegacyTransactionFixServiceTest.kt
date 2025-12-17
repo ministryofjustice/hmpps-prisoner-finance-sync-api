@@ -18,8 +18,7 @@ import kotlin.collections.List
 @DisplayName("legacy transaction fix tests")
 class LegacyTransactionFixServiceTest {
 
-  fun createGeneralLedgerEntries(includeGeneralLedgerEntries : Boolean) : List<GeneralLedgerEntry> {
-
+  fun createGeneralLedgerEntries(includeGeneralLedgerEntries: Boolean): List<GeneralLedgerEntry> {
     val generalLedgerEntries = listOf(
       GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 5.99),
       GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 5.99),
@@ -28,34 +27,33 @@ class LegacyTransactionFixServiceTest {
     return if (includeGeneralLedgerEntries) generalLedgerEntries else emptyList()
   }
 
-  fun createSyncOffenderTransactionRequest(offenderTransactionType : String, includeGeneralLedgerEntries : Boolean = false) : SyncOffenderTransactionRequest {
-    return SyncOffenderTransactionRequest(
-      transactionId = 485368707,
-      requestId = UUID.fromString("a1b2c3d4-e5f6-7890-1234-567890abcdef"),
-      caseloadId = "LEI",
-      transactionTimestamp = LocalDateTime.now(),
-      createdAt = LocalDateTime.now(),
-      createdBy = "JD12345",
-      createdByDisplayName = "J Doe",
-      lastModifiedAt = null,
-      lastModifiedBy = null,
-      lastModifiedByDisplayName = null,
-      listOf(
-        OffenderTransaction(
-          entrySequence = 2,
-          offenderId = 5306470,
-          offenderDisplayId = "AA001AA",
-          offenderBookingId = 2970777,
-          subAccountType = "SPND",
-          postingType = "CR",
-          type = offenderTransactionType,
-          description = "",
-          amount = 5.99,
-          reference = null,
-          generalLedgerEntries = createGeneralLedgerEntries(includeGeneralLedgerEntries),
-        ),
-    ))
-  }
+  fun createSyncOffenderTransactionRequest(offenderTransactionType: String, includeGeneralLedgerEntries: Boolean = false): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
+    transactionId = 485368707,
+    requestId = UUID.fromString("a1b2c3d4-e5f6-7890-1234-567890abcdef"),
+    caseloadId = "LEI",
+    transactionTimestamp = LocalDateTime.now(),
+    createdAt = LocalDateTime.now(),
+    createdBy = "JD12345",
+    createdByDisplayName = "J Doe",
+    lastModifiedAt = null,
+    lastModifiedBy = null,
+    lastModifiedByDisplayName = null,
+    listOf(
+      OffenderTransaction(
+        entrySequence = 2,
+        offenderId = 5306470,
+        offenderDisplayId = "AA001AA",
+        offenderBookingId = 2970777,
+        subAccountType = "SPND",
+        postingType = "CR",
+        type = offenderTransactionType,
+        description = "",
+        amount = 5.99,
+        reference = null,
+        generalLedgerEntries = createGeneralLedgerEntries(includeGeneralLedgerEntries),
+      ),
+    ),
+  )
 
   @InjectMocks
   private lateinit var legacyTransactionFixService: LegacyTransactionFixService
