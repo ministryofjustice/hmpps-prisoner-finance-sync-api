@@ -105,7 +105,6 @@ class TransactionDetailsMapperTest {
 
     private val transactionEntries = listOf(entry1, entry2)
 
-
     @Test
     fun `mapToTransactionDetails should map entries correctly`() {
       whenever(accountRepositoryMock.findAllById(accountIds)).thenReturn(accounts)
