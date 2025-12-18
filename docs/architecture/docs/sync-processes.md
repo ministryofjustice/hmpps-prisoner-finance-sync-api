@@ -102,7 +102,8 @@ sequenceDiagram
     box Prisoner Finance
         participant PF.sync as Sync service
         participant PF.log as Sync log
-        participant PF.ledger as General Ledger
+        participant PF.ledger as Sync Ledger
+        participant PF.newGL as General Ledger API
     end
 
     autonumber
@@ -123,6 +124,27 @@ sequenceDiagram
     PF.log -->>- PF.sync: Success response
     PF.sync ->>+ PF.ledger: Create <Transaction>
     PF.ledger -->>- PF.sync: Success response
+    rect rgb(240, 248, 255)
+        note right of PF.sync: Dual Running (General Ledger API)
+
+        loop For Debtor & Creditor
+            PF.sync ->>+ PF.newGL: GET /accounts (Find parent account)
+            opt Parent Account Not Found
+                PF.sync ->> PF.newGL: POST /accounts (Create parent account)
+            end
+            PF.newGL -->>- PF.sync: Return Parent UUID
+
+            PF.sync ->>+ PF.newGL: GET /accounts/{id}/sub-accounts (Find sub-account)
+            opt Sub-Account Not Found
+                PF.sync ->> PF.newGL: POST /accounts/{id}/sub-accounts (Create sub-account)
+            end
+            PF.newGL -->>- PF.sync: Return Sub-Account UUID
+        end
+
+        PF.sync ->>+ PF.newGL: POST /transactions
+        PF.newGL -->>- PF.sync: 201 Created (Transaction Receipt)
+    end
+
     PF.sync -->>- NOMIS.sync: Success response
     deactivate NOMIS.sync
 ```
@@ -137,7 +159,7 @@ sequenceDiagram
         participant NOMIS.DB as Database
     end
     box Prisoner Finance
-        participant PF.sync as Sync service
+        participant PF.sync as Sync API
         participant PF.log as Sync log
         participant PF.ledger as General Ledger
     end
