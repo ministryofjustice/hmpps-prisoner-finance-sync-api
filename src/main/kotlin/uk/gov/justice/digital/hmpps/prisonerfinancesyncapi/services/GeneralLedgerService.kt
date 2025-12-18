@@ -1,6 +1,5 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
@@ -16,7 +15,11 @@ open class GeneralLedgerService(
 ) : LedgerTransactionProcessor {
 
   private companion object {
-    private val log = LoggerFactory.getLogger(this::class.java)
+    private val PRISONER_SUB_ACCOUNTS = mapOf(
+      2101 to "CASH",
+      2102 to "SPND",
+      2103 to "SAV",
+    )
   }
 
   override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
@@ -24,44 +27,25 @@ open class GeneralLedgerService(
       throw IllegalArgumentException("No offender transactions provided in the request.")
     }
 
-    // TODO: Should we return the ID of the LAST transaction posted as the receipt (or generate a batch ID if needed)
     var lastTransactionId: UUID = UUID.randomUUID()
 
     request.offenderTransactions.forEach { offenderTx ->
 
-      // 1. Identify the Prisoner's Side
-      val prisonerRef = offenderTx.offenderDisplayId
-      val isPrisonerCredit = offenderTx.postingType == "CR"
+      val debitEntry = offenderTx.generalLedgerEntries.firstOrNull { it.postingType == "DR" }
+        ?: throw IllegalStateException("Transaction must have a Debit (DR) entry")
 
-      // 2. Identify the Contra Side (The GL Entry that balances the prisoner)
-      val contraEntry = offenderTx.generalLedgerEntries.firstOrNull { glEntry ->
-        glEntry.postingType != offenderTx.postingType
-      } ?: throw IllegalStateException("No balancing GL entry found for offender transaction ${request.transactionId}")
+      val creditEntry = offenderTx.generalLedgerEntries.firstOrNull { it.postingType == "CR" }
+        ?: throw IllegalStateException("Transaction must have a Credit (CR) entry")
 
-      // Construct a unique reference for the GL Account (e.g., "MDI-1502")
-      val contraRef = "${request.caseloadId}-${contraEntry.code}"
-
-      val prisonerUuid = resolveAccountUuid(
-        reference = prisonerRef,
-        defaultName = "Prisoner $prisonerRef",
-      )
-
-      val contraUuid = resolveAccountUuid(
-        reference = contraRef,
-        defaultName = "GL Code ${contraEntry.code} (${request.caseloadId})",
-      )
-
-      val (debtor, creditor) = if (isPrisonerCredit) {
-        Pair(contraUuid, prisonerUuid)
-      } else {
-        Pair(prisonerUuid, contraUuid)
-      }
+      // Resolve Parent -> Sub-Account hierarchy for both sides
+      val debtorUuid = resolveFullAccountPath(debitEntry.code, request.caseloadId, offenderTx.offenderDisplayId)
+      val creditorUuid = resolveFullAccountPath(creditEntry.code, request.caseloadId, offenderTx.offenderDisplayId)
 
       val payload = GlTransactionRequest(
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
-        amount = BigDecimal.valueOf(offenderTx.amount),
-        creditorAccount = creditor,
-        debtorAccount = debtor,
+        amount = BigDecimal.valueOf(debitEntry.amount),
+        creditorAccount = creditorUuid,
+        debtorAccount = debtorUuid,
         reference = request.transactionId.toString(),
         description = offenderTx.description,
       )
@@ -72,19 +56,32 @@ open class GeneralLedgerService(
     return lastTransactionId
   }
 
-  private fun resolveAccountUuid(reference: String, defaultName: String): UUID {
-    val existing = glClient.findAccountByReference(reference)
+  /**
+   * Resolves the full path: Parent (Prisoner/Prison) -> Sub-Account (Spends/1502/etc)
+   */
+  private fun resolveFullAccountPath(legacyCode: Int, prisonId: String, offenderNo: String): UUID {
+    val isPrisonerAccount = PRISONER_SUB_ACCOUNTS.containsKey(legacyCode)
 
-    if (existing != null) {
-      return existing.id
+    val (parentRef, parentName, subAccountRef) = if (isPrisonerAccount) {
+      Triple(offenderNo, "Prisoner $offenderNo", PRISONER_SUB_ACCOUNTS[legacyCode]!!)
+    } else {
+      Triple(prisonId, "Prison $prisonId", legacyCode.toString())
     }
 
-    val newAccount = glClient.createAccount(
-      name = defaultName,
-      reference = reference,
-    )
+    val parentUuid = resolveParentAccount(parentRef, parentName)
+    return resolveSubAccount(parentUuid, subAccountRef, "Sub-Account $subAccountRef")
+  }
 
-    return newAccount.id
+  private fun resolveParentAccount(reference: String, name: String): UUID {
+    val existing = glClient.findAccountByReference(reference)
+    if (existing != null) return existing.id
+    return glClient.createAccount(name, reference).id
+  }
+
+  private fun resolveSubAccount(parentId: UUID, reference: String, name: String): UUID {
+    val existing = glClient.findSubAccount(parentId, reference)
+    if (existing != null) return existing.id
+    return glClient.createSubAccount(parentId, reference, name).id
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError()

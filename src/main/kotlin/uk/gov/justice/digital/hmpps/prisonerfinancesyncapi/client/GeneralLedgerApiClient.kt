@@ -8,19 +8,52 @@ import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
 import java.util.UUID
 
 @Component
 class GeneralLedgerApiClient(
-  @param:Qualifier("generalLedgerApiWebClient") private val webClient: WebClient,
+  @Qualifier("generalLedgerApiWebClient") private val webClient: WebClient,
 ) {
 
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
   }
 
+  // GET /accounts/{parentId}/sub-accounts?reference={reference}
+  fun findSubAccount(parentId: UUID, reference: String): GlSubAccountResponse? {
+    return try {
+      webClient.get()
+        .uri { uriBuilder ->
+          uriBuilder.path("/accounts/{parentId}/sub-accounts")
+            .queryParam("reference", reference)
+            .build(parentId)
+        }
+        .retrieve()
+        .bodyToMono(GlSubAccountResponse::class.java)
+        .block()
+    } catch (e: WebClientResponseException) {
+      if (e.statusCode == HttpStatus.NOT_FOUND) return null
+      throw e
+    }
+  }
+
+  // POST /accounts/{parentId}/sub-accounts
+  fun createSubAccount(parentId: UUID, reference: String, name: String): GlSubAccountResponse {
+    log.info("Creating Sub-Account $reference for Parent $parentId")
+    val request = GlSubAccountRequest(name, reference)
+    return webClient.post()
+      .uri("/accounts/{parentId}/sub-accounts", parentId)
+      .bodyValue(request)
+      .retrieve()
+      .bodyToMono(GlSubAccountResponse::class.java)
+      .block()!!
+  }
+
+  // GET /accounts?reference={reference}
   fun findAccountByReference(reference: String): GlAccountResponse? {
     return try {
       webClient.get()
@@ -40,6 +73,7 @@ class GeneralLedgerApiClient(
     }
   }
 
+  // POST /accounts
   fun createAccount(name: String, reference: String): GlAccountResponse {
     val request = GlAccountRequest(name, reference)
 
@@ -62,6 +96,7 @@ class GeneralLedgerApiClient(
     }
   }
 
+  // POST /transactions
   fun postTransaction(request: GlTransactionRequest): UUID {
     log.info("Posting transaction. Ref: ${request.reference}. Dr: ${request.debtorAccount}, Cr: ${request.creditorAccount}, Amount: ${request.amount}")
 

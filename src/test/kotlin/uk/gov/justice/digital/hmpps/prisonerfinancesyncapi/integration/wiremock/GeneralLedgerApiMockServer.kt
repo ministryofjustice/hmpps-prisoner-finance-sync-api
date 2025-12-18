@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
 import java.util.UUID
 
@@ -82,7 +83,6 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  // LOOKUP NOT FOUND: Matches query param ?reference=...
   fun stubGetAccountNotFound(reference: String) {
     stubFor(
       get(urlPathEqualTo("/accounts"))
@@ -117,6 +117,40 @@ class GeneralLedgerApiMockServer :
   fun verifyCreateAccount(reference: String) {
     verify(
       postRequestedFor(urlEqualTo("/accounts"))
+        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference))),
+    )
+  }
+
+  fun stubGetSubAccountNotFound(parentId: String, reference: String) {
+    stubFor(
+      get(urlPathEqualTo("/accounts/$parentId/sub-accounts"))
+        .withQueryParam("reference", equalTo(reference)) // Query by reference
+        .willReturn(aResponse().withStatus(404)),
+    )
+  }
+
+  fun stubCreateSubAccount(parentId: String, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
+    val response = GlSubAccountResponse(
+      id = UUID.fromString(returnUuid),
+      parentAccountId = UUID.fromString(parentId),
+      reference = reference,
+    )
+
+    stubFor(
+      post(urlEqualTo("/accounts/$parentId/sub-accounts"))
+        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference))) // Body contains reference
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(mapper.writeValueAsString(response)),
+        ),
+    )
+  }
+
+  fun verifyCreateSubAccount(parentId: String, reference: String) {
+    verify(
+      postRequestedFor(urlEqualTo("/accounts/$parentId/sub-accounts"))
         .withRequestBody(matchingJsonPath("$.reference", equalTo(reference))),
     )
   }
