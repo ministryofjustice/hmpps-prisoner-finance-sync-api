@@ -63,7 +63,12 @@ class PrisonAccountsController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun getPrisonAccountDetails(
-    @PathVariable prisonId: String,
+    @PathVariable
+    @Pattern(
+      regexp = VALIDATION_REGEX_PRISON_ID,
+      message = VALIDATION_MESSAGE_PRISON_ID,
+    )
+    prisonId: String,
     @PathVariable accountCode: Int,
   ): ResponseEntity<PrisonAccountDetails> {
     val accountDetails = ledgerQueryService.getPrisonAccountDetails(prisonId, accountCode)
@@ -91,8 +96,8 @@ class PrisonAccountsController(
   fun listPrisonAccounts(
     @PathVariable
     @Pattern(
-      regexp = "^[A-Za-z0-9]{1,10}\$",
-      message = "prisonId Must be alphanumeric with no spaces and max 10 characters",
+      regexp = VALIDATION_REGEX_PRISON_ID,
+      message = VALIDATION_MESSAGE_PRISON_ID,
     )
     prisonId: String,
   ): ResponseEntity<PrisonAccountDetailsList> {
@@ -128,7 +133,12 @@ class PrisonAccountsController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun getPrisonAccountTransactions(
-    @PathVariable prisonId: String,
+    @PathVariable
+    @Pattern(
+      regexp = VALIDATION_REGEX_PRISON_ID,
+      message = VALIDATION_MESSAGE_PRISON_ID,
+    )
+    prisonId: String,
     @PathVariable accountCode: Int,
     @Parameter(description = "Optional filter by a specific business day", example = "2023-01-25")
     date: LocalDate? = null,
@@ -170,7 +180,12 @@ class PrisonAccountsController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun getPrisonAccountTransaction(
-    @PathVariable prisonId: String,
+    @PathVariable
+    @Pattern(
+      regexp = VALIDATION_REGEX_PRISON_ID,
+      message = VALIDATION_MESSAGE_PRISON_ID,
+    )
+    prisonId: String,
     @PathVariable accountCode: Int,
     @PathVariable transactionId: String,
   ): ResponseEntity<TransactionDetailsList> {
