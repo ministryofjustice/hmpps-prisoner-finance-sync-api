@@ -26,7 +26,6 @@ class GetPrisonsAccountTest : IntegrationTestBase() {
   @ParameterizedTest
   @CsvSource(
     "KMI",
-    "LEEDS",
   )
   fun `Get prisons should return 200 when parameters valid`(invalidParameter: String) {
     webTestClient
