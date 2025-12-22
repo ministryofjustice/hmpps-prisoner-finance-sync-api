@@ -37,18 +37,17 @@ class GeneralLedgerRecordTransaction : IntegrationTestBase() {
     val offenderNo = "A_PRISONER"
     val amount = BigDecimal("5.00")
 
-    val prisonerParentRef = offenderNo       // Reference = "A_PRISONER"
-    val prisonerSubRef = "SPND"              // Reference = "SPND" (mapped from 2102)
+    val prisonerParentRef = offenderNo // Reference = "A_PRISONER"
+    val prisonerSubRef = "SPND" // Reference = "SPND" (mapped from 2102)
 
     // 2. Prison Side
-    val prisonParentRef = prisonId           // Reference = "MDI"
-    val prisonSubRef = "1502"                // Reference = "1502"
+    val prisonParentRef = prisonId // Reference = "MDI"
+    val prisonSubRef = "1502" // Reference = "1502"
 
     val prisonerParentUuid = UUID.randomUUID().toString()
     val prisonerSubUuid = UUID.randomUUID().toString()
     val prisonParentUuid = UUID.randomUUID().toString()
     val prisonSubUuid = UUID.randomUUID().toString()
-
 
     generalLedgerApi.stubGetAccountNotFound(prisonerParentRef)
     generalLedgerApi.stubCreateAccount(prisonerParentRef, prisonerParentUuid)
@@ -131,7 +130,6 @@ class GeneralLedgerRecordTransaction : IntegrationTestBase() {
     val prisoner2 = "PRISONER_2"
     val amount2 = BigDecimal("2.20")
 
-
     val prisoner1ParentUuid = UUID.randomUUID().toString()
     val prisoner1SubUuid = UUID.randomUUID().toString()
     val prisoner2ParentUuid = UUID.randomUUID().toString()
@@ -143,7 +141,6 @@ class GeneralLedgerRecordTransaction : IntegrationTestBase() {
     generalLedgerApi.stubCreateAccount(prisoner1, prisoner1ParentUuid)
     generalLedgerApi.stubGetSubAccountNotFound(prisoner1ParentUuid, spendsSubRef)
     generalLedgerApi.stubCreateSubAccount(prisoner1ParentUuid, spendsSubRef, prisoner1SubUuid)
-
 
     generalLedgerApi.stubGetAccountNotFound(prisoner2)
     generalLedgerApi.stubCreateAccount(prisoner2, prisoner2ParentUuid)

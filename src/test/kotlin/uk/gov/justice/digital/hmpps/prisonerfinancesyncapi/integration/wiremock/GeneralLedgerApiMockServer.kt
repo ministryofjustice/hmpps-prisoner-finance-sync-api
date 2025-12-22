@@ -125,7 +125,7 @@ class GeneralLedgerApiMockServer :
     stubFor(
       get(urlPathEqualTo("/accounts/$parentId/sub-accounts"))
         .withQueryParam("reference", equalTo(reference)) // Query by reference
-        .willReturn(aResponse().withStatus(404))
+        .willReturn(aResponse().withStatus(404)),
     )
   }
 
@@ -133,7 +133,7 @@ class GeneralLedgerApiMockServer :
     val response = GlSubAccountResponse(
       id = UUID.fromString(returnUuid),
       parentAccountId = UUID.fromString(parentId),
-      reference = reference
+      reference = reference,
     )
 
     stubFor(
@@ -143,15 +143,15 @@ class GeneralLedgerApiMockServer :
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
             .withStatus(201)
-            .withBody(mapper.writeValueAsString(response))
-        )
+            .withBody(mapper.writeValueAsString(response)),
+        ),
     )
   }
 
   fun verifyCreateSubAccount(parentId: String, reference: String) {
     verify(
       postRequestedFor(urlEqualTo("/accounts/$parentId/sub-accounts"))
-        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference)))
+        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference))),
     )
   }
 
