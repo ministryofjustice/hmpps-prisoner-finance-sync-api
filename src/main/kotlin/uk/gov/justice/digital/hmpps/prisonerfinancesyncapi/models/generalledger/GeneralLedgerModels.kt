@@ -15,13 +15,13 @@ data class GlTransactionRequest(
 
 data class GlSubAccountRequest(
   val name: String,
-  val reference: String
+  val reference: String,
 )
 
 data class GlSubAccountResponse(
   val id: UUID,
   val parentAccountId: UUID,
-  val reference: String
+  val reference: String,
 )
 
 data class GlTransactionReceipt(
