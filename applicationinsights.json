@@ -6,6 +6,9 @@
     "service.version": "${BUILD_NUMBER}"
   },
   "instrumentation": {
+    "springScheduling": {
+      "enabled": false
+    },
     "logging": {
       "level": "DEBUG"
     }
@@ -17,6 +20,28 @@
     "percentage": 100,
     "overrides": [
       {
+        "telemetryType": "dependency",
+        "attributes": [
+          {
+            "key": "db.system",
+            "value": "postgresql",
+            "matchType": "strict"
+          }
+        ],
+        "percentage": 5
+      },
+      {
+        "telemetryType": "dependency",
+        "attributes": [
+          {
+            "key": "server.address",
+            "value": "(sign-in|sts.eu).*",
+            "matchType": "regexp"
+          }
+        ],
+        "percentage": 5
+      },
+      {
         "telemetryType": "request",
         "attributes": [
           {
@@ -25,7 +50,31 @@
             "matchType": "regexp"
           }
         ],
-        "percentage": 10
+        "percentage": 5
+      },
+      {
+        "telemetryType": "request",
+        "attributes": [
+          {
+            "key": "url.path",
+            "value": "/info",
+            "matchType": "strict"
+          }
+        ],
+        "percentage": 5
+      }
+    ]
+  },
+  "preview": {
+    "processors": [
+      {
+        "type": "metric-filter",
+        "exclude": {
+          "matchType": "regexp",
+          "metricNames": [
+            "(cache|executor|disk|http|logback|spring_).*"
+          ]
+        }
       }
     ]
   }
