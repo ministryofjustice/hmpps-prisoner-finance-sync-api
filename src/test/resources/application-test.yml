@@ -7,7 +7,7 @@ management.endpoint:
 
 spring:
   jpa:
-    show-sql: true
+    show-sql: false
 
   flyway:
     enabled: true
@@ -21,3 +21,19 @@ spring:
 
 hmpps-auth:
   url: "http://localhost:8090/auth"
+
+hmpps:
+  sqs:
+    provider: localstack
+    queues:
+      domainevents:
+        queueName: prisoner-finance-event-queue
+        dlqName: prisoner-finance-event-dlq
+        subscribeTopicId: domainevents
+        subscribeFilter: '{"eventType":[ "prison-offender-events.prisoner.merged" ] }'
+    topics:
+      domainevents:
+        arn: arn:aws:sns:eu-west-2:000000000000:11111111-2222-3333-4444-555555555555
+
+springdoc:
+  packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi

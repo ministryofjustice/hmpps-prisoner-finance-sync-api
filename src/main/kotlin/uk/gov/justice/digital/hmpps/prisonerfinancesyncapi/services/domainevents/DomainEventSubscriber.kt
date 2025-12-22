@@ -7,32 +7,41 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Event
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerAccountMergeService
 
 @Service
 class DomainEventSubscriber(
   private val gson: Gson,
-  private val prisonerService: PrisonerService,
+  private val prisonerAccountMergeService: PrisonerAccountMergeService,
 ) {
 
   @SqsListener("domainevents", factory = "hmppsQueueContainerFactoryProxy")
   fun handleEvents(requestJson: String?) {
-    val event = gson.fromJson(requestJson, Event::class.java)
-    with(gson.fromJson(event.message, HmppsDomainEvent::class.java)) {
-      when (eventType) {
-        "prison-offender-events.prisoner.merged" -> {
-          log.info("Merged event: $event")
-          prisonerService.merge(
-            additionalInformation.removedNomsNumber,
-            additionalInformation.nomsNumber,
+    try {
+      val event = gson.fromJson(requestJson, Event::class.java)
+      val domainEvent = gson.fromJson(event.message, HmppsDomainEvent::class.java)
+
+      when (domainEvent.eventType) {
+        PRISONER_MERGE_EVENT_TYPE -> {
+          log.info("Processing merge for ${domainEvent.additionalInformation.removedNomsNumber} -> ${domainEvent.additionalInformation.nomsNumber}")
+          prisonerAccountMergeService.consolidateAccounts(
+            domainEvent.additionalInformation.removedNomsNumber,
+            domainEvent.additionalInformation.nomsNumber,
           )
         }
-        else -> log.error("Unexpected event type: $eventType for event: $event")
+        else -> {
+          log.warn("Ignored unexpected event type: ${domainEvent.eventType}")
+        }
       }
+    } catch (e: Exception) {
+      log.error("Failed to process domain event. Message will be retried. Payload: $requestJson", e)
+      throw e
     }
   }
 
-  private companion object {
+  companion object {
     private val log: Logger = LoggerFactory.getLogger(this::class.java)
+
+    const val PRISONER_MERGE_EVENT_TYPE = "prison-offender-events.prisoner.merged"
   }
 }

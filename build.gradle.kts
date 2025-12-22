@@ -30,6 +30,7 @@ dependencies {
     exclude(group = "io.swagger.core.v3")
   }
   testImplementation("com.h2database:h2")
+  testImplementation("org.testcontainers:localstack")
 }
 
 java {
