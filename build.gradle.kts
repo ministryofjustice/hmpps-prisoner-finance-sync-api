@@ -5,10 +5,6 @@ plugins {
   id("jacoco")
 }
 
-configurations {
-  testImplementation { exclude(group = "org.junit.vintage") }
-}
-
 dependencies {
   implementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter:1.8.2")
   implementation("org.springframework.boot:spring-boot-starter-webflux")
@@ -33,14 +29,14 @@ dependencies {
   testImplementation("org.testcontainers:localstack")
 }
 
-java {
-  sourceCompatibility = JavaVersion.VERSION_24
-  targetCompatibility = JavaVersion.VERSION_24
-}
 kotlin {
   jvmToolchain(25)
   noArg {
     annotation("jakarta.persistence.Entity")
+  }
+
+  compilerOptions {
+    freeCompilerArgs.addAll("-Xannotation-default-target=param-property")
   }
 }
 
@@ -70,7 +66,7 @@ tasks {
   }
 
   withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    compilerOptions.jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24
+    compilerOptions.jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25
   }
 
   testlogger {
