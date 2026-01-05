@@ -38,15 +38,15 @@ class AccountServiceTest {
   private val accountCodeForPrison = 1001
 
   private val prisonId = 1L
-  private val prisonNumber = "LEI"
+  private val prisonNumber = "A1234BC"
 
   @Nested
   @DisplayName("resolveAccount")
   inner class ResolveAccount {
 
     fun makeAccountCodeLookup(accountCode: Int, name: String) = AccountCodeLookup(
-      accountCode = 1001,
-      name = "Cash",
+      accountCode = accountCode,
+      name = name,
       classification = "Asset",
       postingType = PostingType.DR,
       parentAccountCode = null,
@@ -107,6 +107,7 @@ class AccountServiceTest {
       assertEquals(accountCodeForPrison, result.accountCode)
       assertEquals(AccountType.GENERAL_LEDGER, result.accountType)
       assertEquals(lookupAccount.postingType, result.postingType)
+      verify(accountRepository).save(any())
     }
 
     @ParameterizedTest
@@ -148,6 +149,7 @@ class AccountServiceTest {
       assertEquals(subAccountType, result.subAccountType)
       assertEquals(AccountType.PRISONER, result.accountType)
       assertEquals(lookupAccount.postingType, result.postingType)
+      verify(accountRepository).save(any())
     }
   }
 
