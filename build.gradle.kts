@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-  implementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter:1.8.2")
+  implementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter:2.0.0")
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.15")
   implementation("com.google.code.gson:gson:2.13.2")
@@ -20,7 +20,7 @@ dependencies {
   runtimeOnly("org.flywaydb:flyway-core")
   runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
-  testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:1.8.2")
+  testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:2.0.0")
   testImplementation("org.wiremock:wiremock-standalone:3.13.2")
   testImplementation("io.swagger.parser.v3:swagger-parser:2.1.37") {
     exclude(group = "io.swagger.core.v3")
