@@ -44,3 +44,8 @@ springdoc:
 
 general-ledger-api:
     url: http://localhost:8091
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
