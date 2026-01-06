@@ -164,8 +164,7 @@ class LedgerBalanceService(
    */
   private fun retrieveAccountTransactionData(accountId: Long): Pair<List<TransactionEntry>, Map<Long, Transaction>> {
     val transactionEntries = transactionEntryRepository.findByAccountId(accountId)
-    val transactionIds = transactionEntries.map { it.transactionId }.distinct()
-    val allTransactions = transactionRepository.findAllById(transactionIds).associateBy { it.id!! }
+    val allTransactions = transactionRepository.findAllByAccountId(accountId).associateBy { it.id!! }
     return Pair(transactionEntries, allTransactions)
   }
 
