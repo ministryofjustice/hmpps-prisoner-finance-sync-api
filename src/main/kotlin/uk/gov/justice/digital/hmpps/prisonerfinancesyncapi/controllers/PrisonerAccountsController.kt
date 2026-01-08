@@ -8,14 +8,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpMethod
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.servlet.resource.NoResourceFoundException
+import org.springframework.web.server.ResponseStatusException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_PRISONER_ACCOUNTS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PrisonerSubAccountDetails
@@ -61,8 +61,8 @@ class PrisonerAccountsController(
     @PathVariable accountCode: Int,
   ): ResponseEntity<PrisonerSubAccountDetails> {
     val accountDetails = ledgerQueryService.getPrisonerSubAccountDetails(prisonNumber, accountCode)
-      ?: throw NoResourceFoundException(
-        HttpMethod.GET,
+      ?: throw ResponseStatusException(
+        HttpStatus.NOT_FOUND,
         "Prisoner account not found for offender: $prisonNumber and account code: $accountCode",
       )
     return ResponseEntity.ok(accountDetails)
@@ -126,7 +126,7 @@ class PrisonerAccountsController(
     val items = ledgerQueryService.listPrisonerSubAccountTransactions(prisonNumber, accountCode)
 
     if (items.isEmpty()) {
-      throw NoResourceFoundException(HttpMethod.GET, "Account not found for offender: $prisonNumber and account code: $accountCode")
+      throw ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found for offender: $prisonNumber and account code: $accountCode")
     }
 
     val body = TransactionDetailsList(items)
@@ -167,8 +167,8 @@ class PrisonerAccountsController(
     val items = ledgerQueryService.getTransaction(prisonNumber, accountCode, transactionId)
 
     if (items.isEmpty()) {
-      throw NoResourceFoundException(
-        HttpMethod.GET,
+      throw ResponseStatusException(
+        HttpStatus.NOT_FOUND,
         "Prisoner account transaction not found for offender: $prisonNumber, account code: $accountCode, and transaction ID: $transactionId",
       )
     }

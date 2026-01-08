@@ -14,7 +14,7 @@ dependencies {
   implementation("com.google.code.gson:gson:2.13.2")
   implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:5.6.3")
 
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.0.1")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
@@ -22,6 +22,7 @@ dependencies {
   runtimeOnly("org.flywaydb:flyway-core")
   runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
+  testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
   testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:2.0.0")
   testImplementation("org.springframework.boot:spring-boot-starter-webflux-test")
   testImplementation("org.wiremock:wiremock-standalone:3.13.2")
@@ -30,7 +31,7 @@ dependencies {
   }
 
   testImplementation("org.testcontainers:postgresql")
-  testImplementation("org.testcontainers:localstack")
+  testImplementation("org.testcontainers:localstack:1.21.4")
 }
 
 kotlin {

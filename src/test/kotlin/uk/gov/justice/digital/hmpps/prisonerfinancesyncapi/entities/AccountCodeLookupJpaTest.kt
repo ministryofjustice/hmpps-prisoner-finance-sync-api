@@ -62,10 +62,10 @@ class AccountCodeLookupJpaTest(
 
     val loaded = entityManager.find(AccountCodeLookup::class.java, 1)
 
-    assertThat(loaded.accountCode).isEqualTo(entity.accountCode)
-    assertThat(loaded.name).isEqualTo(entity.name)
-    assertThat(loaded.classification).isEqualTo(entity.classification)
-    assertThat(loaded.postingType).isEqualTo(entity.postingType)
-    assertThat(loaded.parentAccountCode).isNull()
+    assertThat(loaded?.accountCode).isEqualTo(entity.accountCode)
+    assertThat(loaded?.name).isEqualTo(entity.name)
+    assertThat(loaded?.classification).isEqualTo(entity.classification)
+    assertThat(loaded?.postingType).isEqualTo(entity.postingType)
+    assertThat(loaded?.parentAccountCode).isNull()
   }
 }
