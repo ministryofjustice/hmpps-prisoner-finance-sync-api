@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger
 
+import com.microsoft.applicationinsights.TelemetryClient
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
@@ -16,7 +17,12 @@ open class LedgerSyncService(
   private val transactionService: TransactionService,
   private val timeConversionService: TimeConversionService,
   private val legacyTransactionFixService: LegacyTransactionFixService,
+  private val telemetryClient: TelemetryClient,
 ) {
+
+  private companion object {
+    private const val TELEMETRY_PRISONER_PREFIX = "nomis-to-prisoner-finance-sync"
+  }
 
   @Transactional
   open fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
@@ -55,6 +61,15 @@ open class LedgerSyncService(
         synchronizedTransactionId = synchronizedTransactionId,
         fixedRequest.caseloadId,
       )
+
+      telemetryClient.trackEvent(
+        "${TELEMETRY_PRISONER_PREFIX}-offender-transaction",
+        mapOf(
+          "legacyTransactionId" to fixedRequest.transactionId.toString(),
+          "transactionId" to synchronizedTransactionId.toString(),
+        ),
+        null,
+      )
     }
 
     return synchronizedTransactionId
@@ -90,6 +105,15 @@ open class LedgerSyncService(
       legacyTransactionId = request.transactionId,
       synchronizedTransactionId = synchronizedTransactionId,
       request.caseloadId,
+    )
+
+    telemetryClient.trackEvent(
+      "${TELEMETRY_PRISONER_PREFIX}-general-ledger-transaction",
+      mapOf(
+        "legacyTransactionId" to request.transactionId.toString(),
+        "transactionId" to synchronizedTransactionId.toString(),
+      ),
+      null,
     )
 
     return synchronizedTransactionId
