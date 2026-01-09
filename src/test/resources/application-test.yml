@@ -6,18 +6,29 @@ management.endpoint:
   info.cache.time-to-live: 0
 
 spring:
-  jpa:
-    show-sql: false
+#  jpa:
+#    show-sql: false
 
   flyway:
     enabled: true
-    locations: classpath:/db/migrations/common,classpath:/db/migrations/h2
+    locations: classpath:/db/migrations/common,classpath:/db/migrations/postgres
+
+#  datasource:
+#    url: 'jdbc:h2:mem:./nomis_sync;MODE=PostgreSQL'
+#    username: sa
+#    password:
+#    driver-class-name: org.h2.Driver
 
   datasource:
-    url: 'jdbc:h2:mem:./nomis_sync;MODE=PostgreSQL'
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
 
 hmpps-auth:
   url: "http://localhost:8090/auth"
