@@ -3,8 +3,8 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.entities
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager
 import org.springframework.test.context.TestPropertySource
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AccountCodeLookup
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
@@ -36,11 +36,11 @@ class AccountCodeLookupJpaTest(
     val loaded = entityManager.find(AccountCodeLookup::class.java, 100)
 
     assertThat(loaded).isNotNull
-    assertThat(loaded.name).isEqualTo(entity.name)
-    assertThat(loaded.classification).isEqualTo(entity.classification)
-    assertThat(loaded.postingType).isEqualTo(entity.postingType)
-    assertThat(loaded.parentAccountCode).isEqualTo(entity.parentAccountCode)
-    assertThat(loaded.accountCode).isEqualTo(entity.accountCode)
+    assertThat(loaded?.name).isEqualTo(entity.name)
+    assertThat(loaded?.classification).isEqualTo(entity.classification)
+    assertThat(loaded?.postingType).isEqualTo(entity.postingType)
+    assertThat(loaded?.parentAccountCode).isEqualTo(entity.parentAccountCode)
+    assertThat(loaded?.accountCode).isEqualTo(entity.accountCode)
   }
 
   @Test
@@ -69,10 +69,10 @@ class AccountCodeLookupJpaTest(
 
     val loaded = entityManager.find(AccountCodeLookup::class.java, 1)
 
-    assertThat(loaded.accountCode).isEqualTo(entity.accountCode)
-    assertThat(loaded.name).isEqualTo(entity.name)
-    assertThat(loaded.classification).isEqualTo(entity.classification)
-    assertThat(loaded.postingType).isEqualTo(entity.postingType)
-    assertThat(loaded.parentAccountCode).isNull()
+    assertThat(loaded?.accountCode).isEqualTo(entity.accountCode)
+    assertThat(loaded?.name).isEqualTo(entity.name)
+    assertThat(loaded?.classification).isEqualTo(entity.classification)
+    assertThat(loaded?.postingType).isEqualTo(entity.postingType)
+    assertThat(loaded?.parentAccountCode).isNull()
   }
 }
