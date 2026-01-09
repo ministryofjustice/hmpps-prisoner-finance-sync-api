@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers
 
+import com.microsoft.applicationinsights.TelemetryClient
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -27,8 +28,13 @@ import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 @Tag(name = TAG_PRISONER_ACCOUNTS)
 @RestController
 class PrisonerAccountsController(
+  private val telemetryClient: TelemetryClient,
   @param:Autowired private val ledgerQueryService: LedgerQueryService,
 ) {
+
+  private companion object {
+    private const val TELEMETRY_PRISONER_PREFIX = "prisoner-accounts"
+  }
 
   @Operation(
     summary = "Get the details of a specific account for a prisoner",
@@ -89,6 +95,13 @@ class PrisonerAccountsController(
   ): ResponseEntity<PrisonerSubAccountDetailsList> {
     val items = ledgerQueryService.listPrisonerSubAccountDetails(prisonNumber)
     val body = PrisonerSubAccountDetailsList(items)
+
+    telemetryClient.trackEvent(
+      "$TELEMETRY_PRISONER_PREFIX-requested",
+      mapOf("prisonerDisplayId" to prisonNumber),
+      null,
+    )
+
     return ResponseEntity.ok(body)
   }
 
