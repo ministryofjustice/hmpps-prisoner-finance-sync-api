@@ -7,6 +7,9 @@ management.endpoint:
 
 spring:
 
+  jpa:
+    show-sql: false
+
   flyway:
     enabled: true
     locations: classpath:/db/migrations/common
