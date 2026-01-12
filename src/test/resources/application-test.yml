@@ -6,18 +6,16 @@ management.endpoint:
   info.cache.time-to-live: 0
 
 spring:
+
   jpa:
     show-sql: false
 
   flyway:
     enabled: true
-    locations: classpath:/db/migrations/common,classpath:/db/migrations/h2
+    locations: classpath:/db/migrations/common
 
   datasource:
-    url: 'jdbc:h2:mem:./nomis_sync;MODE=PostgreSQL'
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    driver-class-name: org.postgresql.Driver
 
 hmpps-auth:
   url: "http://localhost:8090/auth"

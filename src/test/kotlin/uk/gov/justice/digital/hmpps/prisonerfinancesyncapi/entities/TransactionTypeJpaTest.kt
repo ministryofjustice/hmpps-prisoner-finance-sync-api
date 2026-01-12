@@ -3,27 +3,18 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.entities
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
-import org.springframework.test.context.TestPropertySource
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.RepositoryTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.TransactionType
 
-@DataJpaTest
-@TestPropertySource(
-  // override postgres flyaway migrations and tell hibernate to start empty
-  properties = [
-    "spring.flyway.enabled=false",
-    "spring.jpa.hibernate.ddl-auto=create-drop",
-  ],
-)
 class TransactionTypeJpaTest(
   @param:Autowired val entityManager: TestEntityManager,
-) {
+) : RepositoryTestBase() {
 
   @Test
   fun `should persist and load TransactionType`() {
     val entity = TransactionType(
-      txnType = "FT",
+      txnType = "TEST_FT",
       description = "Some description",
       activeFlag = "Y",
       txnUsage = "R",
@@ -38,7 +29,7 @@ class TransactionTypeJpaTest(
     )
     entityManager.persistAndFlush(entity)
 
-    val loaded = entityManager.find(TransactionType::class.java, "FT")
+    val loaded = entityManager.find(TransactionType::class.java, "TEST_FT")
 
     assertThat(loaded).isNotNull
     assertThat(loaded.txnType).isEqualTo(entity.txnType)
