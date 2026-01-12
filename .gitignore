@@ -75,6 +75,9 @@ sonar-project.properties
 #Helm
 **/Chart.lock
 
+hmpps-prisoner-finance-sync-api-*.jar
+applicationinsights-agent-*.jar
+
 #Everything else:
 .DS_Store
 

@@ -1,7 +1,6 @@
 services:
   hmpps-prisoner-finance-sync-api:
-    build:
-      context: .
+    image: ghcr.io/ministryofjustice/hmpps-prisoner-finance-sync-api
     networks:
       - hmpps
     container_name: hmpps-prisoner-finance-sync-api

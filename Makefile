@@ -2,7 +2,9 @@ build-dev: update-environment
 	docker compose build
 
 build:
-	docker build -t hmpps-prisoner-finance-sync-api .
+	./gradlew clean assemble
+	cp build/libs/*.jar .
+	docker build -t hmpps-prisoner-finance-sync-api --build-arg BUILD_NUMBER=$(shell date '+%Y-%m-%d') .
 
 update-dependencies:
 	./gradlew useLatestVersions
