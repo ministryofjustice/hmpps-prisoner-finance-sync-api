@@ -13,14 +13,9 @@ spring:
     enabled: true
     locations: classpath:/db/migrations/common,classpath:/db/migrations/postgres
 
-#  datasource:
-#    url: 'jdbc:h2:mem:./nomis_sync;MODE=PostgreSQL'
-#    username: sa
-#    password:
-#    driver-class-name: org.h2.Driver
-
   datasource:
     driver-class-name: org.postgresql.Driver
+
   jpa:
     open-in-view: false
     generate-ddl: false

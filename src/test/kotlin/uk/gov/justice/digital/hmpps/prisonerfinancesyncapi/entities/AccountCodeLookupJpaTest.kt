@@ -3,26 +3,26 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.entities
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
-import org.springframework.test.context.TestPropertySource
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.RepositoryTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AccountCodeLookup
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
 
-@DataJpaTest
-@TestPropertySource(
-  // override postgres flyaway migrations and tell hibernate to start empty
-  properties = [
-    "spring.flyway.enabled=false",
-    "spring.jpa.hibernate.ddl-auto=create-drop",
-  ],
-)
 class AccountCodeLookupJpaTest(
   @param:Autowired val entityManager: TestEntityManager,
-) {
+) : RepositoryTestBase() {
 
   @Test
   fun `should persist and load AccountCodeLookup`() {
+    val parent = AccountCodeLookup(
+      accountCode = 10,
+      name = "Parent Asset",
+      classification = "Asset",
+      postingType = PostingType.DR,
+      parentAccountCode = null,
+    )
+    entityManager.persist(parent)
+
     val entity = AccountCodeLookup(
       accountCode = 100,
       name = "Cash",
@@ -30,17 +30,10 @@ class AccountCodeLookupJpaTest(
       postingType = PostingType.CR,
       parentAccountCode = 10,
     )
-
     entityManager.persistAndFlush(entity)
 
-    val loaded = entityManager.find(AccountCodeLookup::class.java, 100)
-
-    assertThat(loaded).isNotNull
-    assertThat(loaded.name).isEqualTo(entity.name)
-    assertThat(loaded.classification).isEqualTo(entity.classification)
-    assertThat(loaded.postingType).isEqualTo(entity.postingType)
-    assertThat(loaded.parentAccountCode).isEqualTo(entity.parentAccountCode)
-    assertThat(loaded.accountCode).isEqualTo(entity.accountCode)
+    val found = entityManager.find(AccountCodeLookup::class.java, 100)
+    assertThat(found).isEqualTo(entity)
   }
 
   @Test

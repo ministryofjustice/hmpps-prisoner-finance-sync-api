@@ -9,8 +9,9 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
-import org.testcontainers.containers.PostgreSQLContainer
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.LocalStackConfig
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.PostgresContainer
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.registerPostgresProperties
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
@@ -40,19 +41,13 @@ abstract class IntegrationTestBase {
 
     private val localStackContainer = LocalStackConfig.instance
 
-    private val postgres = PostgreSQLContainer("postgres:18")
-      .withDatabaseName("testdb")
-      .withUsername("test2")
-      .withPassword("test2")
+    private val postgres = PostgresContainer.instance
 
     @Suppress("unused")
     @JvmStatic
     @DynamicPropertySource
     fun testcontainers(registry: DynamicPropertyRegistry) {
-      postgres.start()
-      registry.add("spring.datasource.url", postgres::getJdbcUrl)
-      registry.add("spring.datasource.username", postgres::getUsername)
-      registry.add("spring.datasource.password", postgres::getPassword)
+      registry.registerPostgresProperties(postgres)
       localStackContainer?.also { LocalStackConfig.setLocalStackProperties(it, registry) }
     }
   }

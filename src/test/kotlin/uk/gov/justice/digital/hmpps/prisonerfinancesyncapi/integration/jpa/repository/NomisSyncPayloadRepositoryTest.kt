@@ -10,18 +10,17 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.RepositoryTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.util.RepositoryTest
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-@RepositoryTest
-class NomisSyncPayloadRepositoryTest @Autowired constructor(
-  val entityManager: TestEntityManager,
-  val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
-) {
+class NomisSyncPayloadRepositoryTest(
+  @param:Autowired val entityManager: TestEntityManager,
+  @param:Autowired val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
+) : RepositoryTestBase() {
 
   private val requestType1 = "SyncOffenderTransaction"
   private lateinit var payload1: NomisSyncPayload
@@ -102,7 +101,7 @@ class NomisSyncPayloadRepositoryTest @Autowired constructor(
         caseloadId = "DTI",
         requestTypeIdentifier = "NewSyncType",
         synchronizedTransactionId = UUID.randomUUID(),
-        body = """{"new":"data"}""",
+        body = """{"new": "data"}""",
         transactionTimestamp = Instant.now(),
       )
 
