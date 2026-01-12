@@ -30,10 +30,6 @@ Enable pre-commit hooks for formatting and linting code with the following comma
 ./gradlew addKtlintFormatGitPreCommitHook addKtlintCheckGitPreCommitHook
 ```
 
-
-will just start a docker instance of HMPPS Auth. The application should then be started with a `dev` active profile
-in Intellij.
-
 ### Building and running the docker image locally
 
 The `Dockerfile` relies on the application being built first. Steps to build the docker image:
