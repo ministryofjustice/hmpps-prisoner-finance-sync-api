@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.RepositoryTestBase
-
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.TransactionType
 
 class TransactionTypeJpaTest(
