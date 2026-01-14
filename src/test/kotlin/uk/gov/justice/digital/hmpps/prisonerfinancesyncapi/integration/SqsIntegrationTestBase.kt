@@ -24,7 +24,7 @@ class SqsIntegrationTestBase : IntegrationTestBase() {
     @DynamicPropertySource
     fun dynamicProperties(registry: DynamicPropertyRegistry) {
       registry.registerPostgresProperties(PostgresContainer.instance)
-      LocalStackConfig.setLocalStackProperties(LocalStackConfig.instance!!, registry)
+      LocalStackConfig.setLocalStackProperties(LocalStackConfig.instance, registry)
     }
   }
 
