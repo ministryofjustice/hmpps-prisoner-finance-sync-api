@@ -40,6 +40,5 @@ feature:
   general-ledger-api:
     enabled: false
 
-api:
-  general-ledger:
+general-ledger-api:
     url: http://localhost:8091

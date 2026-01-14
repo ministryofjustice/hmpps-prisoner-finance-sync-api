@@ -73,6 +73,25 @@ class GeneralLedgerApiClient(
     }
   }
 
+  // GET /accounts/{uuid}
+  fun findAccountByUuid(uuid: UUID): GlAccountResponse? {
+    return try {
+      webClient.get()
+        .uri { uriBuilder ->
+          uriBuilder.path("/accounts/{uuid}")
+            .build(uuid) // Spring automatically calls .toString() on the UUID object
+        }
+        .retrieve()
+        .bodyToMono(GlAccountResponse::class.java)
+        .block()
+    } catch (e: WebClientResponseException) {
+      if (e.statusCode == HttpStatus.NOT_FOUND) {
+        return null
+      }
+      throw e
+    }
+  }
+
   // POST /accounts
   fun createAccount(name: String, reference: String): GlAccountResponse {
     val request = GlAccountRequest(name, reference)
