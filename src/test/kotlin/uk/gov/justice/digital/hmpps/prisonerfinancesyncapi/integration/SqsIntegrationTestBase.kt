@@ -3,12 +3,30 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Import
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.LocalStackConfig
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.PostgresContainer
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.registerPostgresProperties
 import uk.gov.justice.hmpps.sqs.HmppsQueueService
+import uk.gov.justice.hmpps.sqs.HmppsSqsConfiguration
 import uk.gov.justice.hmpps.sqs.MissingQueueException
 import uk.gov.justice.hmpps.sqs.countMessagesOnQueue
 
+@Import(HmppsSqsConfiguration::class)
 class SqsIntegrationTestBase : IntegrationTestBase() {
+
+  companion object {
+    @Suppress("unused")
+    @JvmStatic
+    @DynamicPropertySource
+    fun dynamicProperties(registry: DynamicPropertyRegistry) {
+      registry.registerPostgresProperties(PostgresContainer.instance)
+      LocalStackConfig.setLocalStackProperties(LocalStackConfig.instance!!, registry)
+    }
+  }
 
   @Autowired
   private lateinit var hmppsQueueService: HmppsQueueService

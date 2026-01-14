@@ -22,7 +22,6 @@ object PostgresContainer {
       withUsername("pf-test-db")
       withPassword("pf-test-db")
       setWaitStrategy(Wait.forListeningPort())
-      withReuse(true)
 
       start()
     }
