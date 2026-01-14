@@ -73,6 +73,10 @@ open class GeneralLedgerService(
   }
 
   private fun resolveParentAccount(reference: String, name: String): UUID {
+//    val accountId = UUID.randomUUID()
+//    val account = glClient.findAccountByUuid(UUID.randomUUID())
+//      ?: throw IllegalArgumentException("No Account found with id $accountId")
+
     val existing = glClient.findAccountByReference(reference)
     if (existing != null) return existing.id
     return glClient.createAccount(name, reference).id

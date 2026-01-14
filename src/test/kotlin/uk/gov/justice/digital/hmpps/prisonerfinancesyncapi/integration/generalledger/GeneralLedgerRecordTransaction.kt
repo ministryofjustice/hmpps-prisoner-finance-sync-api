@@ -11,6 +11,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -20,7 +22,7 @@ import java.util.UUID
 import kotlin.random.Random
 
 @TestPropertySource(properties = ["feature.general-ledger-api.enabled=true"])
-@ExtendWith(GeneralLedgerApiExtension::class)
+@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
 class GeneralLedgerRecordTransaction : IntegrationTestBase() {
 
   @Autowired
@@ -29,6 +31,7 @@ class GeneralLedgerRecordTransaction : IntegrationTestBase() {
   @BeforeEach
   fun setup() {
     generalLedgerApi.resetAll()
+    hmppsAuth.stubGrantToken()
   }
 
   @Test
