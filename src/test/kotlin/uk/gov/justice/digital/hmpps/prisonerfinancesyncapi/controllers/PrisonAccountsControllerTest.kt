@@ -11,7 +11,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.http.HttpStatus
-import org.springframework.web.servlet.resource.NoResourceFoundException
+import org.springframework.web.server.ResponseStatusException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PrisonAccountDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PrisonAccountDetailsList
@@ -95,14 +95,16 @@ class PrisonAccountsControllerTest {
     }
 
     @Test
-    fun `should throw NoResourceFoundException when TransactionDetailsList is empty`() {
+    fun `should throw ResponseStatusException NOT_FOUND when TransactionDetailsList is empty`() {
       `when`(ledgerQueryService.getPrisonAccountTransaction("MDI", 1111, transactionId)).thenReturn(
         listOf(),
       )
 
-      assertThrows<NoResourceFoundException> {
+      val statusCode = assertThrows<ResponseStatusException> {
         prisonAccountsController.getPrisonAccountTransaction(prisonId, accountCode, transactionId)
-      }
+      }.statusCode
+
+      assertThat(statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }
 
@@ -181,16 +183,18 @@ class PrisonAccountsControllerTest {
     }
 
     @Test
-    fun `should throw NoResourceFoundException when listOf TransactionDetails is empty`() {
+    fun `should throw ResponseStatusException NOT_FOUND when listOf TransactionDetails is empty`() {
       val date = LocalDate.now()
 
       `when`(ledgerQueryService.listPrisonAccountTransactions("MDI", 1111, date)).thenReturn(
         listOf(),
       )
 
-      assertThrows<NoResourceFoundException> {
+      val statusCode = assertThrows<ResponseStatusException> {
         prisonAccountsController.getPrisonAccountTransactions(prisonId, accountCode, date)
-      }
+      }.statusCode
+
+      assertThat(statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }
 
@@ -232,13 +236,15 @@ class PrisonAccountsControllerTest {
     }
 
     @Test
-    fun `should throw NoResourceFoundException when PrisonAccountDetails is null`() {
+    fun `should throw ResponseStatusException NOT_FOUND when PrisonAccountDetails is null`() {
       `when`(ledgerQueryService.getPrisonAccountDetails(prisonId, accountCode))
         .thenReturn(null)
 
-      assertThrows<NoResourceFoundException> {
+      val statusCode = assertThrows<ResponseStatusException> {
         prisonAccountsController.getPrisonAccountDetails(prisonId, accountCode)
-      }
+      }.statusCode
+
+      assertThat(statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }
 }

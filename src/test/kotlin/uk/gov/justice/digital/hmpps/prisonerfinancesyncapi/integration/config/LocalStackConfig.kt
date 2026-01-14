@@ -13,11 +13,16 @@ object LocalStackConfig {
   private val log = LoggerFactory.getLogger(this::class.java)
   val instance by lazy { startLocalstackIfNotRunning() }
 
-  fun setLocalStackProperties(localStackContainer: LocalStackContainer, registry: DynamicPropertyRegistry) {
-    val localstackUrl = localStackContainer.getEndpointOverride(LocalStackContainer.Service.SNS).toString()
-    val region = localStackContainer.region
-    registry.add("hmpps.sqs.localstackUrl") { localstackUrl }
-    registry.add("hmpps.sqs.region") { region }
+  fun setLocalStackProperties(localStackContainer: LocalStackContainer?, registry: DynamicPropertyRegistry) {
+    if (localStackContainer != null) {
+      val localstackUrl = localStackContainer.getEndpointOverride(LocalStackContainer.Service.SNS).toString()
+      val region = localStackContainer.region
+      registry.add("hmpps.sqs.localstackUrl") { localstackUrl }
+      registry.add("hmpps.sqs.region") { region }
+    } else {
+      registry.add("hmpps.sqs.localstackUrl") { "http://localhost:4566" }
+      registry.add("hmpps.sqs.region") { "eu-west-2" }
+    }
   }
 
   private fun startLocalstackIfNotRunning(): LocalStackContainer? {
@@ -38,8 +43,10 @@ object LocalStackConfig {
 
   private fun localstackIsRunning(): Boolean = try {
     val serverSocket = ServerSocket(4566)
+    log.info("Localstack is not running, starting testContainer")
     serverSocket.localPort == 0
   } catch (e: IOException) {
+    log.warn("Localstack is already running, using existing container")
     true
   }
 }

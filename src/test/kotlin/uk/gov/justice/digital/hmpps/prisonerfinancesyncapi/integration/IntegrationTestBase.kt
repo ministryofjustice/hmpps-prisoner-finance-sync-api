@@ -4,12 +4,12 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.http.HttpHeaders
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.LocalStackConfig
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.PostgresContainer
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.registerPostgresProperties
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
@@ -17,8 +17,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
 
 @ExtendWith(HmppsAuthApiExtension::class)
-@SpringBootTest(webEnvironment = RANDOM_PORT)
+@SpringBootTest(
+  webEnvironment = RANDOM_PORT,
+  properties = ["spring.autoconfigure.exclude=uk.gov.justice.hmpps.sqs.HmppsSqsConfiguration"],
+)
 @ActiveProfiles("test")
+@AutoConfigureWebTestClient
 abstract class IntegrationTestBase {
 
   @Autowired
@@ -39,8 +43,6 @@ abstract class IntegrationTestBase {
 
   companion object {
 
-    private val localStackContainer = LocalStackConfig.instance
-
     private val postgres = PostgresContainer.instance
 
     @Suppress("unused")
@@ -48,7 +50,6 @@ abstract class IntegrationTestBase {
     @DynamicPropertySource
     fun testcontainers(registry: DynamicPropertyRegistry) {
       registry.registerPostgresProperties(postgres)
-      localStackContainer?.also { LocalStackConfig.setLocalStackProperties(it, registry) }
     }
   }
 }

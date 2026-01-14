@@ -22,15 +22,17 @@ object PostgresContainer {
       withUsername("pf-test-db")
       withPassword("pf-test-db")
       setWaitStrategy(Wait.forListeningPort())
-      withReuse(true)
-
       start()
     }
   }
 
   private fun isPostgresRunning(): Boolean = try {
-    ServerSocket(5432).use { false }
+    ServerSocket(5432).use {
+      log.info("Postgres is not running, starting testContainer")
+      false
+    }
   } catch (e: IOException) {
+    log.info("Postgres is already running, using existing container")
     true
   }
 
