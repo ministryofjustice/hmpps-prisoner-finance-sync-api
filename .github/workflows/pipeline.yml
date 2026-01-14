@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - '**'
+  pull_request:
+    branches:
+      - '**'
   workflow_dispatch:
     inputs:
       additional_docker_tag:
@@ -39,6 +42,7 @@ jobs:
     secrets: inherit
     with:
       environment: ${{ matrix.environments }}
+
   app_version:
     runs-on: ubuntu-latest
     outputs:
@@ -46,10 +50,11 @@ jobs:
     steps:
       - id: app_version
         name: Application version creators
-        uses: ministryofjustice/hmpps-github-actions/.github/actions/build-test-and-deploy/create_app_version@v2 # WORKFLOW_VERSION
+        uses: ministryofjustice/hmpps-github-actions/.github/actions/build-test-and-deploy/create_app_version@v2
+
   gradle_verify:
     name: Validate the kotlin
-    uses: ministryofjustice/hmpps-github-actions/.github/workflows/gradle_verify.yml@v2 # WORKFLOW_VERSION
+    uses: ministryofjustice/hmpps-github-actions/.github/workflows/gradle_verify.yml@v2
     secrets: inherit
     with:
       gradle-command: 'BUILD_NUMBER=${{ needs.app_version.outputs.version}} ./gradlew assemble check'
@@ -63,11 +68,10 @@ jobs:
     name: Code Coverage Report
     runs-on: ubuntu-latest
     needs: gradle_verify
-    # Only run on PRs (commenting doesn't make sense on a push to main)
-    if: github.ref != 'refs/heads/main' #if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request'
     permissions:
       contents: read
-      pull-requests: write # Added specific permission here
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -88,13 +92,15 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 0
           min-coverage-changed-files: 0
-          title: Code Coverage Report
+          title: 'Code Coverage Report'
+          pass-emoji: ':white_check_mark:'
+          fail-emoji: ':x:'
           update-comment: true
 
   build:
     name: Build docker image from hmpps-github-actions
     if: github.ref == 'refs/heads/main'
-    uses: ministryofjustice/hmpps-github-actions/.github/workflows/docker_build.yml@v2 # WORKFLOW_VERSION
+    uses: ministryofjustice/hmpps-github-actions/.github/workflows/docker_build.yml@v2
     needs:
       - gradle_verify
     with:
@@ -104,36 +110,39 @@ jobs:
       push: ${{ inputs.push || inputs.push == null }}
       docker_multiplatform: false
       download_build_artifacts: true
+
   deploy_dev:
     name: Deploy to the development environment
     needs:
       - build
       - helm_lint
-    uses: ministryofjustice/hmpps-github-actions/.github/workflows/deploy_env.yml@v2 # WORKFLOW_VERSION
+    uses: ministryofjustice/hmpps-github-actions/.github/workflows/deploy_env.yml@v2
     secrets: inherit
     with:
       environment: 'dev'
       app_version: '${{ needs.build.outputs.app_version }}'
       slack_notification: 'true'
+
   deploy_preprod:
     name: Deploy to pre-production environment
     needs:
       - build
       - deploy_dev
-    uses: ministryofjustice/hmpps-github-actions/.github/workflows/deploy_env.yml@v2 # WORKFLOW_VERSION
+    uses: ministryofjustice/hmpps-github-actions/.github/workflows/deploy_env.yml@v2
     secrets: inherit
     with:
       environment: 'preprod'
       app_version: '${{ needs.build.outputs.app_version }}'
       slack_notification: 'true'
+
   # deploy_prod:
   #   name: Deploy to production environment
   #   needs:
   #     - build
   #     - deploy_preprod
-  #   uses: ministryofjustice/hmpps-github-actions/.github/workflows/deploy_env.yml@v2 # WORKFLOW_VERSION
+  #   uses: ministryofjustice/hmpps-github-actions/.github/workflows/deploy_env.yml@v2
   #   secrets: inherit
   #   with:
   #     environment: 'prod'
   #     app_version: '${{ needs.build.outputs.app_version }}'
-  #     slack_notification: 'false' # if 'true', it needs a valid PROD_RELEASES_SLACK_CHANNEL variable to be set
+  #     slack_notification: 'false'
