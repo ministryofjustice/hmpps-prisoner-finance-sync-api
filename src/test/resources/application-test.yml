@@ -35,3 +35,10 @@ hmpps:
 
 springdoc:
   packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi
+
+feature:
+  general-ledger-api:
+    enabled: false
+
+general-ledger-api:
+    url: http://localhost:8091
