@@ -1,9 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger
 
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.events.TransactionRecordedEvent
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Transaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.TransactionEntry
@@ -20,7 +18,6 @@ open class TransactionService(
   private val transactionRepository: TransactionRepository,
   private val transactionEntryRepository: TransactionEntryRepository,
   private val accountRepository: AccountRepository,
-  private val eventPublisher: ApplicationEventPublisher,
 ) {
 
   @Transactional
@@ -71,8 +68,6 @@ open class TransactionService(
       )
       savedEntries.add(transactionEntryRepository.save(entry))
     }
-
-    eventPublisher.publishEvent(TransactionRecordedEvent(savedEntries))
 
     return savedTransaction
   }

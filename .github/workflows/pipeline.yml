@@ -86,8 +86,6 @@ jobs:
         uses: madrapps/jacoco-report@v1.7.1
         with:
           paths: |
-            build/reports/jacoco/unit/jacoco.xml
-            build/reports/jacoco/integration/jacoco.xml
             build/reports/jacoco/combined/jacoco.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 0
