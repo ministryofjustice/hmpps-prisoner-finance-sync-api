@@ -15,6 +15,7 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
 
   fun findByRequestId(requestId: UUID): NomisSyncPayload?
   fun findFirstByLegacyTransactionIdOrderByTimestampDesc(transactionId: Long): NomisSyncPayload?
+  fun findByCaseloadId(caseloadId: String): List<NomisSyncPayload>
 
   @Query(
     """

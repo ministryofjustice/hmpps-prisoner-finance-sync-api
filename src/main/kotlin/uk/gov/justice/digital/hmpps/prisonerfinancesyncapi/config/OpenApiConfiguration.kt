@@ -16,6 +16,7 @@ const val TAG_NOMIS_SYNC = "NOMIS Sync"
 const val TAG_PRISONER_ACCOUNTS = "Prisoner trust accounts"
 const val TAG_PRISON_ACCOUNTS = "Prison accounts"
 const val TAG_PRISON_REPORTS = "Prison reports"
+const val TAG_AUDIT = "Audit"
 const val ROLE_PRISONER_FINANCE_SYNC = "ROLE_PRISONER_FINANCE_SYNC__RW"
 
 @Configuration

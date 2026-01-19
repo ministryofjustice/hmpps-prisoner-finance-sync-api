@@ -107,35 +107,36 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
       .jsonPath("$.userMessage").isEqualTo("Validation failure")
       .jsonPath("$.developerMessage").isEqualTo("Validation failed: createdBy: Created by must be supplied and be <= 32 characters")
   }
-
-  private fun createSyncOffenderTransactionRequest(): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
-    transactionId = (1..Long.MAX_VALUE).random(),
-    requestId = UUID.randomUUID(),
-    caseloadId = "GMI",
-    transactionTimestamp = LocalDateTime.now(),
-    createdAt = LocalDateTime.now().minusHours(1),
-    createdBy = "JD12345",
-    createdByDisplayName = "J Doe",
-    lastModifiedAt = null,
-    lastModifiedBy = null,
-    lastModifiedByDisplayName = null,
-    offenderTransactions = listOf(
-      OffenderTransaction(
-        entrySequence = 1,
-        offenderId = 1015388L,
-        offenderDisplayId = "AA001AA",
-        offenderBookingId = 455987L,
-        subAccountType = "REG",
-        postingType = "DR",
-        type = "OT",
-        description = "Sub-Account Transfer",
-        amount = 162.00,
-        reference = null,
-        generalLedgerEntries = listOf(
-          GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 162.00),
-          GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 162.00),
+  companion object {
+    fun createSyncOffenderTransactionRequest(caseloadId: String = "GMI"): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
+      transactionId = (1..Long.MAX_VALUE).random(),
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      transactionTimestamp = LocalDateTime.now(),
+      createdAt = LocalDateTime.now().minusHours(1),
+      createdBy = "JD12345",
+      createdByDisplayName = "J Doe",
+      lastModifiedAt = null,
+      lastModifiedBy = null,
+      lastModifiedByDisplayName = null,
+      offenderTransactions = listOf(
+        OffenderTransaction(
+          entrySequence = 1,
+          offenderId = 1015388L,
+          offenderDisplayId = "AA001AA",
+          offenderBookingId = 455987L,
+          subAccountType = "REG",
+          postingType = "DR",
+          type = "OT",
+          description = "Sub-Account Transfer",
+          amount = 162.00,
+          reference = null,
+          generalLedgerEntries = listOf(
+            GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 162.00),
+            GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 162.00),
+          ),
         ),
       ),
-    ),
-  )
+    )
+  }
 }
