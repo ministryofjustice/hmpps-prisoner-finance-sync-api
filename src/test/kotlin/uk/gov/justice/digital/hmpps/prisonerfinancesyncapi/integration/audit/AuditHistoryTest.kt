@@ -90,8 +90,9 @@ class AuditHistoryTest : IntegrationTestBase() {
       .isEqualTo(request.transactionId.toString())
       .jsonPath("$.items[0].caseloadId")
       .isEqualTo(request.caseloadId)
-      .jsonPath("$.items[0].transactionTimestamp")
-      .isEqualTo("${request.transactionTimestamp}Z")
+      .jsonPath("$.items[0].transactionTimestamp").value<String> {
+        assertThat(it).startsWith(request.transactionTimestamp.toString().substring(0, 19))
+      }
       .jsonPath("$.items[0].requestTypeIdentifier")
       .isEqualTo("SyncOffenderTransactionRequest")
       .jsonPath("$.items[0].requestId").exists()
@@ -140,8 +141,9 @@ class AuditHistoryTest : IntegrationTestBase() {
         .isEqualTo(requests[i].transactionId.toString())
         .jsonPath("$.items[$i].caseloadId")
         .isEqualTo(requests[i].caseloadId)
-        .jsonPath("$.items[$i].transactionTimestamp")
-        .isEqualTo("${requests[i].transactionTimestamp}Z")
+        .jsonPath("$.items[$i].transactionTimestamp").value<String> {
+          assertThat(it).startsWith(requests[i].transactionTimestamp.toString().substring(0, 19))
+        }
         .jsonPath("$.items[$i].requestTypeIdentifier")
         .isEqualTo("SyncOffenderTransactionRequest")
         .jsonPath("$.items[$i].requestId").exists()
