@@ -15,7 +15,7 @@ class AuditHistoryTest : IntegrationTestBase() {
   fun `Get History should return an empty list when there aren't any payloads`() {
     webTestClient
       .get()
-      .uri("/audit/history/{prisonId}", "XXX")
+      .uri("/audit/history?prisonId={prisonId}", "XXX")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
@@ -26,7 +26,7 @@ class AuditHistoryTest : IntegrationTestBase() {
   fun `Get History should return Bad Request when prison number is invalid`() {
     webTestClient
       .get()
-      .uri("/audit/history/{prisonId}", "asdasdaassdadsa123123")
+      .uri("/audit/history?prisonId={prisonId}", "asdasdaassdadsa123123")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isBadRequest
@@ -42,7 +42,7 @@ class AuditHistoryTest : IntegrationTestBase() {
   fun `401 unauthorised`() {
     webTestClient
       .get()
-      .uri("/audit/history/{prisonId}", "XXX")
+      .uri("/audit/history?prisonId={prisonId}", "XXX")
       .exchange()
       .expectStatus().isUnauthorized
   }
@@ -51,7 +51,7 @@ class AuditHistoryTest : IntegrationTestBase() {
   fun `403 forbidden - does not have the right role`() {
     webTestClient
       .get()
-      .uri("/audit/history/{prisonId}", "XXX")
+      .uri("/audit/history?prisonId={prisonId}", "XXX")
       .accept(MediaType.APPLICATION_JSON)
       .headers(setAuthorisation(roles = listOf("SOME_OTHER_ROLE")))
       .exchange()
@@ -77,7 +77,7 @@ class AuditHistoryTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/audit/history/{prisonId}", caseloadId)
+      .uri("/audit/history?prisonId={prisonId}", caseloadId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
@@ -124,7 +124,7 @@ class AuditHistoryTest : IntegrationTestBase() {
 
     val res = webTestClient
       .get()
-      .uri("/audit/history/{prisonId}", caseloadId)
+      .uri("/audit/history?prisonId={prisonId}", caseloadId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk

@@ -15,6 +15,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPaylo
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PayloadTransactionDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
@@ -53,9 +54,15 @@ class AuditHistoryControllerTest {
 
     @Test
     fun `should return a list of payloads when repository returns payloads`() {
+      val startDate = Instant.now().minus(30, ChronoUnit.DAYS)
+      val endDate = Instant.now()
+      val page = 1
+      val size = 10
+
       val payloads = listOf(createNomisSyncPayloadDto(1, caseloadId))
-      `when`(auditHistoryService.getPayloadsByCaseload(caseloadId)).thenReturn(payloads)
-      val response = historyController.getPayloadsByCaseload(caseloadId)
+      `when`(auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)).thenReturn(payloads)
+
+      val response = historyController.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
 
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
       assertThat(response.body).isEqualTo(PayloadTransactionDetailsList(items = payloads))

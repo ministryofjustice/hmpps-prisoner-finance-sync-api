@@ -15,7 +15,15 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
 
   fun findByRequestId(requestId: UUID): NomisSyncPayload?
   fun findFirstByLegacyTransactionIdOrderByTimestampDesc(transactionId: Long): NomisSyncPayload?
-  fun findByCaseloadId(caseloadId: String): List<NomisSyncPayload>
+
+  @Query(
+    """
+        SELECT n FROM NomisSyncPayload n 
+        WHERE (:caseloadId IS NULL OR n.caseloadId = :caseloadId)
+        AND (n.timestamp between :startDate AND :endDate)
+    """,
+  )
+  fun findByCaseloadIdAndDateRange(caseloadId: String, startDate: Instant, endDate: Instant, pageable: Pageable): List<NomisSyncPayload>
 
   @Query(
     """

@@ -9,21 +9,23 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Pattern
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_ADMIN_UI
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_AUDIT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PayloadTransactionDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
+import java.time.Instant
 
-@Tag(name = TAG_ADMIN_UI)
+@Tag(name = TAG_AUDIT)
 @RestController
 @Validated
 class HistoryController(
@@ -34,7 +36,7 @@ class HistoryController(
     description = "Get a list of synced payloads, including Nomis' legacy IDs",
   )
   @GetMapping(
-    path = ["/audit/history/{prisonId}"],
+    path = ["/audit/history"],
   )
   @ApiResponses(
     value = [
@@ -71,14 +73,18 @@ class HistoryController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC}')")
-  fun getPayloadsByCaseload(
-    @PathVariable
+  fun getPayloadsByCaseloadAndDateRange(
+    @RequestParam
     @Pattern(
       regexp = VALIDATION_REGEX_PRISON_ID,
       message = VALIDATION_MESSAGE_PRISON_ID,
     ) prisonId: String,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: Instant?,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: Instant?,
+    @RequestParam(defaultValue = "0") page: Int,
+    @RequestParam(defaultValue = "20") size: Int,
   ): ResponseEntity<PayloadTransactionDetailsList> {
-    val items = auditHistoryService.getPayloadsByCaseload(caseloadId = prisonId)
+    val items = auditHistoryService.getPayloadsByCaseloadAndDateRange(prisonId, startDate, endDate, page, size)
     val body = PayloadTransactionDetailsList(items)
     return ResponseEntity.ok(body)
   }
