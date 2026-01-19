@@ -50,11 +50,6 @@ class HistoryController(
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "404",
-        description = "Not Found - Prisoner not found.",
-        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
-      ),
-      ApiResponse(
         responseCode = "401",
         description = "Unauthorized - requires a valid OAuth2 token",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
