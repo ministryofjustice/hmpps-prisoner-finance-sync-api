@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync.SyncOffenderTransactionTest.Companion.createSyncOffenderTransactionRequest
@@ -24,7 +25,7 @@ class AuditHistoryTest(
     webTestClient
       .get()
       .uri("/audit/history?prisonId={prisonId}", "XXX")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody().jsonPath("content").isEqualTo(emptyList<Any>())
@@ -35,7 +36,7 @@ class AuditHistoryTest(
     webTestClient
       .get()
       .uri("/audit/history?prisonId={prisonId}", "asdasdaassdadsa123123")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isBadRequest
       .expectBody()
@@ -86,7 +87,7 @@ class AuditHistoryTest(
     webTestClient
       .get()
       .uri("/audit/history?prisonId={prisonId}", caseloadId)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
@@ -144,7 +145,7 @@ class AuditHistoryTest(
     val res = webTestClient
       .get()
       .uri("/audit/history?prisonId={prisonId}", caseloadId)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
@@ -206,7 +207,7 @@ class AuditHistoryTest(
 
     webTestClient.get()
       .uri("/audit/history?prisonId={prisonId}", caseloadId)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
@@ -263,7 +264,7 @@ class AuditHistoryTest(
           .queryParam("startDate", startDate)
           .build()
       }
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
@@ -320,7 +321,7 @@ class AuditHistoryTest(
           .queryParam("endDate", endDate)
           .build()
       }
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
@@ -368,7 +369,7 @@ class AuditHistoryTest(
           .queryParam("endDate", endDate)
           .build()
       }
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
@@ -408,7 +409,7 @@ class AuditHistoryTest(
           .queryParam("endDate", endDate)
           .build()
       }
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
