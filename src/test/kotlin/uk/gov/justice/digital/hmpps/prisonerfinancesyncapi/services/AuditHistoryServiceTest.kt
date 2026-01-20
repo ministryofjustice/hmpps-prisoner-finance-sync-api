@@ -16,7 +16,7 @@ import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -31,6 +31,16 @@ class AuditHistoryServiceTest {
 
   @InjectMocks
   private lateinit var auditHistoryService: AuditHistoryService
+
+  data class TestNomisSyncPayloadSummary(
+    override val legacyTransactionId: Long?,
+    override val synchronizedTransactionId: UUID,
+    override val caseloadId: String?,
+    override val timestamp: Instant,
+    override val requestTypeIdentifier: String?,
+    override val requestId: UUID,
+    override val transactionTimestamp: Instant?,
+  ) : NomisSyncPayloadSummary
 
   @Nested
   inner class GetPayloadsByCaseloadTest {
@@ -48,7 +58,7 @@ class AuditHistoryServiceTest {
       val startDate = LocalDate.now().minus(30, ChronoUnit.DAYS)
       val endDate = LocalDate.now()
 
-      val entity = NomisSyncPayloadDto(
+      val entity = TestNomisSyncPayloadSummary(
         timestamp = Instant.now(),
         legacyTransactionId = legacyTxId,
         synchronizedTransactionId = syncTxId,
