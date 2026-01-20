@@ -2,14 +2,22 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.audit
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync.SyncOffenderTransactionTest.Companion.createSyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
+import java.time.Instant
+import java.time.LocalDate
+import java.util.UUID
 
-class AuditHistoryTest : IntegrationTestBase() {
+class AuditHistoryTest(
+  @param:Autowired val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
+) : IntegrationTestBase() {
 
   @Test
   fun `Get History should return an empty list when there aren't any payloads`() {
@@ -160,6 +168,250 @@ class AuditHistoryTest : IntegrationTestBase() {
         .isEqualTo("SyncOffenderTransactionRequest")
         .jsonPath("$.content[$i].requestId").exists()
         .jsonPath("$.content[$i].timestamp").exists()
+    }
+  }
+
+  @Test
+  fun `Get History with no dates defaults to last 30 days`() {
+    val caseloadId = "LLL"
+
+    val recentPayload = NomisSyncPayload(
+      timestamp = Instant.now(),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    val oldPayload = NomisSyncPayload(
+      timestamp = Instant.now().minus(31, java.time.temporal.ChronoUnit.DAYS),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    nomisSyncPayloadRepository.save(recentPayload)
+    nomisSyncPayloadRepository.save(oldPayload)
+
+    webTestClient.get()
+      .uri("/audit/history?prisonId={prisonId}", caseloadId)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.content.length()").isEqualTo(1)
+      .jsonPath("$.content[0].synchronizedTransactionId").isEqualTo(recentPayload.synchronizedTransactionId.toString())
+  }
+
+  @Test
+  fun `Get History with startDate only defaults endDate to today`() {
+    val caseloadId = "CCC"
+    val startDate = LocalDate.now()
+
+    val todayPayload = NomisSyncPayload(
+      timestamp = Instant.now(),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    val pastPayload = NomisSyncPayload(
+      timestamp = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    val futurePayload = NomisSyncPayload(
+      timestamp = Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    nomisSyncPayloadRepository.save(todayPayload)
+    nomisSyncPayloadRepository.save(pastPayload)
+    nomisSyncPayloadRepository.save(futurePayload)
+
+    webTestClient.get()
+      .uri {
+        it.path("/audit/history")
+          .queryParam("prisonId", caseloadId)
+          .queryParam("startDate", startDate)
+          .build()
+      }
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.content.length()").isEqualTo(1)
+      .jsonPath("$.content[0].synchronizedTransactionId").isEqualTo(todayPayload.synchronizedTransactionId.toString())
+  }
+
+  @Test
+  fun `Get History with endDate only defaults startDate to 30 days before endDate`() {
+    val caseloadId = "JKL"
+    val endDate = LocalDate.now()
+
+    val todayPayload = NomisSyncPayload(
+      timestamp = Instant.now(),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    val pastPayloadWithin30days = NomisSyncPayload(
+      timestamp = Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    val pastPayloadOlderThan30Days = NomisSyncPayload(
+      timestamp = Instant.now().minus(31, java.time.temporal.ChronoUnit.DAYS),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    nomisSyncPayloadRepository.save(todayPayload)
+    nomisSyncPayloadRepository.save(pastPayloadWithin30days)
+    nomisSyncPayloadRepository.save(pastPayloadOlderThan30Days)
+
+    webTestClient.get()
+      .uri {
+        it.path("/audit/history")
+          .queryParam("prisonId", caseloadId)
+          .queryParam("endDate", endDate)
+          .build()
+      }
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.content.length()").isEqualTo(2)
+      .jsonPath("$.content[0].synchronizedTransactionId").isEqualTo(todayPayload.synchronizedTransactionId.toString())
+      .jsonPath("$.content[1].synchronizedTransactionId").isEqualTo(pastPayloadWithin30days.synchronizedTransactionId.toString())
+  }
+
+  @Test
+  fun `Get History with startDate and endDate only returns payloads in range`() {
+    val caseloadId = "MNO"
+    val startDate = LocalDate.now().minusDays(1)
+    val endDate = LocalDate.now().plusDays(1)
+
+    val todayPayload = NomisSyncPayload(
+      timestamp = Instant.now(),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    val notInRangePayload = NomisSyncPayload(
+      timestamp = Instant.now().minus(10, java.time.temporal.ChronoUnit.DAYS),
+      legacyTransactionId = 1003,
+      requestId = UUID.randomUUID(),
+      caseloadId = caseloadId,
+      requestTypeIdentifier = "NewSyncType",
+      synchronizedTransactionId = UUID.randomUUID(),
+      body = """{"new": "data"}""",
+      transactionTimestamp = Instant.now(),
+    )
+
+    nomisSyncPayloadRepository.save(todayPayload)
+    nomisSyncPayloadRepository.save(notInRangePayload)
+
+    webTestClient.get()
+      .uri {
+        it.path("/audit/history")
+          .queryParam("prisonId", caseloadId)
+          .queryParam("startDate", startDate)
+          .queryParam("endDate", endDate)
+          .build()
+      }
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.content.length()").isEqualTo(1)
+      .jsonPath("$.content[0].synchronizedTransactionId").isEqualTo(todayPayload.synchronizedTransactionId.toString())
+  }
+
+  @Test
+  fun `Get History return payloads in Desc order`() {
+    val caseloadId = "FGH"
+    val startDate = LocalDate.now().minusDays(30)
+    val endDate = LocalDate.now()
+
+    val payloads = mutableListOf<NomisSyncPayload>()
+
+    for (i in 10 downTo 1) {
+      val payload = NomisSyncPayload(
+        timestamp = Instant.now().minus(i.toLong(), java.time.temporal.ChronoUnit.DAYS),
+        legacyTransactionId = 1003,
+        requestId = UUID.randomUUID(),
+        caseloadId = caseloadId,
+        requestTypeIdentifier = "NewSyncType",
+        synchronizedTransactionId = UUID.randomUUID(),
+        body = """{"new": "data"}""",
+        transactionTimestamp = Instant.now(),
+      )
+
+      payloads.add(payload)
+      nomisSyncPayloadRepository.save(payload)
+    }
+
+    val res = webTestClient.get()
+      .uri {
+        it.path("/audit/history")
+          .queryParam("prisonId", caseloadId)
+          .queryParam("startDate", startDate)
+          .queryParam("endDate", endDate)
+          .build()
+      }
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.content.length()").isEqualTo(10)
+
+    for (i in 9 downTo 0) {
+      res.jsonPath("$.content[${9 - i}].synchronizedTransactionId").isEqualTo(payloads[i].synchronizedTransactionId.toString())
     }
   }
 }
