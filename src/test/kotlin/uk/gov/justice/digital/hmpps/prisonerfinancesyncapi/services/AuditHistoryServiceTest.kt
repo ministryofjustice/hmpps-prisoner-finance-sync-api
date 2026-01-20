@@ -16,6 +16,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import java.time.Instant
@@ -50,7 +51,7 @@ class AuditHistoryServiceTest {
   inner class GetPayloadsByCaseloadTest {
     val page = 1
     val size = 10
-    val pageable = PageRequest.of(page, size)
+    val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     @Test
     fun `getPayloadsByCaseload should map entities to DTOs correctly`() {
@@ -122,13 +123,13 @@ class AuditHistoryServiceTest {
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, null, 0, 10)
+      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, null, page, size)
 
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
         eq("MDI"),
         startDateCaptor.capture(),
         endDateCaptor.capture(),
-        eq(PageRequest.of(0, 10)),
+        eq(pageable),
       )
 
       val expectedEnd = timeConversionService.toUtcStartOfDay(LocalDate.now().plusDays(1))
@@ -146,7 +147,7 @@ class AuditHistoryServiceTest {
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", fixedStart, null, 0, 10)
+      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", fixedStart, null, page, size)
 
       val expectedStart = timeConversionService.toUtcStartOfDay(fixedStart)
       val expectedEnd = timeConversionService.toUtcStartOfDay(LocalDate.now().plusDays(1))
@@ -168,7 +169,7 @@ class AuditHistoryServiceTest {
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, fixedEnd, 0, 10)
+      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, fixedEnd, page, size)
 
       val expectedEnd = timeConversionService.toUtcStartOfDay(fixedEnd.plusDays(1))
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
@@ -189,7 +190,7 @@ class AuditHistoryServiceTest {
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", start, end, 0, 10)
+      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", start, end, page, size)
 
       val expectedStart = timeConversionService.toUtcStartOfDay(start)
       val expectedEnd = timeConversionService.toUtcStartOfDay(end.plusDays(1))
