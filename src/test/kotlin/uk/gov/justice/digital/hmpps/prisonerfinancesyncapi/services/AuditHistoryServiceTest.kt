@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -28,6 +29,9 @@ class AuditHistoryServiceTest {
 
   @Mock
   private lateinit var nomisSyncPayloadRepository: NomisSyncPayloadRepository
+
+  @Spy
+  private var timeConversionService = TimeConversionService()
 
   @InjectMocks
   private lateinit var auditHistoryService: AuditHistoryService
@@ -71,8 +75,8 @@ class AuditHistoryServiceTest {
       whenever(
         nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(
           caseloadId,
-          startDate,
-          endDate,
+          timeConversionService.toUtcStartOfDay(startDate),
+          timeConversionService.toUtcStartOfDay(endDate.plusDays(1)),
           pageable,
         ),
       )
@@ -99,8 +103,8 @@ class AuditHistoryServiceTest {
       whenever(
         nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(
           caseloadId,
-          startDate,
-          endDate,
+          timeConversionService.toUtcStartOfDay(startDate),
+          timeConversionService.toUtcStartOfDay(endDate.plusDays(1)),
           pageable,
         ),
       ).thenReturn(PageImpl(emptyList()))
@@ -112,8 +116,8 @@ class AuditHistoryServiceTest {
 
     @Test
     fun `Should default to 30 days ago to now when BOTH dates are null`() {
-      val startDateCaptor = argumentCaptor<LocalDate>()
-      val endDateCaptor = argumentCaptor<LocalDate>()
+      val startDateCaptor = argumentCaptor<Instant>()
+      val endDateCaptor = argumentCaptor<Instant>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
@@ -127,51 +131,54 @@ class AuditHistoryServiceTest {
         eq(PageRequest.of(0, 10)),
       )
 
-      val start = startDateCaptor.firstValue
-      val end = endDateCaptor.firstValue
+      val expectedEnd = timeConversionService.toUtcStartOfDay(LocalDate.now().plusDays(1))
+      val expectedStart = timeConversionService.toUtcStartOfDay(LocalDate.now().minusDays(30))
 
-      assertThat(end).isBeforeOrEqualTo(LocalDate.now())
-      assertThat(start).isEqualTo(end.minus(30, ChronoUnit.DAYS))
+      assertThat(endDateCaptor.firstValue).isEqualTo(expectedEnd)
+      assertThat(startDateCaptor.firstValue).isEqualTo(expectedStart)
     }
 
     @Test
     fun `Should defaults endDate to now when ONLY endDate is null`() {
       val fixedStart = LocalDate.parse("2026-01-01")
-      val endDateCaptor = argumentCaptor<LocalDate>()
+      val endDateCaptor = argumentCaptor<Instant>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", fixedStart, null, 0, 10)
 
+      val expectedStart = timeConversionService.toUtcStartOfDay(fixedStart)
+      val expectedEnd = timeConversionService.toUtcStartOfDay(LocalDate.now().plusDays(1))
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
         eq("MDI"),
-        eq(fixedStart),
+        eq(expectedStart),
         endDateCaptor.capture(),
         any(),
       )
 
-      assertThat(endDateCaptor.firstValue).isBeforeOrEqualTo(LocalDate.now())
+      assertThat(endDateCaptor.firstValue).isEqualTo(expectedEnd)
     }
 
     @Test
     fun `Should defaults startDate to 1 day before endDate when ONLY startDate is null `() {
       val fixedEnd = LocalDate.parse("2026-02-01")
-      val startDateCaptor = argumentCaptor<LocalDate>()
+      val startDateCaptor = argumentCaptor<Instant>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, fixedEnd, 0, 10)
 
+      val expectedEnd = timeConversionService.toUtcStartOfDay(fixedEnd.plusDays(1))
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
         eq("MDI"),
         startDateCaptor.capture(),
-        eq(fixedEnd),
+        eq(expectedEnd),
         any(),
       )
 
-      assertThat(startDateCaptor.firstValue).isEqualTo(fixedEnd.minus(30, ChronoUnit.DAYS))
+      assertThat(startDateCaptor.firstValue).isEqualTo(timeConversionService.toUtcStartOfDay(fixedEnd.minus(30, ChronoUnit.DAYS)))
     }
 
     @Test
@@ -184,10 +191,12 @@ class AuditHistoryServiceTest {
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", start, end, 0, 10)
 
+      val expectedStart = timeConversionService.toUtcStartOfDay(start)
+      val expectedEnd = timeConversionService.toUtcStartOfDay(end.plusDays(1))
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
         eq("MDI"),
-        eq(start),
-        eq(end),
+        eq(expectedStart),
+        eq(expectedEnd),
         any(),
       )
     }

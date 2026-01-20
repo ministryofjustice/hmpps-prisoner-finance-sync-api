@@ -11,24 +11,19 @@ import java.time.temporal.ChronoUnit
 @Service
 class AuditHistoryService(
   private val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
+  private val timeConversionService: TimeConversionService,
 ) {
 
   fun getPayloadsByCaseloadAndDateRange(prisonId: String?, startDate: LocalDate?, endDate: LocalDate?, page: Int, size: Int): Page<NomisSyncPayloadSummary> {
     val pageable = PageRequest.of(page, size)
 
-    var startDateReq = startDate
-    var endDateReq = endDate
+    val endDateReq = endDate ?: LocalDate.now()
+    val startDateReq = startDate ?: endDateReq.minus(30, ChronoUnit.DAYS)
 
-    if (startDateReq == null && endDateReq == null) {
-      endDateReq = LocalDate.now()
-      startDateReq = endDateReq.minus(30, ChronoUnit.DAYS)
-    } else if (endDateReq == null) {
-      endDateReq = LocalDate.now()
-    } else if (startDateReq == null) {
-      startDateReq = endDateReq.minus(30, ChronoUnit.DAYS)
-    }
+    val startOfStartDate = timeConversionService.toUtcStartOfDay(startDateReq)
+    val endOfEndDate = timeConversionService.toUtcStartOfDay(endDateReq.plusDays(1))
 
-    val items = nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(prisonId, startDateReq!!, endDateReq, pageable)
+    val items = nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(prisonId, startOfStartDate, endOfEndDate, pageable)
 
     return items
   }
