@@ -13,7 +13,7 @@ class AuditHistoryService(
   private val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
 ) {
 
-  fun getPayloadsByCaseloadAndDateRange(caseloadId: String?, startDate: Instant?, endDate: Instant?, page: Int, size: Int): Page<NomisSyncPayloadDto> {
+  fun getPayloadsByCaseloadAndDateRange(prisonId: String?, startDate: Instant?, endDate: Instant?, page: Int, size: Int): Page<NomisSyncPayloadDto> {
     val pageable = PageRequest.of(page, size)
 
     var startDateReq = startDate
@@ -28,7 +28,7 @@ class AuditHistoryService(
       startDateReq = endDateReq.minus(30, ChronoUnit.DAYS)
     }
 
-    val items = nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(caseloadId, startDateReq!!, endDateReq, pageable)
+    val items = nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(prisonId, startDateReq!!, endDateReq, pageable)
 
     return items
   }
