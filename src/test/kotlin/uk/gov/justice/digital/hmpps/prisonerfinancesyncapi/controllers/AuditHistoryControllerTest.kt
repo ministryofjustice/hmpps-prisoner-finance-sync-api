@@ -15,6 +15,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.audit.Aud
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import java.time.Instant
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
@@ -54,8 +55,8 @@ class AuditHistoryControllerTest {
 
     @Test
     fun `should return a list of payloads when repository returns payloads`() {
-      val startDate = Instant.now().minus(30, ChronoUnit.DAYS)
-      val endDate = Instant.now()
+      val startDate = LocalDate.now().minus(30, ChronoUnit.DAYS)
+      val endDate = LocalDate.now()
       val page = 1
       val size = 10
 

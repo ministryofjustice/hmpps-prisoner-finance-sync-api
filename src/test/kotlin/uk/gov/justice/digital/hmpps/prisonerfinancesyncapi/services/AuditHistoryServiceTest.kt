@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
 import java.time.Instant
+import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
@@ -44,8 +45,8 @@ class AuditHistoryServiceTest {
       val syncTxId = UUID.randomUUID()
       val legacyTxId = 12345L
 
-      val startDate = Instant.now().minus(30, ChronoUnit.DAYS)
-      val endDate = Instant.now()
+      val startDate = LocalDate.now().minus(30, ChronoUnit.DAYS)
+      val endDate = LocalDate.now()
 
       val entity = NomisSyncPayloadDto(
         timestamp = Instant.now(),
@@ -82,8 +83,8 @@ class AuditHistoryServiceTest {
     fun `getPayloadsByCaseload should return empty list when no records found`() {
       val caseloadId = "EMPTY"
 
-      val startDate = Instant.now().minus(30, ChronoUnit.DAYS)
-      val endDate = Instant.now()
+      val startDate = LocalDate.now().minus(30, ChronoUnit.DAYS)
+      val endDate = LocalDate.now()
 
       whenever(
         nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(
@@ -101,8 +102,8 @@ class AuditHistoryServiceTest {
 
     @Test
     fun `Should default to 30 days ago to now when BOTH dates are null`() {
-      val startDateCaptor = argumentCaptor<Instant>()
-      val endDateCaptor = argumentCaptor<Instant>()
+      val startDateCaptor = argumentCaptor<LocalDate>()
+      val endDateCaptor = argumentCaptor<LocalDate>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
@@ -119,14 +120,14 @@ class AuditHistoryServiceTest {
       val start = startDateCaptor.firstValue
       val end = endDateCaptor.firstValue
 
-      assertThat(end).isBeforeOrEqualTo(Instant.now())
+      assertThat(end).isBeforeOrEqualTo(LocalDate.now())
       assertThat(start).isEqualTo(end.minus(30, ChronoUnit.DAYS))
     }
 
     @Test
     fun `Should defaults endDate to now when ONLY endDate is null`() {
-      val fixedStart = Instant.parse("2026-01-01T10:00:00Z")
-      val endDateCaptor = argumentCaptor<Instant>()
+      val fixedStart = LocalDate.parse("2026-01-01")
+      val endDateCaptor = argumentCaptor<LocalDate>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
@@ -140,13 +141,13 @@ class AuditHistoryServiceTest {
         any(),
       )
 
-      assertThat(endDateCaptor.firstValue).isBeforeOrEqualTo(Instant.now())
+      assertThat(endDateCaptor.firstValue).isBeforeOrEqualTo(LocalDate.now())
     }
 
     @Test
     fun `Should defaults startDate to 1 day before endDate when ONLY startDate is null `() {
-      val fixedEnd = Instant.parse("2026-02-01T10:00:00Z")
-      val startDateCaptor = argumentCaptor<Instant>()
+      val fixedEnd = LocalDate.parse("2026-02-01")
+      val startDateCaptor = argumentCaptor<LocalDate>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))
@@ -165,8 +166,8 @@ class AuditHistoryServiceTest {
 
     @Test
     fun `Should use provided dates without modification when BOTH dates provided`() {
-      val start = Instant.parse("2026-01-01T00:00:00Z")
-      val end = Instant.parse("2026-01-05T00:00:00Z")
+      val start = LocalDate.parse("2026-01-01")
+      val end = LocalDate.parse("2026-01-05")
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
         .thenReturn(PageImpl(emptyList()))

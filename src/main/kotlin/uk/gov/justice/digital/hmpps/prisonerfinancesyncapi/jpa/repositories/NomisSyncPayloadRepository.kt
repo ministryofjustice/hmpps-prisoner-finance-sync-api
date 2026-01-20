@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 @Repository
@@ -29,10 +30,10 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
           n.transactionTimestamp as transactionTimestamp
         FROM NomisSyncPayload n 
         WHERE (:prisonId IS NULL OR n.caseloadId = :prisonId)
-        AND (n.timestamp between :startDate AND :endDate)
+        AND (CAST(n.timestamp AS date) between :startDate AND :endDate)
     """,
   )
-  fun findByCaseloadIdAndDateRange(prisonId: String?, startDate: Instant, endDate: Instant, pageable: Pageable): Page<NomisSyncPayloadDto>
+  fun findByCaseloadIdAndDateRange(prisonId: String?, startDate: LocalDate, endDate: LocalDate, pageable: Pageable): Page<NomisSyncPayloadDto>
 
   @Query(
     """

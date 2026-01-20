@@ -24,7 +24,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATIO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
-import java.time.Instant
+import java.time.LocalDate
 
 @Tag(name = TAG_AUDIT)
 @RestController
@@ -75,8 +75,8 @@ class AuditHistoryController(
       regexp = VALIDATION_REGEX_PRISON_ID,
       message = VALIDATION_MESSAGE_PRISON_ID,
     ) prisonId: String?,
-    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: Instant?,
-    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: Instant?,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate?,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate?,
     @RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "20") size: Int,
   ): ResponseEntity<Page<NomisSyncPayloadDto>> {
