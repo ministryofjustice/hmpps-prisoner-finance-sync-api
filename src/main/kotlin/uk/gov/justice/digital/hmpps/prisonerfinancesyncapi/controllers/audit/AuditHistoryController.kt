@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Pattern
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.data.domain.Page
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -20,7 +21,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_AUDIT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISON_ID
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PayloadTransactionDetailsList
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.Instant
@@ -28,11 +29,11 @@ import java.time.Instant
 @Tag(name = TAG_AUDIT)
 @RestController
 @Validated
-class HistoryController(
+class AuditHistoryController(
   @param:Autowired private val auditHistoryService: AuditHistoryService,
 ) {
   @Operation(
-    summary = "Get Payloads",
+    summary = "Get Audit History",
     description = "Get a list of synced payloads, including Nomis' legacy IDs",
   )
   @GetMapping(
@@ -42,7 +43,7 @@ class HistoryController(
     value = [
       ApiResponse(
         responseCode = "200",
-        description = "Returns all offender transactions for the specified prisoner.",
+        description = "Returns list of captured sync payloads.",
       ),
       ApiResponse(
         responseCode = "400",
@@ -69,18 +70,17 @@ class HistoryController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC}')")
   fun getPayloadsByCaseloadAndDateRange(
-    @RequestParam
+    @RequestParam(required = false)
     @Pattern(
       regexp = VALIDATION_REGEX_PRISON_ID,
       message = VALIDATION_MESSAGE_PRISON_ID,
-    ) prisonId: String,
+    ) prisonId: String?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: Instant?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: Instant?,
     @RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "20") size: Int,
-  ): ResponseEntity<PayloadTransactionDetailsList> {
+  ): ResponseEntity<Page<NomisSyncPayloadDto>> {
     val items = auditHistoryService.getPayloadsByCaseloadAndDateRange(prisonId, startDate, endDate, page, size)
-    val body = PayloadTransactionDetailsList(items)
-    return ResponseEntity.ok(body)
+    return ResponseEntity.ok(items)
   }
 }

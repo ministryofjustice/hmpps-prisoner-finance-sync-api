@@ -13,9 +13,10 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -46,8 +47,7 @@ class AuditHistoryServiceTest {
       val startDate = Instant.now().minus(30, ChronoUnit.DAYS)
       val endDate = Instant.now()
 
-      val entity = NomisSyncPayload(
-        id = 100L,
+      val entity = NomisSyncPayloadDto(
         timestamp = Instant.now(),
         legacyTransactionId = legacyTxId,
         synchronizedTransactionId = syncTxId,
@@ -55,7 +55,6 @@ class AuditHistoryServiceTest {
         caseloadId = caseloadId,
         requestTypeIdentifier = "TRANSFER",
         transactionTimestamp = Instant.parse("2026-01-19T10:00:00Z"),
-        body = """{"amount": 10.50}""",
       )
 
       whenever(
@@ -66,12 +65,12 @@ class AuditHistoryServiceTest {
           pageable,
         ),
       )
-        .thenReturn(listOf(entity))
+        .thenReturn(PageImpl(listOf(entity)))
 
       val result = auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
 
       assertThat(result).hasSize(1)
-      with(result[0]) {
+      with(result.content[0]) {
         assertThat(this.caseloadId).isEqualTo(caseloadId)
         assertThat(this.requestId).isEqualTo(requestId)
         assertThat(this.synchronizedTransactionId).isEqualTo(syncTxId)
@@ -93,7 +92,7 @@ class AuditHistoryServiceTest {
           endDate,
           pageable,
         ),
-      ).thenReturn(emptyList())
+      ).thenReturn(PageImpl(emptyList()))
 
       val result = auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
 
@@ -106,7 +105,7 @@ class AuditHistoryServiceTest {
       val endDateCaptor = argumentCaptor<Instant>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
-        .thenReturn(emptyList())
+        .thenReturn(PageImpl(emptyList()))
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, null, 0, 10)
 
@@ -130,7 +129,7 @@ class AuditHistoryServiceTest {
       val endDateCaptor = argumentCaptor<Instant>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
-        .thenReturn(emptyList())
+        .thenReturn(PageImpl(emptyList()))
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", fixedStart, null, 0, 10)
 
@@ -150,7 +149,7 @@ class AuditHistoryServiceTest {
       val startDateCaptor = argumentCaptor<Instant>()
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
-        .thenReturn(emptyList())
+        .thenReturn(PageImpl(emptyList()))
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, fixedEnd, 0, 10)
 
@@ -170,7 +169,7 @@ class AuditHistoryServiceTest {
       val end = Instant.parse("2026-01-05T00:00:00Z")
 
       whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
-        .thenReturn(emptyList())
+        .thenReturn(PageImpl(emptyList()))
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", start, end, 0, 10)
 

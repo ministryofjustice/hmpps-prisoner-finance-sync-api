@@ -19,7 +19,7 @@ class AuditHistoryTest : IntegrationTestBase() {
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
-      .expectBody().jsonPath("items").isEqualTo(emptyList<Any>())
+      .expectBody().jsonPath("content").isEqualTo(emptyList<Any>())
   }
 
   @Test
@@ -82,21 +82,27 @@ class AuditHistoryTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.items").isArray
-      .jsonPath("$.items.length()").isEqualTo(1)
-      .jsonPath("$.items[0].synchronizedTransactionId")
+      .jsonPath("$.content").isArray
+      .jsonPath("$.content.length()").isEqualTo(1)
+      .jsonPath("$.content[0].synchronizedTransactionId")
       .isEqualTo(offenderTransaction.synchronizedTransactionId.toString())
-      .jsonPath("$.items[0].legacyTransactionId")
+      .jsonPath("$.content[0].legacyTransactionId")
       .isEqualTo(request.transactionId.toString())
-      .jsonPath("$.items[0].caseloadId")
+      .jsonPath("$.content[0].caseloadId")
       .isEqualTo(request.caseloadId)
-      .jsonPath("$.items[0].transactionTimestamp").value<String> {
+      .jsonPath("$.content[0].transactionTimestamp").value<String> {
         assertThat(it).startsWith(request.transactionTimestamp.toString().substring(0, 19))
       }
-      .jsonPath("$.items[0].requestTypeIdentifier")
+      .jsonPath("$.content[0].requestTypeIdentifier")
       .isEqualTo("SyncOffenderTransactionRequest")
-      .jsonPath("$.items[0].requestId").exists()
-      .jsonPath("$.items[0].timestamp").exists()
+      .jsonPath("$.content[0].requestId").exists()
+      .jsonPath("$.content[0].timestamp").exists()
+      .jsonPath("$.totalElements").isEqualTo(1)
+      .jsonPath("$.totalPages").isEqualTo(1)
+      .jsonPath("$.number").isEqualTo(0)
+      .jsonPath("$.size").exists()
+      .jsonPath("$.first").isEqualTo(true)
+      .jsonPath("$.last").isEqualTo(true)
   }
 
   @Test
@@ -130,24 +136,30 @@ class AuditHistoryTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.items").isArray
-      .jsonPath("$.items.length()").isEqualTo(2)
+      .jsonPath("$.content").isArray
+      .jsonPath("$.content.length()").isEqualTo(requests.size)
+      .jsonPath("$.totalElements").isEqualTo(requests.size)
+      .jsonPath("$.totalPages").isEqualTo(1)
+      .jsonPath("$.number").isEqualTo(0)
+      .jsonPath("$.size").exists()
+      .jsonPath("$.first").isEqualTo(true)
+      .jsonPath("$.last").isEqualTo(true)
 
     for (i in 0..1) {
       res
-        .jsonPath("$.items[$i].synchronizedTransactionId")
+        .jsonPath("$.content[$i].synchronizedTransactionId")
         .isEqualTo(offenderTransactions[i].synchronizedTransactionId.toString())
-        .jsonPath("$.items[$i].legacyTransactionId")
+        .jsonPath("$.content[$i].legacyTransactionId")
         .isEqualTo(requests[i].transactionId.toString())
-        .jsonPath("$.items[$i].caseloadId")
+        .jsonPath("$.content[$i].caseloadId")
         .isEqualTo(requests[i].caseloadId)
-        .jsonPath("$.items[$i].transactionTimestamp").value<String> {
+        .jsonPath("$.content[$i].transactionTimestamp").value<String> {
           assertThat(it).startsWith(requests[i].transactionTimestamp.toString().substring(0, 19))
         }
-        .jsonPath("$.items[$i].requestTypeIdentifier")
+        .jsonPath("$.content[$i].requestTypeIdentifier")
         .isEqualTo("SyncOffenderTransactionRequest")
-        .jsonPath("$.items[$i].requestId").exists()
-        .jsonPath("$.items[$i].timestamp").exists()
+        .jsonPath("$.content[$i].requestId").exists()
+        .jsonPath("$.content[$i].timestamp").exists()
     }
   }
 }

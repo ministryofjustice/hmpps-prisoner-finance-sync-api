@@ -1,10 +1,10 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.toDto
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -13,7 +13,7 @@ class AuditHistoryService(
   private val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
 ) {
 
-  fun getPayloadsByCaseloadAndDateRange(caseloadId: String, startDate: Instant?, endDate: Instant?, page: Int, size: Int): List<NomisSyncPayloadDto> {
+  fun getPayloadsByCaseloadAndDateRange(caseloadId: String?, startDate: Instant?, endDate: Instant?, page: Int, size: Int): Page<NomisSyncPayloadDto> {
     val pageable = PageRequest.of(page, size)
 
     var startDateReq = startDate
@@ -29,7 +29,6 @@ class AuditHistoryService(
     }
 
     val items = nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(caseloadId, startDateReq!!, endDateReq, pageable)
-      .map { it.toDto() }
 
     return items
   }

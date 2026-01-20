@@ -9,10 +9,10 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.audit.HistoryController
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.audit.AuditHistoryController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PayloadTransactionDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -44,7 +44,7 @@ class AuditHistoryControllerTest {
   private lateinit var auditHistoryService: AuditHistoryService
 
   @InjectMocks
-  private lateinit var historyController: HistoryController
+  private lateinit var auditHistoryController: AuditHistoryController
 
   private val caseloadId = "TST"
 
@@ -60,12 +60,13 @@ class AuditHistoryControllerTest {
       val size = 10
 
       val payloads = listOf(createNomisSyncPayloadDto(1, caseloadId))
-      `when`(auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)).thenReturn(payloads)
+      `when`(auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size))
+        .thenReturn(PageImpl(payloads))
 
-      val response = historyController.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
+      val response = auditHistoryController.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
 
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isEqualTo(PayloadTransactionDetailsList(items = payloads))
+      assertThat(response.body).isEqualTo(PageImpl(payloads))
     }
   }
 }

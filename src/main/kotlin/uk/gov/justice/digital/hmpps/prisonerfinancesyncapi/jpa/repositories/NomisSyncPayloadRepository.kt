@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.NomisSyncPayloadDto
 import java.time.Instant
 import java.util.UUID
 
@@ -18,12 +19,20 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
 
   @Query(
     """
-        SELECT n FROM NomisSyncPayload n 
+        SELECT 
+          n.legacyTransactionId as legacyTransactionId,
+          n.synchronizedTransactionId as synchronizedTransactionId,
+          n.caseloadId as caseloadId,
+          n.timestamp as timestamp,
+          n.requestTypeIdentifier as requestTypeIdentifier,
+          n.requestId as requestId,
+          n.transactionTimestamp as transactionTimestamp
+        FROM NomisSyncPayload n 
         WHERE (:caseloadId IS NULL OR n.caseloadId = :caseloadId)
         AND (n.timestamp between :startDate AND :endDate)
     """,
   )
-  fun findByCaseloadIdAndDateRange(caseloadId: String, startDate: Instant, endDate: Instant, pageable: Pageable): List<NomisSyncPayload>
+  fun findByCaseloadIdAndDateRange(caseloadId: String?, startDate: Instant, endDate: Instant, pageable: Pageable): Page<NomisSyncPayloadDto>
 
   @Query(
     """
