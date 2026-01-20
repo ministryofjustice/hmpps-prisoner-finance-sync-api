@@ -119,7 +119,7 @@ class AuditHistoryTest(
 
     val request1 = createSyncOffenderTransactionRequest(caseloadId)
     val request2 = createSyncOffenderTransactionRequest(caseloadId)
-    val requests = listOf(request1, request2)
+    val requests = mutableListOf(request1, request2)
 
     val offenderTransactions = mutableListOf<SyncTransactionReceipt>()
     for (request in requests) {
@@ -137,6 +137,10 @@ class AuditHistoryTest(
       offenderTransactions.add(offenderTransaction)
     }
 
+    // reversed to match page sorting
+    offenderTransactions.reverse()
+    requests.reverse()
+
     val res = webTestClient
       .get()
       .uri("/audit/history?prisonId={prisonId}", caseloadId)
@@ -153,7 +157,7 @@ class AuditHistoryTest(
       .jsonPath("$.first").isEqualTo(true)
       .jsonPath("$.last").isEqualTo(true)
 
-    for (i in 0..1) {
+    for (i in 0..requests.lastIndex) {
       res
         .jsonPath("$.content[$i].synchronizedTransactionId")
         .isEqualTo(offenderTransactions[i].synchronizedTransactionId.toString())
