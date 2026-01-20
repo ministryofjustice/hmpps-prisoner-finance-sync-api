@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
@@ -15,7 +16,7 @@ class AuditHistoryService(
 ) {
 
   fun getPayloadsByCaseloadAndDateRange(prisonId: String?, startDate: LocalDate?, endDate: LocalDate?, page: Int, size: Int): Page<NomisSyncPayloadSummary> {
-    val pageable = PageRequest.of(page, size)
+    val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     val endDateReq = endDate ?: LocalDate.now()
     val startDateReq = startDate ?: endDateReq.minus(30, ChronoUnit.DAYS)
