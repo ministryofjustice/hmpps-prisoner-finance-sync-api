@@ -28,4 +28,10 @@ class AuditHistoryService(
 
     return items
   }
+
+  fun getPayloadBodyByTransactionId(transactionId: Long): String? {
+    val payload = nomisSyncPayloadRepository.findByLegacyTransactionId(transactionId)
+
+    return payload?.body
+  }
 }

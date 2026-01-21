@@ -55,4 +55,6 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   ): Page<NomisSyncPayload>
 
   fun findFirstBySynchronizedTransactionIdOrderByTimestampDesc(synchronizedTransactionId: UUID): NomisSyncPayload?
+
+  fun findByLegacyTransactionId(transactionId: Long): NomisSyncPayload?
 }

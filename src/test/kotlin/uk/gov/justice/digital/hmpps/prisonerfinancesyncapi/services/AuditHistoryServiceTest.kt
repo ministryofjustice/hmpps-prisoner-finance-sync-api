@@ -11,12 +11,15 @@ import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import java.time.Instant
@@ -200,6 +203,45 @@ class AuditHistoryServiceTest {
         eq(expectedEnd),
         eq(pageable),
       )
+    }
+  }
+
+  @Nested
+  inner class GetPayloadBodyByTransactionId {
+    @Test
+    fun `returns payload body when payload exists`() {
+      val legacyTransactionId = 1003L
+      val payload = NomisSyncPayload(
+        timestamp = Instant.now(),
+        legacyTransactionId = legacyTransactionId,
+        requestId = UUID.randomUUID(),
+        caseloadId = uniqueCaseloadId(),
+        requestTypeIdentifier = "NewSyncType",
+        synchronizedTransactionId = UUID.randomUUID(),
+        body = """{"test": "data"}""",
+        transactionTimestamp = Instant.now(),
+      )
+
+      whenever(
+        nomisSyncPayloadRepository.findByLegacyTransactionId(legacyTransactionId),
+      ).thenReturn(payload)
+
+      val result = auditHistoryService.getPayloadBodyByTransactionId(legacyTransactionId)
+
+      assertThat(result).isEqualTo(payload.body)
+    }
+
+    @Test
+    fun `returns null when payload does not exist`() {
+      val legacyTransactionId = 456L
+
+      doReturn(null)
+        .whenever(nomisSyncPayloadRepository)
+        .findByLegacyTransactionId(legacyTransactionId)
+
+      val result = auditHistoryService.getPayloadBodyByTransactionId(legacyTransactionId)
+
+      assertThat(result).isNull()
     }
   }
 }

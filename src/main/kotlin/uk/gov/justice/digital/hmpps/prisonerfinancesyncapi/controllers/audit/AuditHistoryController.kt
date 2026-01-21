@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO
@@ -82,5 +83,57 @@ class AuditHistoryController(
   ): ResponseEntity<Page<NomisSyncPayloadSummary>> {
     val items = auditHistoryService.getPayloadsByCaseloadAndDateRange(prisonId, startDate, endDate, page, size)
     return ResponseEntity.ok(items)
+  }
+
+  @Operation(
+    summary = "Get Payloads",
+    description = "Get a list of synced payloads, including Nomis' legacy IDs",
+  )
+  @GetMapping(
+    path = ["/audit/history/payload/{transactionId}"],
+  )
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "200",
+        description = "Returns the Payload matching the transactionId provided.",
+      ),
+      ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "404",
+        description = "Not Found - No Payload found with transactionId provided",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
+  @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO])
+  @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO}')")
+  fun getPayloadsByCaseloadAndDateRange(
+    @PathVariable
+    transactionId: Long,
+  ): ResponseEntity<String> {
+    val payload =
+      auditHistoryService.getPayloadBodyByTransactionId(transactionId) ?: return ResponseEntity.notFound().build()
+
+    return ResponseEntity.ok(payload)
   }
 }

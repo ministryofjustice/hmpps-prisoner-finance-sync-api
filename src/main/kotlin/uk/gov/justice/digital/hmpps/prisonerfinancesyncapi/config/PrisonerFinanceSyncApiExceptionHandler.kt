@@ -12,6 +12,7 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
@@ -32,6 +33,24 @@ class PrisonerFinanceSyncApiExceptionHandler {
           developerMessage = developerMessage,
         ),
       ).also { log.info("Bad request - HttpMessageNotReadableException: {}", e.message) }
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException::class)
+  fun handleMethodArgumentTypeMismatchException(e: MethodArgumentTypeMismatchException): ResponseEntity<ErrorResponse> {
+    val paramName = e.propertyName ?: e.parameter.parameterName
+    val requiredType = e.requiredType?.simpleName ?: "the correct type"
+
+    val userMessage = "Parameter '$paramName' must be of type $requiredType"
+
+    return ResponseEntity
+      .status(BAD_REQUEST)
+      .body(
+        ErrorResponse(
+          status = BAD_REQUEST,
+          userMessage = userMessage,
+          developerMessage = e.message,
+        ),
+      ).also { log.info("MethodArgumentTypeMismatchException: {}", e.message) }
   }
 
   @ExceptionHandler(MethodArgumentNotValidException::class)
