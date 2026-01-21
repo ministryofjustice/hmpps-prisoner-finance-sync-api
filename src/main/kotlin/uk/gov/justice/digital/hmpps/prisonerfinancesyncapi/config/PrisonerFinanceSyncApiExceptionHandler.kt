@@ -37,8 +37,8 @@ class PrisonerFinanceSyncApiExceptionHandler {
 
   @ExceptionHandler(MethodArgumentTypeMismatchException::class)
   fun handleMethodArgumentTypeMismatchException(e: MethodArgumentTypeMismatchException): ResponseEntity<ErrorResponse> {
-    val paramName = e.propertyName ?: e.parameter.parameterName
-    val requiredType = e.requiredType?.simpleName ?: "the correct type"
+    val paramName = e.parameter.parameterName
+    val requiredType = e.parameter.parameterType.simpleName
 
     val userMessage = "Parameter '$paramName' must be of type $requiredType"
 
