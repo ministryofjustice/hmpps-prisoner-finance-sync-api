@@ -1,5 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.audit
 
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
@@ -9,6 +11,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuild
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class AuditHistoryPayloadTest(
@@ -38,7 +41,22 @@ class AuditHistoryPayloadTest(
       .exchange()
       .expectStatus().isOk
       .expectBody(NomisSyncPayload::class.java)
-      .isEqualTo(payload)
+      .consumeWith { response ->
+        val body = response.responseBody!!
+
+        assertThat(body.id).isNotNull
+        assertThat(body.requestId).isEqualTo(payload.requestId)
+        assertThat(body.legacyTransactionId).isEqualTo(payload.legacyTransactionId)
+        assertThat(body.caseloadId).isEqualTo(payload.caseloadId)
+        assertThat(body.requestTypeIdentifier).isEqualTo(payload.requestTypeIdentifier)
+        assertThat(body.body).isEqualTo(payload.body)
+
+        assertThat(body.timestamp)
+          .isCloseTo(payload.timestamp, within(1, ChronoUnit.MILLIS))
+
+        assertThat(body.transactionTimestamp)
+          .isCloseTo(payload.transactionTimestamp, within(1, ChronoUnit.MILLIS))
+      }
   }
 
   @Test
