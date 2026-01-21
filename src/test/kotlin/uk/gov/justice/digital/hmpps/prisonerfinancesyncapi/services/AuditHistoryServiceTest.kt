@@ -228,7 +228,7 @@ class AuditHistoryServiceTest {
 
       val result = auditHistoryService.getPayloadBodyByRequestId(requestId)
 
-      assertThat(result).isEqualTo(payload.body)
+      assertThat(result).isEqualTo(payload)
     }
 
     @Test

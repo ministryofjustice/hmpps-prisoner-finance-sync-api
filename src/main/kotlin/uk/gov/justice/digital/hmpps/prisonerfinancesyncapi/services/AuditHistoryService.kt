@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayloadDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import java.time.LocalDate
@@ -30,9 +31,9 @@ class AuditHistoryService(
     return items
   }
 
-  fun getPayloadBodyByRequestId(transactionId: UUID): String? {
+  fun getPayloadBodyByRequestId(transactionId: UUID): NomisSyncPayloadDetails? {
     val payload = nomisSyncPayloadRepository.findByRequestId(transactionId)
 
-    return payload?.body
+    return payload
   }
 }

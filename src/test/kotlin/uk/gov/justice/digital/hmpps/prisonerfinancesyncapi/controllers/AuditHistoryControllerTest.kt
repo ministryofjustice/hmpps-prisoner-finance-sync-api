@@ -13,6 +13,7 @@ import org.mockito.kotlin.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.audit.AuditHistoryController
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryServiceTest
@@ -20,6 +21,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
+import kotlin.time.Clock.System.now
 
 @ExtendWith(MockitoExtension::class)
 @DisplayName("PayloadsViewController")
@@ -84,7 +86,16 @@ class AuditHistoryControllerTest {
     fun `should return a payload when repository has a payload`() {
       val requestId = UUID.randomUUID()
       val legacyTransactionId = 1L
-      val payload = "{ \"test\": \"data\" }"
+      val payload = NomisSyncPayload(
+        timestamp = Instant.now(),
+        legacyTransactionId = 1001,
+        requestId = requestId,
+        caseloadId = "MDI",
+        requestTypeIdentifier = "TEST",
+        synchronizedTransactionId = UUID.randomUUID(),
+        body = """{"transactionId":1001,"caseloadId":"MDI","offenderId":123,"eventType":"SyncOffenderTransaction"}""",
+        transactionTimestamp = Instant.now(),
+      )
       val payloads = listOf(createNomisSyncPayloadDto(legacyTransactionId, requestId = requestId, caseloadId = caseloadId))
       `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
         .thenReturn(payload)

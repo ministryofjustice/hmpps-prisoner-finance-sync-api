@@ -37,8 +37,8 @@ class AuditHistoryPayloadTest(
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
-      .expectBody(String::class.java)
-      .isEqualTo(payload.body)
+      .expectBody(NomisSyncPayload::class.java)
+      .isEqualTo(payload)
   }
 
   @Test

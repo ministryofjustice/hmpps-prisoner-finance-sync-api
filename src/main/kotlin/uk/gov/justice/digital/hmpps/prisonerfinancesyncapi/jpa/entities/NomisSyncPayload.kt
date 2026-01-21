@@ -11,35 +11,47 @@ import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.UUID
 
+interface NomisSyncPayloadDetails {
+  val id: Long?
+  val timestamp: Instant
+  val legacyTransactionId: Long?
+  val synchronizedTransactionId: UUID
+  val requestId: UUID
+  val caseloadId: String?
+  val requestTypeIdentifier: String?
+  val transactionTimestamp: Instant?
+  val body: String
+}
+
 @Entity
 @Table(name = "nomis_sync_payloads")
 data class NomisSyncPayload(
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  var id: Long? = null,
+  override var id: Long? = null,
 
   @Column(name = "timestamp", nullable = false)
-  val timestamp: Instant,
+  override val timestamp: Instant,
 
   @Column(name = "legacy_transaction_id")
-  val legacyTransactionId: Long?,
+  override val legacyTransactionId: Long?,
 
   @Column(name = "synchronized_transaction_id")
-  val synchronizedTransactionId: UUID,
+  override val synchronizedTransactionId: UUID,
 
   @Column(name = "request_id", unique = true)
-  val requestId: UUID,
+  override val requestId: UUID,
 
   @Column(name = "caseload_id")
-  val caseloadId: String?,
+  override val caseloadId: String?,
 
   @Column(name = "request_type_identifier")
-  val requestTypeIdentifier: String?,
+  override val requestTypeIdentifier: String?,
 
   @Column(name = "transaction_timestamp")
-  val transactionTimestamp: Instant? = null,
+  override val transactionTimestamp: Instant? = null,
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column
-  val body: String,
-)
+  override val body: String,
+) : NomisSyncPayloadDetails
