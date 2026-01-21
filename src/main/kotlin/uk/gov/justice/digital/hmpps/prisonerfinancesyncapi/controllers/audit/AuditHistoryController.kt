@@ -127,7 +127,7 @@ class AuditHistoryController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO}')")
-  fun getPayloadsByCaseloadAndDateRange(
+  fun getPayloadByTransactionId(
     @PathVariable
     transactionId: Long,
   ): ResponseEntity<String> {
