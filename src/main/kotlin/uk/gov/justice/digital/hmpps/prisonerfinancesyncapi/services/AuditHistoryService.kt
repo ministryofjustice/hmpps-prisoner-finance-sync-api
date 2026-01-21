@@ -8,6 +8,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Nomi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 @Service
 class AuditHistoryService(
@@ -29,8 +30,8 @@ class AuditHistoryService(
     return items
   }
 
-  fun getPayloadBodyByTransactionId(transactionId: Long): String? {
-    val payload = nomisSyncPayloadRepository.findByLegacyTransactionId(transactionId)
+  fun getPayloadBodyByRequestId(transactionId: UUID): String? {
+    val payload = nomisSyncPayloadRepository.findByRequestId(transactionId)
 
     return payload?.body
   }

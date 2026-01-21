@@ -26,6 +26,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyn
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
+import java.util.UUID
 
 @Tag(name = TAG_AUDIT)
 @RestController
@@ -90,7 +91,7 @@ class AuditHistoryController(
     description = "Get a list of synced payloads, including Nomis' legacy IDs",
   )
   @GetMapping(
-    path = ["/audit/history/payload/{transactionId}"],
+    path = ["/audit/history/{requestId}"],
   )
   @ApiResponses(
     value = [
@@ -129,10 +130,10 @@ class AuditHistoryController(
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO}')")
   fun getPayloadByTransactionId(
     @PathVariable
-    transactionId: Long,
+    requestId: UUID,
   ): ResponseEntity<String> {
     val payload =
-      auditHistoryService.getPayloadBodyByTransactionId(transactionId) ?: return ResponseEntity.notFound().build()
+      auditHistoryService.getPayloadBodyByRequestId(requestId) ?: return ResponseEntity.notFound().build()
 
     return ResponseEntity.ok(payload)
   }

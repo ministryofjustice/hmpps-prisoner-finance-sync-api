@@ -82,29 +82,30 @@ class AuditHistoryControllerTest {
 
     @Test
     fun `should return a payload when repository has a payload`() {
+      val requestId = UUID.randomUUID()
       val legacyTransactionId = 1L
       val payload = "{ \"test\": \"data\" }"
-      val payloads = listOf(createNomisSyncPayloadDto(legacyTransactionId, caseloadId))
-      `when`(auditHistoryService.getPayloadBodyByTransactionId(legacyTransactionId))
+      val payloads = listOf(createNomisSyncPayloadDto(legacyTransactionId, requestId = requestId, caseloadId = caseloadId))
+      `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
         .thenReturn(payload)
 
-      val response = auditHistoryController.getPayloadByTransactionId(legacyTransactionId)
+      val response = auditHistoryController.getPayloadByTransactionId(requestId)
 
       assertThat(response.body).isEqualTo(payload)
-      verify(auditHistoryService).getPayloadBodyByTransactionId(legacyTransactionId)
+      verify(auditHistoryService).getPayloadBodyByRequestId(requestId)
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
     }
 
     @Test
     fun `should throw NotFound when no payload is found`() {
-      val legacyTransactionId = 1L
-      `when`(auditHistoryService.getPayloadBodyByTransactionId(legacyTransactionId))
+      val requestId = UUID.randomUUID()
+      `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
         .thenReturn(null)
 
-      val response = auditHistoryController.getPayloadByTransactionId(legacyTransactionId)
+      val response = auditHistoryController.getPayloadByTransactionId(requestId)
 
       assertThat(response.body).isNull()
-      verify(auditHistoryService).getPayloadBodyByTransactionId(legacyTransactionId)
+      verify(auditHistoryService).getPayloadBodyByRequestId(requestId)
       assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }
