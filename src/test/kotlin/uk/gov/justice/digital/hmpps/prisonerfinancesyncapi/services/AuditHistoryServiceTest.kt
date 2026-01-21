@@ -155,14 +155,14 @@ class AuditHistoryServiceTest {
         eq("MDI"),
         eq(expectedStart),
         endDateCaptor.capture(),
-        any(),
+        eq(pageable),
       )
 
       assertThat(endDateCaptor.firstValue).isEqualTo(expectedEnd)
     }
 
     @Test
-    fun `Should defaults startDate to 1 day before endDate when ONLY startDate is null `() {
+    fun `Should defaults startDate to 30 days before endDate when ONLY startDate is null`() {
       val fixedEnd = LocalDate.parse("2026-02-01")
       val startDateCaptor = argumentCaptor<Instant>()
 
@@ -176,7 +176,7 @@ class AuditHistoryServiceTest {
         eq("MDI"),
         startDateCaptor.capture(),
         eq(expectedEnd),
-        any(),
+        eq(pageable),
       )
 
       assertThat(startDateCaptor.firstValue).isEqualTo(timeConversionService.toUtcStartOfDay(fixedEnd.minus(30, ChronoUnit.DAYS)))
@@ -198,7 +198,7 @@ class AuditHistoryServiceTest {
         eq("MDI"),
         eq(expectedStart),
         eq(expectedEnd),
-        any(),
+        eq(pageable),
       )
     }
   }

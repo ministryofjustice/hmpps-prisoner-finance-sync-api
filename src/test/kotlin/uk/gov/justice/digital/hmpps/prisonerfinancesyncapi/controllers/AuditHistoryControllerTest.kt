@@ -9,6 +9,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.audit.AuditHistoryController
@@ -67,6 +68,9 @@ class AuditHistoryControllerTest {
 
       val response = auditHistoryController.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
 
+      assertThat(response.body?.content).hasSize(1)
+      assertThat(response.body?.content?.get(0)?.legacyTransactionId).isEqualTo(1L)
+      verify(auditHistoryService).getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
       assertThat(response.body).isEqualTo(PageImpl(payloads))
     }

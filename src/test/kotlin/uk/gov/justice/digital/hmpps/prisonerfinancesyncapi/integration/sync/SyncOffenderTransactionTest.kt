@@ -7,11 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.createSyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
 import java.time.LocalDateTime
-import java.util.UUID
 
 class SyncOffenderTransactionTest : IntegrationTestBase() {
 
@@ -29,21 +27,23 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
 
   @Test
   fun `403 forbidden - does not have the right role`() {
+    val caseloadId = uniqueCaseloadId()
     webTestClient
       .post()
       .uri("/sync/offender-transactions")
       .accept(MediaType.APPLICATION_JSON)
       .contentType(MediaType.APPLICATION_JSON)
       .headers(setAuthorisation(roles = listOf("SOME_OTHER_ROLE")))
-      .bodyValue(createSyncOffenderTransactionRequest())
+      .bodyValue(createSyncOffenderTransactionRequest(caseloadId))
       .exchange()
       .expectStatus().isForbidden
   }
 
   @Test
   fun `201 Created - when transaction is new`() {
-    val newTransactionRequest = createSyncOffenderTransactionRequest()
+    val caseloadId = uniqueCaseloadId()
 
+    val newTransactionRequest = createSyncOffenderTransactionRequest(caseloadId)
     webTestClient
       .post()
       .uri("/sync/offender-transactions")
@@ -59,9 +59,11 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
 
   @Test
   fun `400 Bad Request - missing required requestId`() {
+    val caseloadId = uniqueCaseloadId()
+
     val invalidMap = mapOf(
       "transactionId" to 1234,
-      "caseloadId" to "GMI",
+      "caseloadId" to caseloadId,
       "transactionTimestamp" to LocalDateTime.now(),
       "createdAt" to LocalDateTime.now(),
       "createdBy" to "TESTUSER",
@@ -92,7 +94,9 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
   @Test
   fun `400 Bad Request - createdBy too long`() {
     val longString = "A".repeat(33)
-    val request = createSyncOffenderTransactionRequest().copy(createdBy = longString)
+    val caseloadId = uniqueCaseloadId()
+
+    val request = createSyncOffenderTransactionRequest(caseloadId).copy(createdBy = longString)
 
     webTestClient
       .post()
@@ -106,37 +110,5 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
       .expectBody()
       .jsonPath("$.userMessage").isEqualTo("Validation failure")
       .jsonPath("$.developerMessage").isEqualTo("Validation failed: createdBy: Created by must be supplied and be <= 32 characters")
-  }
-  companion object {
-    fun createSyncOffenderTransactionRequest(caseloadId: String = "GMI"): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
-      transactionId = (1..Long.MAX_VALUE).random(),
-      requestId = UUID.randomUUID(),
-      caseloadId = caseloadId,
-      transactionTimestamp = LocalDateTime.now(),
-      createdAt = LocalDateTime.now().minusHours(1),
-      createdBy = "JD12345",
-      createdByDisplayName = "J Doe",
-      lastModifiedAt = null,
-      lastModifiedBy = null,
-      lastModifiedByDisplayName = null,
-      offenderTransactions = listOf(
-        OffenderTransaction(
-          entrySequence = 1,
-          offenderId = 1015388L,
-          offenderDisplayId = "AA001AA",
-          offenderBookingId = 455987L,
-          subAccountType = "REG",
-          postingType = "DR",
-          type = "OT",
-          description = "Sub-Account Transfer",
-          amount = 162.00,
-          reference = null,
-          generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 162.00),
-            GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 162.00),
-          ),
-        ),
-      ),
-    )
   }
 }

@@ -8,7 +8,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync.SyncOffenderTransactionTest.Companion.createSyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.createSyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
@@ -19,12 +20,12 @@ import java.util.UUID
 class AuditHistoryTest(
   @param:Autowired val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
 ) : IntegrationTestBase() {
-
   @Test
   fun `Get History should return an empty list when there aren't any payloads`() {
+    val caseloadId = uniqueCaseloadId()
     webTestClient
       .get()
-      .uri("/audit/history?prisonId={prisonId}", "XXX")
+      .uri("/audit/history?prisonId={prisonId}", caseloadId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
@@ -49,18 +50,20 @@ class AuditHistoryTest(
 
   @Test
   fun `401 unauthorised`() {
+    val caseloadId = uniqueCaseloadId()
     webTestClient
       .get()
-      .uri("/audit/history?prisonId={prisonId}", "XXX")
+      .uri("/audit/history?prisonId={prisonId}", caseloadId)
       .exchange()
       .expectStatus().isUnauthorized
   }
 
   @Test
   fun `403 forbidden - does not have the right role`() {
+    val caseloadId = uniqueCaseloadId()
     webTestClient
       .get()
-      .uri("/audit/history?prisonId={prisonId}", "XXX")
+      .uri("/audit/history?prisonId={prisonId}", caseloadId)
       .accept(MediaType.APPLICATION_JSON)
       .headers(setAuthorisation(roles = listOf("SOME_OTHER_ROLE")))
       .exchange()
@@ -69,7 +72,7 @@ class AuditHistoryTest(
 
   @Test
   fun `Get History should return a list with a payload`() {
-    val caseloadId = "XYZ"
+    val caseloadId = uniqueCaseloadId()
     val request = createSyncOffenderTransactionRequest(caseloadId)
 
     val offenderTransaction: SyncTransactionReceipt = webTestClient
@@ -116,7 +119,7 @@ class AuditHistoryTest(
 
   @Test
   fun `Get History should return a list with multiple payloads`() {
-    val caseloadId = "ZZZ"
+    val caseloadId = uniqueCaseloadId()
 
     val request1 = createSyncOffenderTransactionRequest(caseloadId)
     val request2 = createSyncOffenderTransactionRequest(caseloadId)
@@ -178,7 +181,7 @@ class AuditHistoryTest(
 
   @Test
   fun `Get History with no dates defaults to last 30 days`() {
-    val caseloadId = "LLL"
+    val caseloadId = uniqueCaseloadId()
 
     val recentPayload = NomisSyncPayload(
       timestamp = Instant.now(),
@@ -217,7 +220,7 @@ class AuditHistoryTest(
 
   @Test
   fun `Get History with startDate only defaults endDate to today`() {
-    val caseloadId = "CCC"
+    val caseloadId = uniqueCaseloadId()
     val startDate = LocalDate.now()
 
     val todayPayload = NomisSyncPayload(
@@ -274,7 +277,7 @@ class AuditHistoryTest(
 
   @Test
   fun `Get History with endDate only defaults startDate to 30 days before endDate`() {
-    val caseloadId = "JKL"
+    val caseloadId = uniqueCaseloadId()
     val endDate = LocalDate.now()
 
     val todayPayload = NomisSyncPayload(
@@ -332,7 +335,7 @@ class AuditHistoryTest(
 
   @Test
   fun `Get History with startDate and endDate only returns payloads in range`() {
-    val caseloadId = "MNO"
+    val caseloadId = uniqueCaseloadId()
     val startDate = LocalDate.now().minusDays(1)
     val endDate = LocalDate.now().plusDays(1)
 
@@ -379,7 +382,7 @@ class AuditHistoryTest(
 
   @Test
   fun `Get History return payloads in Desc order`() {
-    val caseloadId = "FGH"
+    val caseloadId = uniqueCaseloadId()
     val startDate = LocalDate.now().minusDays(30)
     val endDate = LocalDate.now()
 
