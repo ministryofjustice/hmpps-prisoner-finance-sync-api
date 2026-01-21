@@ -37,7 +37,7 @@ class AuditHistoryController(
 ) {
   @Operation(
     summary = "Get Audit History",
-    description = "Get a list of synced payloads, including Nomis' legacy IDs",
+    description = "Get a list of synced payloads, including NOMIS' legacy IDs",
   )
   @GetMapping(
     path = ["/audit/history"],
@@ -89,7 +89,7 @@ class AuditHistoryController(
 
   @Operation(
     summary = "Get Payloads",
-    description = "Get a list of synced payloads, including Nomis' legacy IDs",
+    description = "Get a list of synced payloads, including NOMIS' legacy IDs",
   )
   @GetMapping(
     path = ["/audit/history/{requestId}"],
