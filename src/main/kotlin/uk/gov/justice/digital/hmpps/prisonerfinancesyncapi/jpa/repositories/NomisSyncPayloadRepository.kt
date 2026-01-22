@@ -28,11 +28,12 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
           n.requestId as requestId,
           n.transactionTimestamp as transactionTimestamp
         FROM NomisSyncPayload n 
-        WHERE (:prisonId IS NULL OR n.caseloadId = :prisonId)
-        AND (n.timestamp between :startDate AND :endDate)
+        WHERE (:prisonId IS NULL OR n.caseloadId = :prisonId) AND
+              (CAST(:startDate AS timestamp) IS NULL OR n.timestamp >= :startDate) AND
+              (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate)
     """,
   )
-  fun findByCaseloadIdAndDateRange(prisonId: String?, startDate: Instant, endDate: Instant, pageable: Pageable): Page<NomisSyncPayloadSummary>
+  fun findByCaseloadIdAndDateRange(prisonId: String?, startDate: Instant?, endDate: Instant?, pageable: Pageable): Page<NomisSyncPayloadSummary>
 
   @Query(
     """

@@ -180,7 +180,7 @@ class AuditHistoryTest(
   }
 
   @Test
-  fun `Get History with no dates defaults to last 30 days`() {
+  fun `Get History with no dates returns any payload`() {
     val caseloadId = uniqueCaseloadId()
 
     val recentPayload = NomisSyncPayload(
@@ -195,7 +195,7 @@ class AuditHistoryTest(
     )
 
     val oldPayload = NomisSyncPayload(
-      timestamp = Instant.now().minus(31, java.time.temporal.ChronoUnit.DAYS),
+      timestamp = Instant.EPOCH,
       legacyTransactionId = 1003,
       requestId = UUID.randomUUID(),
       caseloadId = caseloadId,
@@ -214,12 +214,13 @@ class AuditHistoryTest(
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.content.length()").isEqualTo(1)
+      .jsonPath("$.content.length()").isEqualTo(2)
       .jsonPath("$.content[0].synchronizedTransactionId").isEqualTo(recentPayload.synchronizedTransactionId.toString())
+      .jsonPath("$.content[1].synchronizedTransactionId").isEqualTo(oldPayload.synchronizedTransactionId.toString())
   }
 
   @Test
-  fun `Get History with startDate only defaults endDate to today`() {
+  fun `Get History with startDate only returns any payload after it`() {
     val caseloadId = uniqueCaseloadId()
     val startDate = LocalDate.now()
 
@@ -245,20 +246,8 @@ class AuditHistoryTest(
       transactionTimestamp = Instant.now(),
     )
 
-    val futurePayload = NomisSyncPayload(
-      timestamp = Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS),
-      legacyTransactionId = 1003,
-      requestId = UUID.randomUUID(),
-      caseloadId = caseloadId,
-      requestTypeIdentifier = "NewSyncType",
-      synchronizedTransactionId = UUID.randomUUID(),
-      body = """{"new": "data"}""",
-      transactionTimestamp = Instant.now(),
-    )
-
     nomisSyncPayloadRepository.save(todayPayload)
     nomisSyncPayloadRepository.save(pastPayload)
-    nomisSyncPayloadRepository.save(futurePayload)
 
     webTestClient.get()
       .uri {
@@ -276,7 +265,7 @@ class AuditHistoryTest(
   }
 
   @Test
-  fun `Get History with endDate only defaults startDate to 30 days before endDate`() {
+  fun `Get History with endDate returns any payload before it`() {
     val caseloadId = uniqueCaseloadId()
     val endDate = LocalDate.now()
 
@@ -291,8 +280,8 @@ class AuditHistoryTest(
       transactionTimestamp = Instant.now(),
     )
 
-    val pastPayloadWithin30days = NomisSyncPayload(
-      timestamp = Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS),
+    val futurePayload = NomisSyncPayload(
+      timestamp = Instant.now().plus(1, java.time.temporal.ChronoUnit.DAYS),
       legacyTransactionId = 1003,
       requestId = UUID.randomUUID(),
       caseloadId = caseloadId,
@@ -302,8 +291,8 @@ class AuditHistoryTest(
       transactionTimestamp = Instant.now(),
     )
 
-    val pastPayloadOlderThan30Days = NomisSyncPayload(
-      timestamp = Instant.now().minus(31, java.time.temporal.ChronoUnit.DAYS),
+    val veryOldPayload = NomisSyncPayload(
+      timestamp = Instant.EPOCH.plus(1, java.time.temporal.ChronoUnit.DAYS),
       legacyTransactionId = 1003,
       requestId = UUID.randomUUID(),
       caseloadId = caseloadId,
@@ -314,8 +303,8 @@ class AuditHistoryTest(
     )
 
     nomisSyncPayloadRepository.save(todayPayload)
-    nomisSyncPayloadRepository.save(pastPayloadWithin30days)
-    nomisSyncPayloadRepository.save(pastPayloadOlderThan30Days)
+    nomisSyncPayloadRepository.save(futurePayload)
+    nomisSyncPayloadRepository.save(veryOldPayload)
 
     webTestClient.get()
       .uri {
@@ -330,7 +319,7 @@ class AuditHistoryTest(
       .expectBody()
       .jsonPath("$.content.length()").isEqualTo(2)
       .jsonPath("$.content[0].synchronizedTransactionId").isEqualTo(todayPayload.synchronizedTransactionId.toString())
-      .jsonPath("$.content[1].synchronizedTransactionId").isEqualTo(pastPayloadWithin30days.synchronizedTransactionId.toString())
+      .jsonPath("$.content[1].synchronizedTransactionId").isEqualTo(veryOldPayload.synchronizedTransactionId.toString())
   }
 
   @Test
