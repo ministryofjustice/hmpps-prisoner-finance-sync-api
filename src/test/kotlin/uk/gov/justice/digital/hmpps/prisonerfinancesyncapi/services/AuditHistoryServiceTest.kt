@@ -166,7 +166,7 @@ class AuditHistoryServiceTest {
     }
 
     @Test
-    fun `Should defaults startDate to EPOCH when ONLY startDate is null`() {
+    fun `Should pass null startDate when start date is null`() {
       val fixedEnd = LocalDate.parse("2026-02-01")
       val startDateCaptor = argumentCaptor<Instant>()
 
