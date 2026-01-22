@@ -78,12 +78,14 @@ class AuditHistoryController(
       regexp = VALIDATION_REGEX_PRISON_ID,
       message = VALIDATION_MESSAGE_PRISON_ID,
     ) prisonId: String?,
+    @RequestParam(required = false)
+    legacyTransactionId: Long?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate?,
     @RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "20") size: Int,
   ): ResponseEntity<Page<NomisSyncPayloadSummary>> {
-    val items = auditHistoryService.getPayloadsByCaseloadAndDateRange(prisonId, startDate, endDate, page, size)
+    val items = auditHistoryService.getPayloadsByCaseloadAndDateRange(prisonId, legacyTransactionId, startDate, endDate, page, size)
     return ResponseEntity.ok(items)
   }
 

@@ -64,14 +64,14 @@ class AuditHistoryControllerTest {
       val size = 10
 
       val payloads = listOf(createNomisSyncPayloadDto(1, caseloadId))
-      `when`(auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size))
+      `when`(auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, null, startDate, endDate, page, size))
         .thenReturn(PageImpl(payloads))
 
-      val response = auditHistoryController.getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
+      val response = auditHistoryController.getPayloadsByCaseloadAndDateRange(caseloadId, null, startDate, endDate, page, size)
 
       assertThat(response.body?.content).hasSize(1)
       assertThat(response.body?.content?.get(0)?.legacyTransactionId).isEqualTo(1L)
-      verify(auditHistoryService).getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
+      verify(auditHistoryService).getPayloadsByCaseloadAndDateRange(caseloadId, null, startDate, endDate, page, size)
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
       assertThat(response.body).isEqualTo(PageImpl(payloads))
     }
