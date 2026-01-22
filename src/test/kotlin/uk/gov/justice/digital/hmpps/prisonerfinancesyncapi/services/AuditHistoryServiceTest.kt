@@ -7,9 +7,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.lenient
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
@@ -24,7 +26,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyn
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.toDetail
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
@@ -120,61 +121,70 @@ class AuditHistoryServiceTest {
     }
 
     @Test
-    fun `Should default to EPOCH to start of tomorrow when BOTH dates are null`() {
-      whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
-        .thenReturn(PageImpl(emptyList()))
+    fun `Should pass BOTH dates as null to findByCaseloadIdAndDateRange`() {
+      val endDateCaptor = argumentCaptor<Instant>()
+      val startDateCaptor = argumentCaptor<Instant>()
+
+      lenient().doReturn(PageImpl(emptyList()))
+        .`when`(nomisSyncPayloadRepository)
+        .findByCaseloadIdAndDateRange(any(), any(), any(), any())
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, null, page, size)
 
-      val expectedStart = Instant.EPOCH
-      val expectedEnd = LocalDate.now()
-        .plusDays(1)
-        .atStartOfDay(ZoneOffset.UTC)
-        .toInstant()
-
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
         eq("MDI"),
-        eq(expectedStart),
-        eq(expectedEnd),
+        startDateCaptor.capture(),
+        endDateCaptor.capture(),
         eq(pageable),
       )
+
+      assertThat(startDateCaptor.firstValue).isNull()
+      assertThat(endDateCaptor.firstValue).isNull()
     }
 
     @Test
-    fun `Should defaults endDate to now when ONLY endDate is null`() {
+    fun `Should pass null endDate to findByCaseloadIdAndDateRange`() {
       val fixedStart = LocalDate.parse("2026-01-01")
+      val endDateCaptor = argumentCaptor<Instant>()
 
-      whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
-        .thenReturn(PageImpl(emptyList()))
+      lenient().doReturn(PageImpl(emptyList()))
+        .`when`(nomisSyncPayloadRepository)
+        .findByCaseloadIdAndDateRange(any(), any(), any(), any())
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", fixedStart, null, page, size)
 
       val expectedStart = timeConversionService.toUtcStartOfDay(fixedStart)
-      val expectedEnd = timeConversionService.toUtcStartOfDay(LocalDate.now().plusDays(1))
+
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
         eq("MDI"),
         eq(expectedStart),
-        eq(expectedEnd),
+        endDateCaptor.capture(),
         eq(pageable),
       )
+
+      assertThat(endDateCaptor.firstValue).isNull()
     }
 
     @Test
     fun `Should defaults startDate to EPOCH when ONLY startDate is null`() {
       val fixedEnd = LocalDate.parse("2026-02-01")
+      val startDateCaptor = argumentCaptor<Instant>()
 
-      whenever(nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(any(), any(), any(), any()))
-        .thenReturn(PageImpl(emptyList()))
+      lenient().doReturn(PageImpl(emptyList()))
+        .`when`(nomisSyncPayloadRepository)
+        .findByCaseloadIdAndDateRange(any(), any(), any(), any())
 
       auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, fixedEnd, page, size)
 
       val expectedEnd = timeConversionService.toUtcStartOfDay(fixedEnd.plusDays(1))
       verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
         eq("MDI"),
-        eq(Instant.EPOCH),
+        startDateCaptor.capture(),
         eq(expectedEnd),
         eq(pageable),
       )
+
+      assertThat(startDateCaptor.firstValue).isNull()
     }
 
     @Test

@@ -9,7 +9,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyn
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.toDetail
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.util.UUID
 
 @Service
@@ -21,18 +20,10 @@ class AuditHistoryService(
   fun getPayloadsByCaseloadAndDateRange(prisonId: String?, startDate: LocalDate?, endDate: LocalDate?, page: Int, size: Int): Page<NomisSyncPayloadSummary> {
     val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"))
 
-    val startOfStartDate = (startDate ?: LocalDate.of(1970, 1, 1))
-      .atStartOfDay(ZoneOffset.UTC)
-      .toInstant()
+    val startOfStartDate = startDate?.let { timeConversionService.toUtcStartOfDay(startDate) }
+    val endOfEndDate = endDate?.let { timeConversionService.toUtcStartOfDay(endDate.plusDays(1)) }
 
-    val endOfEndDate = (endDate ?: LocalDate.now())
-      .plusDays(1)
-      .atStartOfDay(ZoneOffset.UTC)
-      .toInstant()
-
-    val items = nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(prisonId, startOfStartDate, endOfEndDate, pageable)
-
-    return items
+    return nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(prisonId, startOfStartDate, endOfEndDate, pageable)
   }
 
   fun getPayloadBodyByRequestId(requestId: UUID): NomisSyncPayloadDetail? = nomisSyncPayloadRepository.findByRequestId(requestId)?.toDetail()
