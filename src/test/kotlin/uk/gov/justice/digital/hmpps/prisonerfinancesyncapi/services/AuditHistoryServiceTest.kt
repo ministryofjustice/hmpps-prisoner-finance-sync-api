@@ -22,6 +22,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuild
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.toDetail
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -228,7 +229,7 @@ class AuditHistoryServiceTest {
 
       val result = auditHistoryService.getPayloadBodyByRequestId(requestId)
 
-      assertThat(result).isEqualTo(payload)
+      assertThat(result).isEqualTo(payload.toDetail())
     }
 
     @Test

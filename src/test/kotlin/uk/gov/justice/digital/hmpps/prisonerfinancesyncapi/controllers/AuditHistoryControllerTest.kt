@@ -13,7 +13,7 @@ import org.mockito.kotlin.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.audit.AuditHistoryController
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryServiceTest
@@ -85,7 +85,7 @@ class AuditHistoryControllerTest {
     fun `should return a payload when repository has a payload`() {
       val requestId = UUID.randomUUID()
       val legacyTransactionId = 1L
-      val payload = NomisSyncPayload(
+      val payload = NomisSyncPayloadDetail(
         timestamp = Instant.now(),
         legacyTransactionId = 1001,
         requestId = requestId,
@@ -95,7 +95,6 @@ class AuditHistoryControllerTest {
         body = """{"transactionId":1001,"caseloadId":"MDI","offenderId":123,"eventType":"SyncOffenderTransaction"}""",
         transactionTimestamp = Instant.now(),
       )
-      val payloads = listOf(createNomisSyncPayloadDto(legacyTransactionId, requestId = requestId, caseloadId = caseloadId))
       `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
         .thenReturn(payload)
 

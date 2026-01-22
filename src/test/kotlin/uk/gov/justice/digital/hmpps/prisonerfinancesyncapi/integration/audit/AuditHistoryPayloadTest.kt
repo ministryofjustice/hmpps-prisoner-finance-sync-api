@@ -10,6 +10,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -40,11 +41,10 @@ class AuditHistoryPayloadTest(
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
       .expectStatus().isOk
-      .expectBody(NomisSyncPayload::class.java)
+      .expectBody(NomisSyncPayloadDetail::class.java)
       .consumeWith { response ->
         val body = response.responseBody!!
 
-        assertThat(body.id).isNotNull
         assertThat(body.requestId).isEqualTo(payload.requestId)
         assertThat(body.legacyTransactionId).isEqualTo(payload.legacyTransactionId)
         assertThat(body.caseloadId).isEqualTo(payload.caseloadId)

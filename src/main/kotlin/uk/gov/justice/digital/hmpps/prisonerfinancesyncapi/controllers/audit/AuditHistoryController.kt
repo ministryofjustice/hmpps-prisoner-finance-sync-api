@@ -22,7 +22,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_AUDIT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISON_ID
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayloadDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
@@ -132,7 +132,7 @@ class AuditHistoryController(
   fun getPayloadByRequestId(
     @PathVariable
     requestId: UUID,
-  ): ResponseEntity<NomisSyncPayloadDetails> {
+  ): ResponseEntity<NomisSyncPayloadDetail> {
     val payload =
       auditHistoryService.getPayloadBodyByRequestId(requestId) ?: return ResponseEntity.notFound().build()
 
