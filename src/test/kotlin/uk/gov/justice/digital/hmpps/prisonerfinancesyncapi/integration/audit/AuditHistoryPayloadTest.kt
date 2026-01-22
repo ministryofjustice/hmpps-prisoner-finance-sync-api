@@ -60,7 +60,7 @@ class AuditHistoryPayloadTest(
   }
 
   @Test
-  fun `Get history payload should return 400 BAD request when requestId is not Long`() {
+  fun `Get history payload should return 400 BAD request when requestId is not the correct type`() {
     webTestClient
       .get()
       .uri("/audit/history/{requestId}", "breakingwithastring")

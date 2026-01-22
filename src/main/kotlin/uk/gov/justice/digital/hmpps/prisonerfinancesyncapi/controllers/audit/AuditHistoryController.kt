@@ -98,7 +98,7 @@ class AuditHistoryController(
     value = [
       ApiResponse(
         responseCode = "200",
-        description = "Returns the Payload matching the transactionId provided.",
+        description = "Returns the Payload matching the requestId provided.",
       ),
       ApiResponse(
         responseCode = "400",
@@ -117,7 +117,7 @@ class AuditHistoryController(
       ),
       ApiResponse(
         responseCode = "404",
-        description = "Not Found - No Payload found with transactionId provided",
+        description = "Not Found - No Payload found with requestId provided",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
