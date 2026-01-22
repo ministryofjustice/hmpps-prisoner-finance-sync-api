@@ -21,7 +21,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
-import kotlin.time.Clock.System.now
 
 @ExtendWith(MockitoExtension::class)
 @DisplayName("PayloadsViewController")
@@ -79,8 +78,8 @@ class AuditHistoryControllerTest {
   }
 
   @Nested
-  @DisplayName("getPayloadByTransactionId")
-  inner class GetPayloadByTransactionId {
+  @DisplayName("getPayloadByRequestId")
+  inner class GetPayloadByRequestId {
 
     @Test
     fun `should return a payload when repository has a payload`() {
@@ -100,7 +99,7 @@ class AuditHistoryControllerTest {
       `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
         .thenReturn(payload)
 
-      val response = auditHistoryController.getPayloadByTransactionId(requestId)
+      val response = auditHistoryController.getPayloadByRequestId(requestId)
 
       assertThat(response.body).isEqualTo(payload)
       verify(auditHistoryService).getPayloadBodyByRequestId(requestId)
@@ -113,7 +112,7 @@ class AuditHistoryControllerTest {
       `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
         .thenReturn(null)
 
-      val response = auditHistoryController.getPayloadByTransactionId(requestId)
+      val response = auditHistoryController.getPayloadByRequestId(requestId)
 
       assertThat(response.body).isNull()
       verify(auditHistoryService).getPayloadBodyByRequestId(requestId)

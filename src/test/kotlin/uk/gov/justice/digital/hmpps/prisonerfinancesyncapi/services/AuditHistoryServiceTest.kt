@@ -207,7 +207,7 @@ class AuditHistoryServiceTest {
   }
 
   @Nested
-  inner class GetPayloadBodyByTransactionId {
+  inner class GetPayloadBodyByRequestId {
     @Test
     fun `returns payload body when payload exists`() {
       val requestId = UUID.randomUUID()

@@ -31,9 +31,5 @@ class AuditHistoryService(
     return items
   }
 
-  fun getPayloadBodyByRequestId(transactionId: UUID): NomisSyncPayloadDetails? {
-    val payload = nomisSyncPayloadRepository.findByRequestId(transactionId)
-
-    return payload
-  }
+  fun getPayloadBodyByRequestId(requestId: UUID): NomisSyncPayloadDetails? = nomisSyncPayloadRepository.findByRequestId(requestId)
 }

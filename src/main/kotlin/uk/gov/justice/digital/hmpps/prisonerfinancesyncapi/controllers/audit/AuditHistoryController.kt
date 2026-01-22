@@ -88,8 +88,8 @@ class AuditHistoryController(
   }
 
   @Operation(
-    summary = "Get Payloads",
-    description = "Get a list of synced payloads, including NOMIS' legacy IDs",
+    summary = "Get Payloads Details",
+    description = "Get the full payload details (including the JSON body) for a specific request ID.",
   )
   @GetMapping(
     path = ["/audit/history/{requestId}"],
@@ -129,7 +129,7 @@ class AuditHistoryController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO}')")
-  fun getPayloadByTransactionId(
+  fun getPayloadByRequestId(
     @PathVariable
     requestId: UUID,
   ): ResponseEntity<NomisSyncPayloadDetails> {
