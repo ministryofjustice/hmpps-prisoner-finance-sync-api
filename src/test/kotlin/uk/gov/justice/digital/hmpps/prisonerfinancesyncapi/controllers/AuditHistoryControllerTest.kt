@@ -13,6 +13,7 @@ import org.mockito.kotlin.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.audit.AuditHistoryController
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryServiceTest
@@ -73,6 +74,48 @@ class AuditHistoryControllerTest {
       verify(auditHistoryService).getPayloadsByCaseloadAndDateRange(caseloadId, startDate, endDate, page, size)
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
       assertThat(response.body).isEqualTo(PageImpl(payloads))
+    }
+  }
+
+  @Nested
+  @DisplayName("getPayloadByRequestId")
+  inner class GetPayloadByRequestId {
+
+    @Test
+    fun `should return a payload when repository has a payload`() {
+      val requestId = UUID.randomUUID()
+      val legacyTransactionId = 1L
+      val payload = NomisSyncPayloadDetail(
+        timestamp = Instant.now(),
+        legacyTransactionId = 1001,
+        requestId = requestId,
+        caseloadId = "MDI",
+        requestTypeIdentifier = "TEST",
+        synchronizedTransactionId = UUID.randomUUID(),
+        body = """{"transactionId":1001,"caseloadId":"MDI","offenderId":123,"eventType":"SyncOffenderTransaction"}""",
+        transactionTimestamp = Instant.now(),
+      )
+      `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
+        .thenReturn(payload)
+
+      val response = auditHistoryController.getPayloadByRequestId(requestId)
+
+      assertThat(response.body).isEqualTo(payload)
+      verify(auditHistoryService).getPayloadBodyByRequestId(requestId)
+      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+    }
+
+    @Test
+    fun `should throw NotFound when no payload is found`() {
+      val requestId = UUID.randomUUID()
+      `when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
+        .thenReturn(null)
+
+      val response = auditHistoryController.getPayloadByRequestId(requestId)
+
+      assertThat(response.body).isNull()
+      verify(auditHistoryService).getPayloadBodyByRequestId(requestId)
+      assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }
 }

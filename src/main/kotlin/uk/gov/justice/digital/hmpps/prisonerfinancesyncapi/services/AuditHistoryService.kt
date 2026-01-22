@@ -5,9 +5,12 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.toDetail
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 @Service
 class AuditHistoryService(
@@ -28,4 +31,6 @@ class AuditHistoryService(
 
     return items
   }
+
+  fun getPayloadBodyByRequestId(requestId: UUID): NomisSyncPayloadDetail? = nomisSyncPayloadRepository.findByRequestId(requestId)?.toDetail()
 }

@@ -11,14 +11,18 @@ import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.toDetail
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -200,6 +204,45 @@ class AuditHistoryServiceTest {
         eq(expectedEnd),
         eq(pageable),
       )
+    }
+  }
+
+  @Nested
+  inner class GetPayloadBodyByRequestId {
+    @Test
+    fun `returns payload body when payload exists`() {
+      val requestId = UUID.randomUUID()
+      val payload = NomisSyncPayload(
+        timestamp = Instant.now(),
+        legacyTransactionId = 1003L,
+        requestId = UUID.randomUUID(),
+        caseloadId = uniqueCaseloadId(),
+        requestTypeIdentifier = "NewSyncType",
+        synchronizedTransactionId = UUID.randomUUID(),
+        body = """{"test": "data"}""",
+        transactionTimestamp = Instant.now(),
+      )
+
+      whenever(
+        nomisSyncPayloadRepository.findByRequestId(requestId),
+      ).thenReturn(payload)
+
+      val result = auditHistoryService.getPayloadBodyByRequestId(requestId)
+
+      assertThat(result).isEqualTo(payload.toDetail())
+    }
+
+    @Test
+    fun `returns null when payload does not exist`() {
+      val requestId = UUID.randomUUID()
+
+      doReturn(null)
+        .whenever(nomisSyncPayloadRepository)
+        .findByRequestId(requestId)
+
+      val result = auditHistoryService.getPayloadBodyByRequestId(requestId)
+
+      assertThat(result).isNull()
     }
   }
 }
