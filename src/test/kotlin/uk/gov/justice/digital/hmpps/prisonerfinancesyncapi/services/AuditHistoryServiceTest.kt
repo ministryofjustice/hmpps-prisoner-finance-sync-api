@@ -227,7 +227,7 @@ class AuditHistoryServiceTest {
       auditHistoryService.getMatchingPayloads("MDI", legacyTxId, fixedStart, fixedEnd, page, size)
 
       val expectedStart = timeConversionService.toUtcStartOfDay(fixedStart)
-      val expectedEnd = timeConversionService.toUtcStartOfDay(fixedEnd)
+      val expectedEnd = timeConversionService.toUtcStartOfDay(fixedEnd.plusDays(1))
 
       verify(nomisSyncPayloadRepository).findMatchingPayloads(
         eq("MDI"),
