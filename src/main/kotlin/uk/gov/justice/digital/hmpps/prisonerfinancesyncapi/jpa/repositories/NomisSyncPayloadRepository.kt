@@ -34,7 +34,7 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
               (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate)
     """,
   )
-  fun findByCaseloadIdAndDateRange(prisonId: String?, legacyTransactionId: Long?, startDate: Instant?, endDate: Instant?, pageable: Pageable): Page<NomisSyncPayloadSummary>
+  fun findMatchingPayloads(prisonId: String?, legacyTransactionId: Long?, startDate: Instant?, endDate: Instant?, pageable: Pageable): Page<NomisSyncPayloadSummary>
 
   @Query(
     """

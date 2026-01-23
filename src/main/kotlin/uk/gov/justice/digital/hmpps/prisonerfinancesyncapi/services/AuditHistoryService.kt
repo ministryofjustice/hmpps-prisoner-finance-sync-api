@@ -17,13 +17,13 @@ class AuditHistoryService(
   private val timeConversionService: TimeConversionService,
 ) {
 
-  fun getPayloadsByCaseloadAndDateRange(prisonId: String?, legacyTransactionId: Long?, startDate: LocalDate?, endDate: LocalDate?, page: Int, size: Int): Page<NomisSyncPayloadSummary> {
+  fun getMatchingPayloads(prisonId: String?, legacyTransactionId: Long?, startDate: LocalDate?, endDate: LocalDate?, page: Int, size: Int): Page<NomisSyncPayloadSummary> {
     val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"))
 
     val startOfStartDate = startDate?.let { timeConversionService.toUtcStartOfDay(startDate) }
     val endOfEndDate = endDate?.let { timeConversionService.toUtcStartOfDay(endDate.plusDays(1)) }
 
-    return nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(prisonId, legacyTransactionId, startOfStartDate, endOfEndDate, pageable)
+    return nomisSyncPayloadRepository.findMatchingPayloads(prisonId, legacyTransactionId, startOfStartDate, endOfEndDate, pageable)
   }
 
   fun getPayloadBodyByRequestId(requestId: UUID): NomisSyncPayloadDetail? = nomisSyncPayloadRepository.findByRequestId(requestId)?.toDetail()

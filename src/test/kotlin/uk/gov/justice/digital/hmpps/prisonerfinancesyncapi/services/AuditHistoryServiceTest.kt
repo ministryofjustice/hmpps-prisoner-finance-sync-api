@@ -14,7 +14,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.isNull
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.domain.PageImpl
@@ -80,7 +79,7 @@ class AuditHistoryServiceTest {
       )
 
       whenever(
-        nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(
+        nomisSyncPayloadRepository.findMatchingPayloads(
           caseloadId,
           null,
           timeConversionService.toUtcStartOfDay(startDate),
@@ -90,7 +89,7 @@ class AuditHistoryServiceTest {
       )
         .thenReturn(PageImpl(listOf(entity)))
 
-      val result = auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, null, startDate, endDate, page, size)
+      val result = auditHistoryService.getMatchingPayloads(caseloadId, null, startDate, endDate, page, size)
 
       assertThat(result).hasSize(1)
       with(result.content[0]) {
@@ -109,7 +108,7 @@ class AuditHistoryServiceTest {
       val endDate = LocalDate.now()
 
       whenever(
-        nomisSyncPayloadRepository.findByCaseloadIdAndDateRange(
+        nomisSyncPayloadRepository.findMatchingPayloads(
           caseloadId,
           null,
           timeConversionService.toUtcStartOfDay(startDate),
@@ -118,7 +117,7 @@ class AuditHistoryServiceTest {
         ),
       ).thenReturn(PageImpl(emptyList()))
 
-      val result = auditHistoryService.getPayloadsByCaseloadAndDateRange(caseloadId, null, startDate, endDate, page, size)
+      val result = auditHistoryService.getMatchingPayloads(caseloadId, null, startDate, endDate, page, size)
 
       assertThat(result).isEmpty()
     }
@@ -130,11 +129,11 @@ class AuditHistoryServiceTest {
 
       lenient().doReturn(PageImpl(emptyList()))
         .`when`(nomisSyncPayloadRepository)
-        .findByCaseloadIdAndDateRange(any(), any(), any(), any(), any())
+        .findMatchingPayloads(any(), any(), any(), any(), any())
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, null, null, page, size)
+      auditHistoryService.getMatchingPayloads("MDI", null, null, null, page, size)
 
-      verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
+      verify(nomisSyncPayloadRepository).findMatchingPayloads(
         eq("MDI"),
         eq(null),
         startDateCaptor.capture(),
@@ -153,13 +152,13 @@ class AuditHistoryServiceTest {
 
       lenient().doReturn(PageImpl(emptyList()))
         .`when`(nomisSyncPayloadRepository)
-        .findByCaseloadIdAndDateRange(any(), any(), any(), any(), any())
+        .findMatchingPayloads(any(), any(), any(), any(), any())
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, fixedStart, null, page, size)
+      auditHistoryService.getMatchingPayloads("MDI", null, fixedStart, null, page, size)
 
       val expectedStart = timeConversionService.toUtcStartOfDay(fixedStart)
 
-      verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
+      verify(nomisSyncPayloadRepository).findMatchingPayloads(
         eq("MDI"),
         eq(null),
         eq(expectedStart),
@@ -177,12 +176,12 @@ class AuditHistoryServiceTest {
 
       lenient().doReturn(PageImpl(emptyList()))
         .`when`(nomisSyncPayloadRepository)
-        .findByCaseloadIdAndDateRange(any(), any(), any(), any(), any())
+        .findMatchingPayloads(any(), any(), any(), any(), any())
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, null, fixedEnd, page, size)
+      auditHistoryService.getMatchingPayloads("MDI", null, null, fixedEnd, page, size)
 
       val expectedEnd = timeConversionService.toUtcStartOfDay(fixedEnd.plusDays(1))
-      verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
+      verify(nomisSyncPayloadRepository).findMatchingPayloads(
         eq("MDI"),
         eq(null),
         startDateCaptor.capture(),
@@ -200,15 +199,39 @@ class AuditHistoryServiceTest {
 
       lenient().doReturn(PageImpl(emptyList()))
         .`when`(nomisSyncPayloadRepository)
-        .findByCaseloadIdAndDateRange(any(), any(), any(), any(), any())
+        .findMatchingPayloads(any(), any(), any(), any(), any())
 
-      auditHistoryService.getPayloadsByCaseloadAndDateRange("MDI", null, start, end, page, size)
+      auditHistoryService.getMatchingPayloads("MDI", null, start, end, page, size)
 
       val expectedStart = timeConversionService.toUtcStartOfDay(start)
       val expectedEnd = timeConversionService.toUtcStartOfDay(end.plusDays(1))
-      verify(nomisSyncPayloadRepository).findByCaseloadIdAndDateRange(
+      verify(nomisSyncPayloadRepository).findMatchingPayloads(
         eq("MDI"),
         eq(null),
+        eq(expectedStart),
+        eq(expectedEnd),
+        eq(pageable),
+      )
+    }
+
+    @Test
+    fun `Should pass legacyTransactionId to repository when provided`() {
+      val fixedStart = LocalDate.parse("2026-01-01")
+      val fixedEnd = LocalDate.parse("2026-01-02")
+      val legacyTxId = 12345L
+
+      lenient().doReturn(PageImpl(emptyList()))
+        .`when`(nomisSyncPayloadRepository)
+        .findMatchingPayloads(any(), any(), any(), any(), any())
+
+      auditHistoryService.getMatchingPayloads("MDI", legacyTxId, fixedStart, fixedEnd, page, size)
+
+      val expectedStart = timeConversionService.toUtcStartOfDay(fixedStart)
+      val expectedEnd = timeConversionService.toUtcStartOfDay(fixedEnd)
+
+      verify(nomisSyncPayloadRepository).findMatchingPayloads(
+        eq("MDI"),
+        eq(legacyTxId),
         eq(expectedStart),
         eq(expectedEnd),
         eq(pageable),
