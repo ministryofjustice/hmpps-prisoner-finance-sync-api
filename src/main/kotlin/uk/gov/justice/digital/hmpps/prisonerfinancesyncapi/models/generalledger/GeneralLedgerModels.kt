@@ -1,40 +1,54 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger
 
-import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDateTime
 import java.util.UUID
 
 data class GlTransactionRequest(
-  val timestamp: Instant,
-  val amount: BigDecimal,
-  val creditorAccount: UUID,
-  val debtorAccount: UUID,
   val reference: String,
-  val description: String?,
+  val description: String,
+  val timestamp: Instant,
+  val amount: Long,
+  val postings: List<GlPostingRequest>,
 )
 
+data class GlPostingRequest(
+  val subAccountId: UUID,
+  val type: PostingType,
+  val amount: Long,
+)
+
+enum class PostingType {
+  DR,
+  CR,
+}
+
 data class GlSubAccountRequest(
-  val name: String,
-  val reference: String,
+  val subAccountReference: String,
 )
 
 data class GlSubAccountResponse(
   val id: UUID,
   val parentAccountId: UUID,
   val reference: String,
+  val createdAt: LocalDateTime,
+  val createdBy: String,
 )
 
 data class GlTransactionReceipt(
   val id: UUID,
+  val reference: String,
+  val amount: Long,
 )
 
 data class GlAccountRequest(
-  val name: String,
-  val reference: String,
+  val accountReference: String,
 )
 
 data class GlAccountResponse(
   val id: UUID,
-  val name: String,
-  val references: List<String>,
+  val reference: String,
+  val createdAt: LocalDateTime,
+  val createdBy: String,
+  val subAccounts: List<GlSubAccountResponse>? = emptyList(),
 )

@@ -128,15 +128,15 @@ sequenceDiagram
         note right of PF.sync: Dual Running (General Ledger API)
 
         loop For Debtor & Creditor
-            PF.sync ->>+ PF.newGL: GET /accounts (Find parent account)
+            PF.sync ->>+ PF.newGL: GET /accounts?reference={ref}
             opt Parent Account Not Found
-                PF.sync ->> PF.newGL: POST /accounts (Create parent account)
+                PF.sync ->> PF.newGL: POST /accounts
             end
             PF.newGL -->>- PF.sync: Return Parent UUID
 
-            PF.sync ->>+ PF.newGL: GET /accounts/{id}/sub-accounts (Find sub-account)
+            PF.sync ->>+ PF.newGL: GET /sub-accounts?reference={ref}&accountReference={ref}
             opt Sub-Account Not Found
-                PF.sync ->> PF.newGL: POST /accounts/{id}/sub-accounts (Create sub-account)
+                PF.sync ->> PF.newGL: POST /accounts/{uuid}/sub-accounts
             end
             PF.newGL -->>- PF.sync: Return Sub-Account UUID
         end

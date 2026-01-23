@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
@@ -20,6 +21,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
+import java.time.Instant
 import java.util.UUID
 
 class GeneralLedgerApiExtension :
@@ -51,7 +53,7 @@ class GeneralLedgerApiMockServer :
       .notifier(ConsoleNotifier(true)),
   ) {
 
-  private val mapper = ObjectMapper()
+  private val mapper = ObjectMapper().registerModule(JavaTimeModule())
 
   fun stubHealthPing(status: Int) {
     stubFor(
@@ -64,11 +66,14 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  // GET /accounts?reference={ref} -> Returns List<Account>
   fun stubGetAccount(reference: String, returnUuid: String = UUID.randomUUID().toString()) {
     val response = GlAccountResponse(
       id = UUID.fromString(returnUuid),
-      name = "Account for $reference",
-      references = listOf(reference),
+      reference = reference,
+      createdAt = Instant.now(),
+      createdBy = "MOCK_USER",
+      subAccounts = emptyList(),
     )
 
     stubFor(
@@ -78,7 +83,7 @@ class GeneralLedgerApiMockServer :
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
             .withStatus(200)
-            .withBody(mapper.writeValueAsString(response)),
+            .withBody(mapper.writeValueAsString(listOf(response))),
         ),
     )
   }
@@ -90,21 +95,24 @@ class GeneralLedgerApiMockServer :
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-            .withStatus(404),
+            .withStatus(200)
+            .withBody("[]"), // Empty JSON Array
         ),
     )
   }
 
+  // POST /accounts -> Returns Single Account
   fun stubCreateAccount(reference: String, returnUuid: String = UUID.randomUUID().toString()) {
     val response = GlAccountResponse(
       id = UUID.fromString(returnUuid),
-      name = "Created Account $reference",
-      references = listOf(reference),
+      reference = reference,
+      createdAt = Instant.now(),
+      createdBy = "MOCK_USER",
     )
 
     stubFor(
       post(urlEqualTo("/accounts"))
-        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference)))
+        .withRequestBody(matchingJsonPath("$.accountReference", equalTo(reference)))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
@@ -117,28 +125,37 @@ class GeneralLedgerApiMockServer :
   fun verifyCreateAccount(reference: String) {
     verify(
       postRequestedFor(urlEqualTo("/accounts"))
-        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference))),
+        .withRequestBody(matchingJsonPath("$.accountReference", equalTo(reference))),
     )
   }
 
-  fun stubGetSubAccountNotFound(parentId: String, reference: String) {
+  fun stubGetSubAccountNotFound(parentReference: String, subAccountReference: String) {
     stubFor(
-      get(urlPathEqualTo("/accounts/$parentId/sub-accounts"))
-        .withQueryParam("reference", equalTo(reference)) // Query by reference
-        .willReturn(aResponse().withStatus(404)),
+      get(urlPathEqualTo("/sub-accounts"))
+        .withQueryParam("reference", equalTo(subAccountReference))
+        .withQueryParam("accountReference", equalTo(parentReference))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody("[]"), // Empty JSON Array
+        ),
     )
   }
 
+  // POST /accounts/{uuid}/sub-accounts -> Returns Single SubAccount
   fun stubCreateSubAccount(parentId: String, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
     val response = GlSubAccountResponse(
       id = UUID.fromString(returnUuid),
       parentAccountId = UUID.fromString(parentId),
       reference = reference,
+      createdAt = Instant.now(),
+      createdBy = "MOCK_USER",
     )
 
     stubFor(
       post(urlEqualTo("/accounts/$parentId/sub-accounts"))
-        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference))) // Body contains reference
+        .withRequestBody(matchingJsonPath("$.subAccountReference", equalTo(reference)))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
@@ -151,15 +168,21 @@ class GeneralLedgerApiMockServer :
   fun verifyCreateSubAccount(parentId: String, reference: String) {
     verify(
       postRequestedFor(urlEqualTo("/accounts/$parentId/sub-accounts"))
-        .withRequestBody(matchingJsonPath("$.reference", equalTo(reference))),
+        .withRequestBody(matchingJsonPath("$.subAccountReference", equalTo(reference))),
     )
   }
 
+  // POST /transactions
   fun stubPostTransaction(
-    creditorUuid: String? = null,
-    debtorUuid: String? = null,
+    creditorSubAccountUuid: String? = null,
+    debtorSubAccountUuid: String? = null,
+    reference: String? = null,
   ) {
-    val response = GlTransactionReceipt(id = UUID.randomUUID())
+    val response = GlTransactionReceipt(
+      id = UUID.randomUUID(),
+      reference = reference ?: "MOCK_TXN",
+      amount = 1000,
+    )
 
     var mapping = post(urlEqualTo("/transactions"))
       .willReturn(
@@ -169,11 +192,15 @@ class GeneralLedgerApiMockServer :
           .withBody(mapper.writeValueAsString(response)),
       )
 
-    if (creditorUuid != null) {
-      mapping = mapping.withRequestBody(matchingJsonPath("$.creditorAccount", equalTo(creditorUuid)))
+    if (creditorSubAccountUuid != null) {
+      mapping = mapping.withRequestBody(
+        matchingJsonPath("$.postings[?(@.type == 'CR' && @.subAccountId == '$creditorSubAccountUuid')]"),
+      )
     }
-    if (debtorUuid != null) {
-      mapping = mapping.withRequestBody(matchingJsonPath("$.debtorAccount", equalTo(debtorUuid)))
+    if (debtorSubAccountUuid != null) {
+      mapping = mapping.withRequestBody(
+        matchingJsonPath("$.postings[?(@.type == 'DR' && @.subAccountId == '$debtorSubAccountUuid')]"),
+      )
     }
 
     stubFor(mapping)
