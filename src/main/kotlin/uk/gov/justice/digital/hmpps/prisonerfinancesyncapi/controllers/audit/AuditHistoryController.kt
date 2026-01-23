@@ -72,18 +72,20 @@ class AuditHistoryController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO}')")
-  fun getPayloadsByCaseloadAndDateRange(
+  fun getMatchingPayloads(
     @RequestParam(required = false)
     @Pattern(
       regexp = VALIDATION_REGEX_PRISON_ID,
       message = VALIDATION_MESSAGE_PRISON_ID,
     ) prisonId: String?,
+    @RequestParam(required = false)
+    legacyTransactionId: Long?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate?,
     @RequestParam(defaultValue = "0") page: Int,
     @RequestParam(defaultValue = "20") size: Int,
   ): ResponseEntity<Page<NomisSyncPayloadSummary>> {
-    val items = auditHistoryService.getPayloadsByCaseloadAndDateRange(prisonId, startDate, endDate, page, size)
+    val items = auditHistoryService.getMatchingPayloads(prisonId, legacyTransactionId, startDate, endDate, page, size)
     return ResponseEntity.ok(items)
   }
 
