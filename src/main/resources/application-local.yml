@@ -20,3 +20,14 @@ hmpps.sqs:
   topics:
     domaineventsqueue:
       arn: arn:aws:sns:eu-west-2:000000000000:domain_events_queue
+
+feature:
+  general-ledger-api:
+    enabled: true
+    test-prisoner-id: 'A0251AB'
+
+general-ledger-api:
+  url: http://localhost:8084
+  client:
+    id: hmpps-prisoner-finance-general-ledger-api
+    secret: clientsecret

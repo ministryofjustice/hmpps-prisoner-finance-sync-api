@@ -42,6 +42,7 @@ services:
 
   hmpps-auth:
     image: ghcr.io/ministryofjustice/hmpps-auth:latest
+    platform: linux/amd64
     networks:
       - hmpps
     container_name: hmpps-auth
@@ -53,6 +54,50 @@ services:
       - SERVER_PORT=8080
       - SPRING_PROFILES_ACTIVE=dev
       - APPLICATION_AUTHENTICATION_UI_ALLOWLIST=0.0.0.0/0
+
+  hmpps-prisoner-finance-general-ledger-api:
+    image: ghcr.io/ministryofjustice/hmpps-prisoner-finance-general-ledger-api:latest
+    platform: linux/amd64
+    networks:
+      - hmpps
+    container_name: hmpps-prisoner-finance-general-ledger-api
+    ports:
+      - "8084:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=dev
+      - HMPPS_AUTH_URL=http://hmpps-auth:8080/auth
+      - DB_SERVER=hmpps-prisoner-finance-general-ledger-db
+      - DB_NAME=general_ledger
+      - DB_USER=postgres
+      - DB_PASS=postgres
+    depends_on:
+      hmpps-auth:
+        condition: service_started
+      hmpps-prisoner-finance-sync-db:
+        condition: service_healthy
+        restart: true
+
+  hmpps-prisoner-finance-general-ledger-db:
+    container_name: hmpps-prisoner-finance-general-ledger-db
+    image: postgres:16
+    restart: always
+    networks:
+      - hmpps
+    ports:
+      - "5435:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=general_ledger
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 
   localstack:
     image: localstack/localstack:4

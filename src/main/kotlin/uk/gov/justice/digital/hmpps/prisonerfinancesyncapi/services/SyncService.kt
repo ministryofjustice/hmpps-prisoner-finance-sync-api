@@ -8,12 +8,11 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGener
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerSyncService
 import java.util.UUID
 
 @Service
 class SyncService(
-  private val ledgerSyncService: LedgerSyncService,
+  private val ledgerSyncService: LedgerService,
   private val requestCaptureService: RequestCaptureService,
   private val syncQueryService: SyncQueryService,
   private val jsonComparator: JsonComparator,
