@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
@@ -13,14 +14,18 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuild
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
+import java.sql.Timestamp
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
+import java.util.concurrent.ThreadLocalRandom
 import kotlin.random.Random
 
 class AuditHistoryTest(
   @param:Autowired val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
+  @param:Autowired val jdbcTemplate: JdbcTemplate,
 ) : IntegrationTestBase() {
 
   fun makeNomisSyncPayload(
@@ -222,6 +227,70 @@ class AuditHistoryTest(
       .jsonPath("$.content.length()").isEqualTo(2)
       .jsonPath("$.content[0].synchronizedTransactionId").isEqualTo(recentPayload.synchronizedTransactionId.toString())
       .jsonPath("$.content[1].synchronizedTransactionId").isEqualTo(oldPayload.synchronizedTransactionId.toString())
+  }
+
+  fun randomInstant(): Instant {
+    val secondsInDay = 86400L
+    val now = Instant.now().epochSecond
+    val start = now - (365 * 10 * secondsInDay)
+    val randomSeconds = ThreadLocalRandom.current().nextLong(start, now)
+    return Instant.ofEpochSecond(randomSeconds)
+  }
+
+  @Test
+  fun `Get History speed should be performant at any page`() {
+    val caseloads = List(30) { uniqueCaseloadId() }
+    val totalRecords = 1_000_000
+    val batchSize = 1000
+
+    val sql = """
+      INSERT INTO nomis_sync_payloads
+        (timestamp, legacy_transaction_id, synchronized_transaction_id, request_id,
+         caseload_id, request_type_identifier, transaction_timestamp, body)
+      VALUES (?, ?, ?::uuid, ?::uuid, ?, ?, ?, ?::jsonb)
+    """.trimIndent()
+
+    for (i in 0 until totalRecords step batchSize) {
+      val currentBatchSize = minOf(batchSize, totalRecords - i)
+
+      val batchArgs = List(currentBatchSize) {
+        arrayOf(
+          Timestamp.from(randomInstant()),
+          (1000L + i),
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          caseloads.random(),
+          "SYNC_TYPE",
+          Timestamp.from(randomInstant()),
+          """{"data": "sample_body_$i"}""",
+        )
+      }
+
+      jdbcTemplate.batchUpdate(sql, batchArgs)
+    }
+
+    val pageSize = 20
+    val numOfPages = totalRecords / pageSize
+    val pageIdx = listOf(0, numOfPages / 2, numOfPages - 1)
+
+    for (i in pageIdx) {
+      val reqTime = Instant.now()
+      webTestClient.get()
+        .uri {
+          it.path("/audit/history")
+            .queryParam("page", i)
+            .queryParam("size", pageSize)
+            .build()
+        }
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
+        .exchange()
+        .expectStatus().isOk
+        .expectBody()
+        .jsonPath("$.content.length()").isEqualTo(pageSize)
+
+      val delta = Duration.between(reqTime, Instant.now()).toMillis()
+      assertThat(delta).isLessThan(3000)
+    }
   }
 
   @Test
