@@ -15,6 +15,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
@@ -78,6 +79,32 @@ class GeneralLedgerServiceTest {
 
       val logs = listAppender.list.map { it.formattedMessage }
       assertThat(logs).anyMatch { it.contains("General Ledger account found for '$offenderDisplayId' (UUID: $accountUuid)") }
+    }
+
+    @Test
+    fun `should create parent account for prison when account not found`() {
+      val request = createOffenderRequest(offenderDisplayId)
+      whenever(generalLedgerApiClient.findAccountByReference(offenderDisplayId)).thenReturn(null)
+
+      val result = generalLedgerService.syncOffenderTransaction(request)
+
+      verify(generalLedgerApiClient, times(1)).findAccountByReference(request.caseloadId)
+      assertThat(result).isNotNull()
+
+      verify(generalLedgerApiClient, times(1)).createAccount(request.caseloadId)
+    }
+
+    @Test
+    fun `should create parent account for prisoner when account not found`() {
+      val request = createOffenderRequest(offenderDisplayId)
+      whenever(generalLedgerApiClient.findAccountByReference(offenderDisplayId)).thenReturn(null)
+
+      val result = generalLedgerService.syncOffenderTransaction(request)
+
+      verify(generalLedgerApiClient, times(1)).findAccountByReference(offenderDisplayId)
+      assertThat(result).isNotNull()
+
+      verify(generalLedgerApiClient, times(1)).createAccount(offenderDisplayId)
     }
 
     @Test

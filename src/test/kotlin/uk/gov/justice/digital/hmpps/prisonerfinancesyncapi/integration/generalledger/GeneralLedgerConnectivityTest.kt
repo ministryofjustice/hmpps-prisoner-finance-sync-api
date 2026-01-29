@@ -47,7 +47,7 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `should call general ledger to lookup an account but not create any data`() {
+  fun `should call general ledger to lookup an account and create it if not exists`() {
     generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
 
     val request = createRequest(testPrisonerId)
@@ -65,7 +65,22 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
         .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo(testPrisonerId)),
     )
 
-    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+  }
+
+  @Test
+  fun `should not post any transaction`() {
+    val request = createRequest(testPrisonerId)
+
+    webTestClient.post()
+      .uri("/sync/offender-transactions")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(request))
+      .exchange()
+      .expectStatus().isCreated
+
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
