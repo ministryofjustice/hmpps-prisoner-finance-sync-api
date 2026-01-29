@@ -47,10 +47,33 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `should call general ledger to lookup an account but not create any data`() {
-    generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
+  fun `should lookup prison and prisoner account and not create a new one if it exists`() {
+    val request = createRequest(testPrisonerId, "TES")
 
-    val request = createRequest(testPrisonerId)
+    generalLedgerApi.stubGetAccount(testPrisonerId)
+    generalLedgerApi.stubGetAccount(request.caseloadId)
+
+    webTestClient.post()
+      .uri("/sync/offender-transactions")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(request))
+      .exchange()
+      .expectStatus().isCreated
+
+    generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+  }
+
+  @Test
+  fun `should call general ledger to lookup an account and create it if not exists`() {
+    val request = createRequest(testPrisonerId, "TES")
+
+    generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
+    generalLedgerApi.stubGetAccountNotFound(request.caseloadId)
+    generalLedgerApi.stubCreateAccount(testPrisonerId)
+    generalLedgerApi.stubCreateAccount(request.caseloadId)
 
     webTestClient.post()
       .uri("/sync/offender-transactions")
@@ -62,10 +85,30 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
 
     generalLedgerApi.verify(
       getRequestedFor(urlPathEqualTo("/accounts"))
+        .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo("TES")),
+    )
+
+    generalLedgerApi.verify(
+      getRequestedFor(urlPathEqualTo("/accounts"))
         .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo(testPrisonerId)),
     )
 
-    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+  }
+
+  @Test
+  fun `should not post any transaction`() {
+    val request = createRequest(testPrisonerId)
+
+    webTestClient.post()
+      .uri("/sync/offender-transactions")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(request))
+      .exchange()
+      .expectStatus().isCreated
+
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
@@ -108,13 +151,13 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
     generalLedgerApi.verify(0, getRequestedFor(urlPathEqualTo("/accounts")))
   }
 
-  private fun createRequest(offenderId: String): SyncOffenderTransactionRequest {
+  private fun createRequest(offenderId: String, caseloadId: String = "MDI"): SyncOffenderTransactionRequest {
     val randomTxId = Random.nextLong(100000, 999999)
 
     return SyncOffenderTransactionRequest(
       transactionId = randomTxId,
       requestId = UUID.randomUUID(),
-      caseloadId = "MDI",
+      caseloadId = caseloadId,
       transactionTimestamp = LocalDateTime.now(),
       createdAt = LocalDateTime.now(),
       createdBy = "TEST",
