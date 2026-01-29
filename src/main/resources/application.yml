@@ -35,6 +35,15 @@ spring:
         provider:
           hmpps-auth:
             token-uri: ${hmpps-auth.url}/oauth/token
+
+        registration:
+          general-ledger-api:
+            provider: hmpps-auth
+            client-id: ${general-ledger-api.client.id}
+            client-secret: ${general-ledger-api.client.secret}
+            authorization-grant-type: client_credentials
+            scope: read
+
   http:
     codecs:
       max-in-memory-size: 10MB
@@ -73,3 +82,7 @@ management:
 
 hmpps-auth:
   url: ${HMPPS_AUTH_URL}
+
+feature:
+  general-ledger-api:
+    enabled: false
