@@ -102,23 +102,39 @@ class GeneralLedgerServiceTest {
       val result = generalLedgerService.syncOffenderTransaction(request)
 
       verify(generalLedgerApiClient, times(1)).findAccountByReference(offenderDisplayId)
+      verify(generalLedgerApiClient, times(1)).findAccountByReference(request.caseloadId)
+
       assertThat(result).isNotNull()
 
       verify(generalLedgerApiClient, times(1)).createAccount(offenderDisplayId)
     }
 
     @Test
-    fun `should call general ledger api and log message when account not found`() {
+    fun `should create a new accounts when both prisoner and prison accounts are not found`() {
       val request = createOffenderRequest(offenderDisplayId)
-      whenever(generalLedgerApiClient.findAccountByReference(offenderDisplayId)).thenReturn(null)
+      whenever(generalLedgerApiClient.findAccountByReference(offenderDisplayId))
+        .thenReturn(null)
+      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId))
+        .thenReturn(null)
+
+      whenever(generalLedgerApiClient.createAccount(offenderDisplayId))
+        .thenReturn(mock<GlAccountResponse>())
+      whenever(generalLedgerApiClient.createAccount(request.caseloadId))
+        .thenReturn(mock<GlAccountResponse>())
 
       val result = generalLedgerService.syncOffenderTransaction(request)
 
+      verify(generalLedgerApiClient).findAccountByReference(request.caseloadId)
       verify(generalLedgerApiClient).findAccountByReference(offenderDisplayId)
       assertThat(result).isNotNull()
 
       val logs = listAppender.list.map { it.formattedMessage }
-      assertThat(logs).contains("General Ledger account not found for '$offenderDisplayId'")
+
+      verify(generalLedgerApiClient, times(1)).createAccount(offenderDisplayId)
+      verify(generalLedgerApiClient, times(1)).createAccount(request.caseloadId)
+
+      assertThat(logs).contains("General Ledger account not found for '${request.caseloadId}'. Creating new account.")
+      assertThat(logs).contains("General Ledger account not found for '$offenderDisplayId'. Creating new account.")
     }
 
     @Test
@@ -133,12 +149,14 @@ class GeneralLedgerServiceTest {
       }.isEqualTo(expectedError)
     }
 
-    private fun createOffenderRequest(offenderDisplayId: String): SyncOffenderTransactionRequest {
+    private fun createOffenderRequest(offenderDisplayId: String, prisonCode: String = "TES"): SyncOffenderTransactionRequest {
       val offenderTx = mock<OffenderTransaction>()
       whenever(offenderTx.offenderDisplayId).thenReturn(offenderDisplayId)
 
       val request = mock<SyncOffenderTransactionRequest>()
       whenever(request.offenderTransactions).thenReturn(listOf(offenderTx))
+      whenever(request.caseloadId).thenReturn(prisonCode)
+
       return request
     }
   }
