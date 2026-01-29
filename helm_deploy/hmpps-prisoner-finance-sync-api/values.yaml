@@ -31,6 +31,10 @@ generic-service:
     hmpps-prisoner-finance-sync-api-application-insights:
       APPLICATIONINSIGHTS_CONNECTION_STRING: "APPLICATIONINSIGHTS_CONNECTION_STRING"
 
+    hmpps-prisoner-finance-general-ledger-api-client-creds:
+      GENERAL_LEDGER_API_CLIENT_ID: 'API_CLIENT_ID'
+      GENERAL_LEDGER_API_CLIENT_SECRET: 'API_CLIENT_SECRET'
+
     rds-postgresql-instance-output:
       DB_SERVER: "rds_instance_endpoint"
       DB_NAME: "database_name"
