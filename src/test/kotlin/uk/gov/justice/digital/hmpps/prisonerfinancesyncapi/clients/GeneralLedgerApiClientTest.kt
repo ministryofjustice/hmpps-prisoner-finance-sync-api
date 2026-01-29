@@ -83,6 +83,17 @@ class GeneralLedgerApiClientTest {
       assertThat(result).isNull()
     }
 
+    @Test
+    fun `should return null if response body is null`() {
+      whenever(webClient.get()).thenReturn(requestHeadersUriSpec)
+      whenever(requestHeadersUriSpec.uri(any<Function<UriBuilder, URI>>())).thenReturn(requestHeadersSpec)
+      whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<List<GlSubAccountResponse>>>()))
+        .thenReturn(Mono.empty())
+
+      assertThat(apiClient.findSubAccount("A1234AA", "SPND")).isNull()
+    }
+
     private fun mockWebClientGetChain(response: List<GlSubAccountResponse>) {
       whenever(webClient.get()).thenReturn(requestHeadersUriSpec)
       whenever(requestHeadersUriSpec.uri(any<Function<UriBuilder, URI>>())).thenReturn(requestHeadersSpec)
@@ -106,6 +117,34 @@ class GeneralLedgerApiClientTest {
 
       assertThat(result).isEqualTo(expectedResponse)
       verify(requestBodyUriSpec).bodyValue(GlSubAccountRequest(subRef))
+    }
+
+    @Test
+    fun `should throw IllegalStateException if response body is null`() {
+      val parentId = UUID.randomUUID()
+      whenever(webClient.post()).thenReturn(requestBodyUriSpec)
+      whenever(requestBodyUriSpec.uri(any<String>(), any<UUID>())).thenReturn(requestBodyUriSpec)
+      whenever(requestBodyUriSpec.bodyValue(any<GlSubAccountRequest>())).thenReturn(requestHeadersSpec)
+      whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+      whenever(responseSpec.bodyToMono(GlSubAccountResponse::class.java)).thenReturn(Mono.empty())
+
+      assertThatThrownBy { apiClient.createSubAccount(parentId, "SPND") }
+        .isInstanceOf(IllegalStateException::class.java)
+        .hasMessageContaining("Received null response")
+    }
+
+    @Test
+    fun `should throw exception if parent account not found`() {
+      val parentId = UUID.randomUUID()
+      whenever(webClient.post()).thenReturn(requestBodyUriSpec)
+      whenever(requestBodyUriSpec.uri(any<String>(), any<UUID>())).thenReturn(requestBodyUriSpec)
+      whenever(requestBodyUriSpec.bodyValue(any<GlSubAccountRequest>())).thenReturn(requestHeadersSpec)
+      whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+      whenever(responseSpec.bodyToMono(GlSubAccountResponse::class.java))
+        .thenThrow(WebClientResponseException.create(HttpStatus.NOT_FOUND.value(), "Not Found", HttpHeaders.EMPTY, ByteArray(0), null))
+
+      assertThatThrownBy { apiClient.createSubAccount(parentId, "NOT_FOUND") }
+        .isInstanceOf(WebClientResponseException.NotFound::class.java)
     }
 
     private fun mockWebClientPostChain(response: GlSubAccountResponse) {
@@ -138,6 +177,17 @@ class GeneralLedgerApiClientTest {
       val result = apiClient.findAccountByReference("UNKNOWN")
 
       assertThat(result).isNull()
+    }
+
+    @Test
+    fun `should return null if response body is null`() {
+      whenever(webClient.get()).thenReturn(requestHeadersUriSpec)
+      whenever(requestHeadersUriSpec.uri(any<Function<UriBuilder, URI>>())).thenReturn(requestHeadersSpec)
+      whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<List<GlAccountResponse>>>()))
+        .thenReturn(Mono.empty())
+
+      assertThat(apiClient.findAccountByReference("A1234AA")).isNull()
     }
 
     private fun mockWebClientGetChain(response: List<GlAccountResponse>) {
@@ -176,6 +226,18 @@ class GeneralLedgerApiClientTest {
       assertThatThrownBy {
         apiClient.createAccount("A1234AA")
       }.isInstanceOf(WebClientResponseException::class.java)
+    }
+
+    @Test
+    fun `should throw IllegalStateException if response body is null`() {
+      whenever(webClient.post()).thenReturn(requestBodyUriSpec)
+      whenever(requestBodyUriSpec.uri(any<String>())).thenReturn(requestBodyUriSpec)
+      whenever(requestBodyUriSpec.bodyValue(any<GlAccountRequest>())).thenReturn(requestHeadersSpec)
+      whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+      whenever(responseSpec.bodyToMono(GlAccountResponse::class.java)).thenReturn(Mono.empty())
+
+      assertThatThrownBy { apiClient.createAccount("A1234AA") }
+        .isInstanceOf(IllegalStateException::class.java)
     }
 
     private fun mockWebClientPostChain(response: GlAccountResponse) {

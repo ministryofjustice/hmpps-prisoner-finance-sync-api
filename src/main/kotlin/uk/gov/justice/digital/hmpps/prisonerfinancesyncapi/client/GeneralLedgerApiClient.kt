@@ -64,10 +64,10 @@ class GeneralLedgerApiClient(
       .bodyValue(request)
       .retrieve()
       .bodyToMono(GlSubAccountResponse::class.java)
-      .block()!!
+      .block()
+      ?: throw IllegalStateException("Received null response when creating sub-account $subAccountReference")
   }
 
-  // POST /accounts
   fun createAccount(reference: String): GlAccountResponse {
     val request = GlAccountRequest(reference)
 
@@ -78,10 +78,10 @@ class GeneralLedgerApiClient(
       .bodyValue(request)
       .retrieve()
       .bodyToMono(GlAccountResponse::class.java)
-      .block()!!
+      .block()
+      ?: throw IllegalStateException("Received null response when creating account $reference")
   }
 
-  // POST /transactions
   fun postTransaction(request: GlTransactionRequest): UUID {
     log.info("Posting transaction. Ref: ${request.reference}. Amount: ${request.amount}")
 

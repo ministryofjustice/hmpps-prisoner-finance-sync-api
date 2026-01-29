@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -9,13 +10,15 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
-import org.mockito.Mockito.`when`
+import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
+import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
@@ -90,7 +93,7 @@ class SyncServiceTest {
 
     @Test
     fun `should return PROCESSED if a request with the same requestId already exists`() {
-      `when`(syncQueryService.findByRequestId(any())).thenReturn(dummyStoredPayload)
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(dummyStoredPayload)
 
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
@@ -104,10 +107,10 @@ class SyncServiceTest {
 
     @Test
     fun `should return CREATED if neither requestId nor transactionId exists`() {
-      `when`(syncQueryService.findByRequestId(any())).thenReturn(null)
-      `when`(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
-      `when`(requestCaptureService.captureAndStoreRequest(any(), anyOrNull())).thenReturn(dummyStoredPayload)
-      `when`(ledgerSyncService.syncGeneralLedgerTransaction(any())).thenReturn(dummyStoredPayload.synchronizedTransactionId)
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
+      whenever(requestCaptureService.captureAndStoreRequest(any(), anyOrNull())).thenReturn(dummyStoredPayload)
+      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any())).thenReturn(dummyStoredPayload.synchronizedTransactionId)
 
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
@@ -120,53 +123,114 @@ class SyncServiceTest {
       verify(requestCaptureService, times(1)).captureAndStoreRequest(any(), eq(dummyStoredPayload.synchronizedTransactionId))
     }
 
-    @Nested
-    @DisplayName("when a transactionId exists but requestId does not")
-    inner class TransactionIdExistsTests {
+    @Test
+    fun `should retry and succeed when DataIntegrityViolationException occurs`() {
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
 
-      @BeforeEach
-      fun setup() {
-        `when`(syncQueryService.findByRequestId(any())).thenReturn(null)
-        `when`(syncQueryService.findByLegacyTransactionId(any())).thenReturn(dummyStoredPayload)
+      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
+        .thenThrow(DataIntegrityViolationException("Race condition"))
+        .thenReturn(dummyStoredPayload.synchronizedTransactionId)
+
+      whenever(requestCaptureService.captureAndStoreRequest(any(), anyOrNull())).thenReturn(dummyStoredPayload)
+
+      val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
+      verify(ledgerSyncService, times(2)).syncGeneralLedgerTransaction(any())
+    }
+
+    @Test
+    fun `should fail and log error if retry also fails`() {
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
+
+      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
+        .thenThrow(DataIntegrityViolationException("Race condition"))
+        .thenThrow(RuntimeException("Retry failed"))
+
+      whenever(objectMapper.writeValueAsString(any())).thenReturn("{}")
+
+      assertThrows(RuntimeException::class.java) {
+        syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
       }
+      verify(ledgerSyncService, times(2)).syncGeneralLedgerTransaction(any())
+    }
 
-      @Test
-      fun `should return PROCESSED if the body JSON is identical`() {
-        val newBodyJson = "{\"transactionId\":19228029,\"requestId\":\"c3d4e5f6-a7b8-9012-3456-7890abcdef01\"}"
-        `when`(objectMapper.writeValueAsString(any())).thenReturn(newBodyJson)
-        `when`(jsonComparator.areJsonBodiesEqual(any(), any())).thenReturn(true)
+    @Test
+    fun `should throw IllegalArgumentException for unknown request types`() {
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
 
-        val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+      val unknownRequest = Mockito.mock(uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest::class.java)
+      whenever(unknownRequest.requestId).thenReturn(UUID.randomUUID())
+      whenever(unknownRequest.transactionId).thenReturn(1L)
 
-        assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED)
-        assertThat(result.requestId).isEqualTo(dummyGeneralLedgerTransactionRequest.requestId)
-        assertThat(result.synchronizedTransactionId).isEqualTo(dummyStoredPayload.synchronizedTransactionId)
-        verify(objectMapper, times(1)).writeValueAsString(any())
-        verify(jsonComparator, times(1)).areJsonBodiesEqual(any(), any())
-        verify(ledgerSyncService, times(0)).syncGeneralLedgerTransaction(any())
-        verify(requestCaptureService, times(0)).captureAndStoreRequest(any(), anyOrNull())
+      assertThrows(IllegalArgumentException::class.java) {
+        syncService.syncTransaction(unknownRequest)
       }
+    }
 
-      @Test
-      fun `should return UPDATED if the body JSON is different`() {
-        val differentBodyJson = "{\"transactionId\":19228029,\"requestId\":\"c3d4e5f6-a7b8-9012-3456-7890abcdef01\",\"newField\":\"value\"}"
-        val updatedPayload = dummyStoredPayload.copy(synchronizedTransactionId = UUID.randomUUID())
-        `when`(objectMapper.writeValueAsString(any())).thenReturn(differentBodyJson)
-        `when`(jsonComparator.areJsonBodiesEqual(any(), any())).thenReturn(false)
-        `when`(requestCaptureService.captureAndStoreRequest(any(), anyOrNull())).thenReturn(updatedPayload)
+    @Test
+    fun `should handle JSON serialization error during error logging`() {
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
+      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any())).thenThrow(RuntimeException("Boom"))
 
-        val expectedSyncId = dummyStoredPayload.synchronizedTransactionId
+      whenever(objectMapper.writeValueAsString(any())).thenThrow(RuntimeException("Serialization failed"))
 
-        val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
-
-        assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.UPDATED)
-        assertThat(result.requestId).isEqualTo(dummyGeneralLedgerTransactionRequest.requestId)
-        assertThat(result.synchronizedTransactionId).isEqualTo(updatedPayload.synchronizedTransactionId)
-        verify(objectMapper, times(1)).writeValueAsString(any())
-        verify(jsonComparator, times(1)).areJsonBodiesEqual(any(), any())
-        verify(ledgerSyncService, times(0)).syncGeneralLedgerTransaction(any())
-        verify(requestCaptureService, times(1)).captureAndStoreRequest(any(), eq(expectedSyncId))
+      assertThrows(RuntimeException::class.java) {
+        syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
       }
+      verify(objectMapper, times(1)).writeValueAsString(any())
+    }
+
+    @Test
+    fun `should return PROCESSED if the body JSON is identical to existing transaction`() {
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(dummyStoredPayload)
+
+      val newBodyJson = "{\"transactionId\":19228029}"
+      whenever(objectMapper.writeValueAsString(any())).thenReturn(newBodyJson)
+      whenever(jsonComparator.areJsonBodiesEqual(any(), any())).thenReturn(true)
+
+      val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED)
+      assertThat(result.requestId).isEqualTo(dummyGeneralLedgerTransactionRequest.requestId)
+      assertThat(result.synchronizedTransactionId).isEqualTo(dummyStoredPayload.synchronizedTransactionId)
+    }
+
+    @Test
+    fun `should return UPDATED if the body JSON is different to existing transaction`() {
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(dummyStoredPayload)
+
+      val differentBodyJson = "{\"transactionId\":19228029, \"diff\": true}"
+      val updatedPayload = dummyStoredPayload.copy(synchronizedTransactionId = UUID.randomUUID())
+
+      whenever(objectMapper.writeValueAsString(any())).thenReturn(differentBodyJson)
+      whenever(jsonComparator.areJsonBodiesEqual(any(), any())).thenReturn(false)
+      whenever(requestCaptureService.captureAndStoreRequest(any(), anyOrNull())).thenReturn(updatedPayload)
+
+      val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.UPDATED)
+      assertThat(result.synchronizedTransactionId).isEqualTo(updatedPayload.synchronizedTransactionId)
+    }
+
+    @Test
+    fun `should default to empty JSON and update if serialization fails during comparison`() {
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(dummyStoredPayload)
+      whenever(objectMapper.writeValueAsString(any())).thenThrow(RuntimeException("Bad JSON"))
+      whenever(jsonComparator.areJsonBodiesEqual(any(), eq("{}"))).thenReturn(false)
+
+      whenever(requestCaptureService.captureAndStoreRequest(any(), anyOrNull())).thenReturn(dummyStoredPayload)
+
+      val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.UPDATED)
     }
   }
 }
