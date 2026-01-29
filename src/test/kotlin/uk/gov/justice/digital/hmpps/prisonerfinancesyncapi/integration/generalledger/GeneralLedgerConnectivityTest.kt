@@ -49,8 +49,8 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
   @Test
   fun `should call general ledger to lookup an account and create it if not exists`() {
     generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
-
-    val request = createRequest(testPrisonerId)
+    val request = createRequest(testPrisonerId, "TES")
+    generalLedgerApi.stubGetAccountNotFound(request.caseloadId)
 
     webTestClient.post()
       .uri("/sync/offender-transactions")
@@ -59,6 +59,11 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
       .bodyValue(objectMapper.writeValueAsString(request))
       .exchange()
       .expectStatus().isCreated
+
+    generalLedgerApi.verify(
+      getRequestedFor(urlPathEqualTo("/accounts"))
+        .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo("TES")),
+    )
 
     generalLedgerApi.verify(
       getRequestedFor(urlPathEqualTo("/accounts"))
@@ -123,13 +128,13 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
     generalLedgerApi.verify(0, getRequestedFor(urlPathEqualTo("/accounts")))
   }
 
-  private fun createRequest(offenderId: String): SyncOffenderTransactionRequest {
+  private fun createRequest(offenderId: String, caseloadId: String = "MDI"): SyncOffenderTransactionRequest {
     val randomTxId = Random.nextLong(100000, 999999)
 
     return SyncOffenderTransactionRequest(
       transactionId = randomTxId,
       requestId = UUID.randomUUID(),
-      caseloadId = "MDI",
+      caseloadId = caseloadId,
       transactionTimestamp = LocalDateTime.now(),
       createdAt = LocalDateTime.now(),
       createdBy = "TEST",
