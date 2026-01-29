@@ -47,6 +47,26 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
   }
 
   @Test
+  fun `should lookup prison and prisoner account and not create a new one if it exists`() {
+    val request = createRequest(testPrisonerId, "TES")
+
+    generalLedgerApi.stubGetAccount(testPrisonerId)
+    generalLedgerApi.stubGetAccount(request.caseloadId)
+
+    webTestClient.post()
+      .uri("/sync/offender-transactions")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(request))
+      .exchange()
+      .expectStatus().isCreated
+
+    generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+  }
+
+  @Test
   fun `should call general ledger to lookup an account and create it if not exists`() {
     val request = createRequest(testPrisonerId, "TES")
 
