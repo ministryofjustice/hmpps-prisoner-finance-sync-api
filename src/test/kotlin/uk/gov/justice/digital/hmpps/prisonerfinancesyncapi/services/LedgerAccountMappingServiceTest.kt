@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 
@@ -55,6 +56,62 @@ class LedgerAccountMappingServiceTest {
     ) {
       val result = mappingService.mapPrisonSubAccount(accountCode, txnType)
       assertThat(result).isEqualTo(expectedReference)
+    }
+  }
+
+  @Nested
+  @DisplayName("mapSubAccountGLReferenceToNOMIS")
+  inner class MapSubAccountGLReferenceToNOMIS {
+
+    @ParameterizedTest
+    @CsvSource(
+      "1502:ADV, 1502, ADV",
+      "2501:CANT, 2501, CANT",
+      "2199:HOA, 2199, HOA",
+      "2199:WHF, 2199, WHF",
+      "7000:FRED, 7000, FRED",
+    )
+    fun `should map GL account reference to NOMIS prison account code, and transaction type`(
+      inputString: String,
+      expectedCode: Int,
+      expectedTxType: String,
+    ) {
+      val result = mappingService.mapSubAccountGLReferenceToNOMIS(inputString)
+      assertThat(result.code).isEqualTo(expectedCode)
+      assertThat(result.txType).isEqualTo(expectedTxType)
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+      "BAD:REF",
+      "BAD:REF:REF",
+    )
+    fun `should handle illegal GL references`(arg: String) {
+      assertThrows<IllegalArgumentException> { mappingService.mapSubAccountGLReferenceToNOMIS(arg) }
+    }
+  }
+
+  @Nested
+  @DisplayName("mapSubAccountPrisonerReferenceToNOMIS")
+  inner class MapSubAccountPrisonerReferenceToNOMIS {
+
+    @ParameterizedTest
+    @CsvSource(
+      "CASH, 2101",
+      "SPENDS, 2102",
+      "SAVINGS, 2103",
+    )
+    fun `should map NOMIS prisoner account codes to GL account reference`(inputReference: String, expectedCode: Int) {
+      val result = mappingService.mapSubAccountPrisonerReferenceToNOMIS(inputReference)
+      assertThat(result).isEqualTo(expectedCode)
+    }
+
+    @Test
+    fun `should throw exception for unknown prisoner code`() {
+      val unknownCode = "HELLOWORLD"
+      assertThatThrownBy {
+        mappingService.mapSubAccountPrisonerReferenceToNOMIS(unknownCode)
+      }.isInstanceOf(IllegalArgumentException::class.java)
     }
   }
 }
