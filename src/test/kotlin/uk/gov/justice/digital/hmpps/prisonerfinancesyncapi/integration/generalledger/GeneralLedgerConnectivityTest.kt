@@ -48,9 +48,12 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
 
   @Test
   fun `should call general ledger to lookup an account and create it if not exists`() {
-    generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
     val request = createRequest(testPrisonerId, "TES")
+
+    generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
     generalLedgerApi.stubGetAccountNotFound(request.caseloadId)
+    generalLedgerApi.stubCreateAccount(testPrisonerId)
+    generalLedgerApi.stubCreateAccount(request.caseloadId)
 
     webTestClient.post()
       .uri("/sync/offender-transactions")
@@ -70,7 +73,7 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
         .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo(testPrisonerId)),
     )
 
-    generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts.*")))
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 

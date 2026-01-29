@@ -16,26 +16,25 @@ class GeneralLedgerService(
     private val log = LoggerFactory.getLogger(this::class.java)
   }
 
+  private fun getOrCreateAccount(reference: String): UUID {
+    var account = generalLedgerApiClient.findAccountByReference(reference)
+
+    if (account != null) {
+      log.info("General Ledger account found for '$reference' (UUID: ${account.id})")
+      return account.id
+    }
+
+    log.info("General Ledger account not found for '$reference'. Creating new account.")
+    account = generalLedgerApiClient.createAccount(reference)
+
+    return account.id
+  }
+
   override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
     val offenderId = request.offenderTransactions.first().offenderDisplayId
 
-    val prisonAccount = generalLedgerApiClient.findAccountByReference(request.caseloadId)
-
-    if (prisonAccount != null) {
-      log.info("General Ledger account found for '$request.caseloadId' (UUID: ${prisonAccount.id})")
-    } else {
-      generalLedgerApiClient.createAccount(request.caseloadId)
-      log.info("General Ledger account not found for '$request.caseloadId")
-    }
-
-    val prisonerAccount = generalLedgerApiClient.findAccountByReference(offenderId)
-
-    if (prisonerAccount != null) {
-      log.info("General Ledger account found for '$offenderId' (UUID: ${prisonerAccount.id})")
-    } else {
-      generalLedgerApiClient.createAccount(offenderId)
-      log.info("General Ledger account not found for '$offenderId'")
-    }
+    val prisonAccount = getOrCreateAccount(request.caseloadId)
+    val prisonerAccount = getOrCreateAccount(offenderId)
 
     return UUID.randomUUID()
   }
