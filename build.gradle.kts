@@ -13,7 +13,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-flyway")
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
   implementation("com.google.code.gson:gson:2.13.2")
-  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:6.0.0")
+  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:6.0.1")
 
   implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.0.2")
   implementation("org.springframework.boot:spring-boot-starter-validation")
