@@ -66,6 +66,28 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  // GET /accounts?reference={ref} -> Returns List<Account>
+  fun stubGetAccount(reference: String, returnUuid: String = UUID.randomUUID().toString()) {
+    val response = GlAccountResponse(
+      id = UUID.fromString(returnUuid),
+      reference = reference,
+      createdAt = LocalDateTime.now(),
+      createdBy = "MOCK_USER",
+      subAccounts = emptyList(),
+    )
+
+    stubFor(
+      get(urlPathEqualTo("/accounts"))
+        .withQueryParam("reference", equalTo(reference))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(mapper.writeValueAsString(listOf(response))),
+        ),
+    )
+  }
+
   fun stubGetAccountNotFound(reference: String) {
     stubFor(
       get(urlPathEqualTo("/accounts"))
