@@ -10,6 +10,7 @@ import java.util.UUID
 @Service("generalLedgerService")
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
+  private val accountMapping: LedgerAccountMappingService,
 ) : LedgerService {
 
   private companion object {
@@ -35,6 +36,13 @@ class GeneralLedgerService(
 
     val prisonAccount = getOrCreateAccount(request.caseloadId)
     val prisonerAccount = getOrCreateAccount(offenderId)
+
+    request.offenderTransactions[0].generalLedgerEntries.forEach { entry ->
+      val subAccount = generalLedgerApiClient.findSubAccount(
+        prisonerAccount.toString(),
+        accountMapping.mapPrisonerSubAccount(entry.code),
+      )
+    }
 
     return UUID.randomUUID()
   }

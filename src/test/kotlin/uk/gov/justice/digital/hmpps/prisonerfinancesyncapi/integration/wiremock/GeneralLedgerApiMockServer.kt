@@ -67,9 +67,9 @@ class GeneralLedgerApiMockServer :
   }
 
   // GET /accounts?reference={ref} -> Returns List<Account>
-  fun stubGetAccount(reference: String, returnUuid: String = UUID.randomUUID().toString()) {
+  fun stubGetAccount(reference: String, returnUuid: UUID = UUID.randomUUID()) {
     val response = GlAccountResponse(
-      id = UUID.fromString(returnUuid),
+      id = returnUuid,
       reference = reference,
       createdAt = LocalDateTime.now(),
       createdBy = "MOCK_USER",
@@ -126,6 +126,25 @@ class GeneralLedgerApiMockServer :
     verify(
       postRequestedFor(urlEqualTo("/accounts"))
         .withRequestBody(matchingJsonPath("$.accountReference", equalTo(reference))),
+    )
+  }
+
+  fun stubGetSubAccount(parentReference: String, subAccountReference: String, response: List<GlAccountResponse>? = null) {
+    val subAccount = GlSubAccountResponse(UUID.randomUUID(), UUID.fromString(parentReference), subAccountReference, LocalDateTime.now(), "MOCK_USER")
+    stubFor(
+      get(urlPathEqualTo("/sub-accounts"))
+        .withQueryParam("reference", equalTo(subAccountReference))
+        .withQueryParam("accountReference", equalTo(parentReference))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(
+              mapper.writeValueAsString(
+                response ?: listOf(subAccount),
+              ),
+            ),
+        ),
     )
   }
 
