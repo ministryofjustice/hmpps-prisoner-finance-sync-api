@@ -15,6 +15,7 @@ import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -22,6 +23,7 @@ import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
@@ -253,6 +255,13 @@ class GeneralLedgerServiceTest {
       whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
         .thenReturn(mock<GlAccountResponse>())
 
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          any(),
+          any(),
+        ),
+      ).thenReturn(mock<GlSubAccountResponse>())
+
       generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
 
       verify(generalLedgerApiClient, times(1)).findSubAccount(
@@ -297,6 +306,13 @@ class GeneralLedgerServiceTest {
 
       whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
         .thenReturn(glResponsePrison)
+
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          any(),
+          any(),
+        ),
+      ).thenReturn(mock<GlSubAccountResponse>())
 
       generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
 
