@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -21,6 +22,7 @@ import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -34,6 +36,9 @@ class GeneralLedgerServiceTest {
 
   @InjectMocks
   private lateinit var generalLedgerService: GeneralLedgerService
+
+  @Spy
+  private lateinit var accountMapping: LedgerAccountMappingService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 
@@ -188,6 +193,60 @@ class GeneralLedgerServiceTest {
         generalLedgerService.syncGeneralLedgerTransaction(request)
       }.isInstanceOf(NotImplementedError::class.java)
         .hasMessageContaining("not yet supported")
+    }
+  }
+
+  @Nested
+  @DisplayName("syncOffenderTransactionSubAccount")
+  inner class SyncOffenderTransactionSubAccount {
+
+    @Test
+    fun `should find prisoner SUB account`() {
+      val prisonerDisplayId = "A123456"
+      val prisonCode = "MDI"
+
+      val transaction =
+        OffenderTransaction(
+          entrySequence = 1,
+          offenderId = 1L,
+          offenderDisplayId = prisonerDisplayId,
+          offenderBookingId = 100L,
+          subAccountType = "SPND",
+          postingType = "DR",
+          type = "CANT",
+          description = "Test Transaction",
+          amount = 10.00,
+          reference = "REF",
+          generalLedgerEntries = listOf(
+            GeneralLedgerEntry(1, 2102, "DR", 10.00),
+            GeneralLedgerEntry(2, 2101, "CR", 10.00),
+          ),
+        )
+
+      val syncOffenderTransactionRequest = mock<SyncOffenderTransactionRequest>()
+      whenever(syncOffenderTransactionRequest.offenderTransactions).thenReturn(listOf(transaction))
+
+      whenever(syncOffenderTransactionRequest.caseloadId).thenReturn(prisonCode)
+
+      val glResponse = mock<GlAccountResponse>()
+      whenever(glResponse.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonerDisplayId))
+        .thenReturn(glResponse)
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
+        .thenReturn(mock<GlAccountResponse>())
+
+      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
+
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        glResponse.id.toString(),
+        accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[0].code),
+      )
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        glResponse.id.toString(),
+        accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[1].code),
+      )
     }
   }
 }
