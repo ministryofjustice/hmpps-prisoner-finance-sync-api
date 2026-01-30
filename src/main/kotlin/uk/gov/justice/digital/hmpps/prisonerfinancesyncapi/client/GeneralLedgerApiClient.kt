@@ -38,7 +38,7 @@ class GeneralLedgerApiClient(
   }
 
   // GET /sub-accounts?reference={subRef}&accountReference={parentRef}
-  fun findSubAccount(parentReference: String, subAccountReference: String): GlSubAccountResponse? {
+  fun findSubAccount(parentReference: UUID, subAccountReference: String): GlSubAccountResponse? {
     val responseList = webClient.get()
       .uri { uriBuilder ->
         uriBuilder.path("/sub-accounts")

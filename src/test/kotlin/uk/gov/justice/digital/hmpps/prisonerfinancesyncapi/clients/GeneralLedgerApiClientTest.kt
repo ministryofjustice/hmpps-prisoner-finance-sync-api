@@ -63,7 +63,7 @@ class GeneralLedgerApiClientTest {
   inner class FindSubAccount {
     @Test
     fun `should return first sub-account when found`() {
-      val parentRef = "A1234AA"
+      val parentRef = UUID.randomUUID()
       val subRef = "SPND"
       val expectedResponse = GlSubAccountResponse(UUID.randomUUID(), UUID.randomUUID(), subRef, LocalDateTime.now(), "user")
 
@@ -78,7 +78,7 @@ class GeneralLedgerApiClientTest {
     fun `should return null when list is empty (Not Found)`() {
       mockWebClientGetChain(emptyList<GlSubAccountResponse>())
 
-      val result = apiClient.findSubAccount("A1234AA", "SPND")
+      val result = apiClient.findSubAccount(UUID.randomUUID(), "SPND")
 
       assertThat(result).isNull()
     }
@@ -91,7 +91,7 @@ class GeneralLedgerApiClientTest {
       whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<List<GlSubAccountResponse>>>()))
         .thenReturn(Mono.empty())
 
-      assertThat(apiClient.findSubAccount("A1234AA", "SPND")).isNull()
+      assertThat(apiClient.findSubAccount(UUID.randomUUID(), "SPND")).isNull()
     }
 
     private fun mockWebClientGetChain(response: List<GlSubAccountResponse>) {
