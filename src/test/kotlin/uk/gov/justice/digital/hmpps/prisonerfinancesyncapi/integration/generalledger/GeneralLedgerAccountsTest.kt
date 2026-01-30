@@ -2,8 +2,10 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.generall
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
+import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
+import com.github.tomakehurst.wiremock.client.WireMock.matching
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
@@ -34,7 +36,7 @@ import kotlin.random.Random
   ],
 )
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
-class GeneralLedgerConnectivityTest : IntegrationTestBase() {
+class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
   @Autowired
   private lateinit var objectMapper: ObjectMapper
@@ -48,6 +50,85 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
   fun setup() {
     generalLedgerApi.resetAll()
     hmppsAuth.stubGrantToken()
+  }
+
+  @Test
+  fun `should lookup prison SUB accounts`() {
+    val transaction =
+      OffenderTransaction(
+        entrySequence = 1,
+        offenderId = 1L,
+        offenderDisplayId = testPrisonerId,
+        offenderBookingId = 100L,
+        subAccountType = "",
+        postingType = "DR",
+        type = "ATOF",
+        description = "Test Transaction",
+        amount = 10.00,
+        reference = "REF",
+        generalLedgerEntries = listOf(
+          GeneralLedgerEntry(1, 1501, "DR", 10.00),
+          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+        ),
+      )
+    val request = createRequest(testPrisonerId, "TES", listOf(transaction))
+
+    val prisonerAccId = UUID.randomUUID()
+    val prisonAccId = UUID.randomUUID()
+
+    generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId)
+    generalLedgerApi.stubGetAccount(request.caseloadId, prisonAccId)
+
+    val prisonRef = accountMapping.mapPrisonSubAccount(
+      transaction.generalLedgerEntries[0].code,
+      request.offenderTransactions[0].type,
+    )
+    val prisonerRef = accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[1].code)
+
+    generalLedgerApi.stubGetSubAccount(
+      prisonerAccId.toString(),
+      prisonerRef,
+    )
+
+    generalLedgerApi.stubGetSubAccount(
+      prisonAccId.toString(),
+      prisonRef,
+    )
+
+    generalLedgerApi.stubGetSubAccount(
+      prisonerAccId.toString(),
+      prisonerRef,
+    )
+
+    webTestClient.post()
+      .uri("/sync/offender-transactions")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(request))
+      .exchange()
+      .expectStatus().isCreated
+
+    generalLedgerApi.verify(
+      1,
+      getRequestedFor(
+        urlPathMatching("/sub-accounts"),
+      )
+        .withQueryParam("accountReference", equalTo(prisonAccId.toString()))
+        .withQueryParam("reference", equalTo(prisonRef)),
+    )
+    generalLedgerApi.verify(
+      1,
+      getRequestedFor(
+        urlPathMatching("/sub-accounts"),
+
+      )
+        .withQueryParam("accountReference", equalTo(prisonerAccId.toString()))
+        .withQueryParam("reference", equalTo(prisonerRef)),
+    )
+
+    generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
   @Test
@@ -93,6 +174,16 @@ class GeneralLedgerConnectivityTest : IntegrationTestBase() {
       .bodyValue(objectMapper.writeValueAsString(request))
       .exchange()
       .expectStatus().isCreated
+
+    generalLedgerApi.verify(
+      2,
+      getRequestedFor(
+        urlPathMatching("/sub-accounts"),
+
+      )
+        .withQueryParam("accountReference", equalTo(prisonerAccId.toString()))
+        .withQueryParam("reference", matching(".*")),
+    )
 
     generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/sub-accounts.*")))
 

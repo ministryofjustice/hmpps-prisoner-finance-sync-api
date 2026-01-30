@@ -72,7 +72,6 @@ class GeneralLedgerService(
         val subAccount = getOrCreateSubAccount(parentAccount.id, accountReference)
       }
     }
-
     return UUID.randomUUID()
   }
 
