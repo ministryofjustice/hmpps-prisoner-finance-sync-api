@@ -129,8 +129,13 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun stubGetSubAccount(parentReference: String, subAccountReference: String, response: List<GlAccountResponse>? = null) {
-    val subAccount = GlSubAccountResponse(UUID.randomUUID(), UUID.fromString(parentReference), subAccountReference, LocalDateTime.now(), "MOCK_USER")
+  fun stubGetSubAccount(
+    parentReference: String,
+    subAccountReference: String,
+    parentAccountId: UUID = UUID.randomUUID(),
+    response: List<GlAccountResponse>? = null,
+  ) {
+    val subAccount = GlSubAccountResponse(UUID.randomUUID(), parentAccountId, subAccountReference, LocalDateTime.now(), "MOCK_USER")
     stubFor(
       get(urlPathEqualTo("/sub-accounts"))
         .withQueryParam("reference", equalTo(subAccountReference))
@@ -166,7 +171,7 @@ class GeneralLedgerApiMockServer :
   fun stubCreateSubAccount(parentId: String, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
     val response = GlSubAccountResponse(
       id = UUID.fromString(returnUuid),
-      parentAccountId = UUID.fromString(parentId),
+      parentAccountId = UUID.randomUUID(),
       reference = reference,
       createdAt = LocalDateTime.now(),
       createdBy = "MOCK_USER",

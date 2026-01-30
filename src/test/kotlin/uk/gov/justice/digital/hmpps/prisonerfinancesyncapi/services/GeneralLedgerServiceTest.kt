@@ -164,7 +164,10 @@ class GeneralLedgerServiceTest {
       val request = createOffenderRequest(offenderDisplayId)
       val expectedError = RuntimeException("Network Error")
 
-      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId)).thenThrow(expectedError)
+      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId))
+        .thenThrow(expectedError)
+      whenever(generalLedgerApiClient.findAccountByReference(offenderDisplayId))
+        .thenThrow(expectedError)
 
       assertThatThrownBy {
         generalLedgerService.syncOffenderTransaction(request)
@@ -265,13 +268,13 @@ class GeneralLedgerServiceTest {
       generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
 
       verify(generalLedgerApiClient, times(1)).findSubAccount(
-        glResponse.id,
+        prisonerDisplayId,
         accountMapping.mapPrisonerSubAccount(
           syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
         ),
       )
       verify(generalLedgerApiClient, times(1)).findSubAccount(
-        glResponse.id,
+        prisonerDisplayId,
         accountMapping.mapPrisonerSubAccount(
           syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
         ),
@@ -317,14 +320,14 @@ class GeneralLedgerServiceTest {
       generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
 
       verify(generalLedgerApiClient, times(1)).findSubAccount(
-        glResponsePrison.id,
+        prisonCode,
         accountMapping.mapPrisonSubAccount(
           syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
           transactionType,
         ),
       )
       verify(generalLedgerApiClient, times(1)).findSubAccount(
-        glResponsePrisoner.id,
+        prisonerDisplayId,
         accountMapping.mapPrisonerSubAccount(
           syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
         ),
@@ -357,7 +360,7 @@ class GeneralLedgerServiceTest {
 
       whenever(
         generalLedgerApiClient.findSubAccount(
-          glResponsePrisoner.id,
+          prisonerDisplayId,
           accountMapping.mapPrisonerSubAccount(
             syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
           ),
@@ -371,7 +374,7 @@ class GeneralLedgerServiceTest {
       )
 
       verify(generalLedgerApiClient, times(1)).findSubAccount(
-        glResponsePrisoner.id,
+        prisonerDisplayId,
         prisonSubAccountRef,
       )
 
@@ -417,7 +420,7 @@ class GeneralLedgerServiceTest {
 
       whenever(
         generalLedgerApiClient.findSubAccount(
-          glResponsePrison.id,
+          prisonCode,
           prisonSubAccountRef,
         ),
       ).thenReturn(null)
@@ -425,7 +428,7 @@ class GeneralLedgerServiceTest {
       generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
 
       verify(generalLedgerApiClient, times(1)).findSubAccount(
-        glResponsePrisoner.id,
+        prisonerDisplayId,
         accountMapping.mapPrisonerSubAccount(
           syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
         ),

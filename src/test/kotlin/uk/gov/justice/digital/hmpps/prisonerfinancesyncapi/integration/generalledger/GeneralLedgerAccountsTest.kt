@@ -86,19 +86,17 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     val prisonerRef = accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[1].code)
 
     generalLedgerApi.stubGetSubAccount(
-      prisonerAccId.toString(),
-      prisonerRef,
-    )
-
-    generalLedgerApi.stubGetSubAccount(
-      prisonAccId.toString(),
+      request.caseloadId,
       prisonRef,
     )
 
     generalLedgerApi.stubGetSubAccount(
-      prisonerAccId.toString(),
+      testPrisonerId,
       prisonerRef,
     )
+
+    generalLedgerApi.stubCreateSubAccount(request.caseloadId, prisonRef)
+    generalLedgerApi.stubCreateSubAccount(testPrisonerId, prisonRef)
 
     webTestClient.post()
       .uri("/sync/offender-transactions")
@@ -113,16 +111,17 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       getRequestedFor(
         urlPathMatching("/sub-accounts"),
       )
-        .withQueryParam("accountReference", equalTo(prisonAccId.toString()))
+        .withQueryParam("accountReference", equalTo(request.caseloadId))
         .withQueryParam("reference", equalTo(prisonRef)),
     )
+
     generalLedgerApi.verify(
       1,
       getRequestedFor(
         urlPathMatching("/sub-accounts"),
 
       )
-        .withQueryParam("accountReference", equalTo(prisonerAccId.toString()))
+        .withQueryParam("accountReference", equalTo(testPrisonerId))
         .withQueryParam("reference", equalTo(prisonerRef)),
     )
 
@@ -158,12 +157,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     generalLedgerApi.stubGetAccount(request.caseloadId)
 
     generalLedgerApi.stubGetSubAccount(
-      prisonerAccId.toString(),
+      testPrisonerId,
       accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[0].code),
     )
 
     generalLedgerApi.stubGetSubAccount(
-      prisonerAccId.toString(),
+      testPrisonerId,
       accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[1].code),
     )
 
@@ -181,7 +180,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         urlPathMatching("/sub-accounts"),
 
       )
-        .withQueryParam("accountReference", equalTo(prisonerAccId.toString()))
+        .withQueryParam("accountReference", equalTo(testPrisonerId))
         .withQueryParam("reference", matching(".*")),
     )
 

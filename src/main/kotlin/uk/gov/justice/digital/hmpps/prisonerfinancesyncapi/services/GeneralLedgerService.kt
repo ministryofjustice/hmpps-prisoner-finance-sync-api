@@ -33,7 +33,7 @@ class GeneralLedgerService(
     return account
   }
 
-  private fun getOrCreateSubAccount(parentAccount: UUID, reference: String): GlSubAccountResponse {
+  private fun getOrCreateSubAccount(parentAccount: String, parentAccountId: UUID, reference: String): GlSubAccountResponse {
     var subAccount = generalLedgerApiClient.findSubAccount(parentAccount, reference)
     if (subAccount != null) {
       log.info("General Ledger sub-account found for '$reference' (UUID: ${subAccount.id})")
@@ -41,17 +41,16 @@ class GeneralLedgerService(
     }
 
     log.info("General Ledger sub-account not found for '$reference'. Creating new sub-account.")
-    subAccount = generalLedgerApiClient.createSubAccount(parentAccount, reference)
+    subAccount = generalLedgerApiClient.createSubAccount(parentAccountId, reference)
 
     return subAccount
   }
 
   override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
-    val offenderId = request.offenderTransactions.first().offenderDisplayId
-
     val prisonAccount = getOrCreateAccount(request.caseloadId)
 
     // NB. this might need to be moved in the foreach block to handle multiple prisoners for transaction
+    val offenderId = request.offenderTransactions.first().offenderDisplayId
     val prisonerAccount = getOrCreateAccount(offenderId)
 
     request.offenderTransactions.forEach { transaction ->
@@ -68,8 +67,10 @@ class GeneralLedgerService(
           )
         }
 
+        val parentAccountString = if (isPrisonerAccount) offenderId else request.caseloadId
         val parentAccount = if (isPrisonerAccount) prisonerAccount else prisonAccount
-        val subAccount = getOrCreateSubAccount(parentAccount.id, accountReference)
+
+        val subAccount = getOrCreateSubAccount(parentAccountString, parentAccount.id, accountReference)
       }
     }
     return UUID.randomUUID()
