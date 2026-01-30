@@ -113,5 +113,21 @@ class LedgerAccountMappingServiceTest {
         mappingService.mapSubAccountPrisonerReferenceToNOMIS(unknownCode)
       }.isInstanceOf(IllegalArgumentException::class.java)
     }
+
+    @ParameterizedTest
+    @CsvSource(
+      "000, false",
+      "2101, true",
+      "2102, true",
+      "2103, true",
+      "999, false",
+      "666, false",
+      "911, false",
+    )
+    fun `should return true if is valid prisoner account code`(prisonCode: Int, isValid: Boolean) {
+      val result = mappingService.isValidPrisonerAccountCode(prisonCode)
+
+      assertThat(result).isEqualTo(isValid)
+    }
   }
 }

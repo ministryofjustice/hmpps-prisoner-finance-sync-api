@@ -34,4 +34,13 @@ class LedgerAccountMappingService {
     "SAVINGS" -> 2103
     else -> throw IllegalArgumentException("Unknown GL Prisoner reference Code: $referenceGLCode")
   }
+
+  fun isValidPrisonerAccountCode(prisonCode: Int): Boolean {
+    try {
+      mapPrisonerSubAccount(prisonCode)
+      return true
+    } catch (_: IllegalArgumentException) {
+      return false
+    }
+  }
 }

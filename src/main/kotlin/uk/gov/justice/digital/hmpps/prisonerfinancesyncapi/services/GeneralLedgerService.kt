@@ -38,10 +38,21 @@ class GeneralLedgerService(
     val prisonerAccount = getOrCreateAccount(offenderId)
 
     request.offenderTransactions[0].generalLedgerEntries.forEach { entry ->
-      val subAccount = generalLedgerApiClient.findSubAccount(
-        prisonerAccount.toString(),
-        accountMapping.mapPrisonerSubAccount(entry.code),
-      )
+
+      if (accountMapping.isValidPrisonerAccountCode(entry.code)) {
+        val subAccount = generalLedgerApiClient.findSubAccount(
+          prisonerAccount.toString(),
+          accountMapping.mapPrisonerSubAccount(entry.code),
+        )
+      } else {
+        val subAccount = generalLedgerApiClient.findSubAccount(
+          prisonerAccount.toString(),
+          accountMapping.mapPrisonSubAccount(
+            entry.code,
+            request.offenderTransactions[0].type,
+          ),
+        )
+      }
     }
 
     return UUID.randomUUID()
