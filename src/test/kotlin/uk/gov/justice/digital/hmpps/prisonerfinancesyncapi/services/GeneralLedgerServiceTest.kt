@@ -161,12 +161,12 @@ class GeneralLedgerServiceTest {
 
     @Test
     fun `should propagate exception from findAccountByReference`() {
-      val request = createOffenderRequest(offenderDisplayId)
+      val request = mock<SyncOffenderTransactionRequest>()
+      whenever(request.caseloadId).thenReturn("TES")
+
       val expectedError = RuntimeException("Network Error")
 
-      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId))
-        .thenThrow(expectedError)
-      whenever(generalLedgerApiClient.findAccountByReference(offenderDisplayId))
+      whenever(generalLedgerApiClient.findAccountByReference(any()))
         .thenThrow(expectedError)
 
       assertThatThrownBy {
