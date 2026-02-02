@@ -119,16 +119,16 @@ public class GeneralLedgerServiceTransactionTest {
       subAccountUUIDPrisoner,
     )
 
-    val result = generalLedgerService.syncOffenderTransaction(request)
+    generalLedgerService.syncOffenderTransaction(request)
 
     val glTransactionRequest = GlTransactionRequest(
       reference = request.offenderTransactions[0].reference!!,
       description = request.offenderTransactions[0].description,
       timestamp = request.transactionTimestamp.toInstant(ZoneOffset.UTC),
-      amount = amount.toLong(),
+      amount = amount.toGLLong(),
       postings = listOf(
-        GlPostingRequest(subAccountUUIDPrisoner, PostingType.CR, amount.toGLLong()),
-        GlPostingRequest(subAccountUUIDPrison, PostingType.DR, amount.toGLLong()),
+        GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toGLLong()),
+        GlPostingRequest(subAccountUUIDPrisoner, PostingType.DR, amount.toGLLong()),
       ),
     )
 
