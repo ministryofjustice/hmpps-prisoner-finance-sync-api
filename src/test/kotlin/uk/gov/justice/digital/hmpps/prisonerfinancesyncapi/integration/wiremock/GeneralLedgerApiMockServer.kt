@@ -67,9 +67,9 @@ class GeneralLedgerApiMockServer :
   }
 
   // GET /accounts?reference={ref} -> Returns List<Account>
-  fun stubGetAccount(reference: String, returnUuid: String = UUID.randomUUID().toString()) {
+  fun stubGetAccount(reference: String, returnUuid: UUID = UUID.randomUUID()) {
     val response = GlAccountResponse(
-      id = UUID.fromString(returnUuid),
+      id = returnUuid,
       reference = reference,
       createdAt = LocalDateTime.now(),
       createdBy = "MOCK_USER",
@@ -129,6 +129,30 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  fun stubGetSubAccount(
+    parentReference: String,
+    subAccountReference: String,
+    parentAccountId: UUID = UUID.randomUUID(),
+    response: List<GlAccountResponse>? = null,
+  ) {
+    val subAccount = GlSubAccountResponse(UUID.randomUUID(), parentAccountId, subAccountReference, LocalDateTime.now(), "MOCK_USER")
+    stubFor(
+      get(urlPathEqualTo("/sub-accounts"))
+        .withQueryParam("reference", equalTo(subAccountReference))
+        .withQueryParam("accountReference", equalTo(parentReference))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(
+              mapper.writeValueAsString(
+                response ?: listOf(subAccount),
+              ),
+            ),
+        ),
+    )
+  }
+
   fun stubGetSubAccountNotFound(parentReference: String, subAccountReference: String) {
     stubFor(
       get(urlPathEqualTo("/sub-accounts"))
@@ -144,10 +168,10 @@ class GeneralLedgerApiMockServer :
   }
 
   // POST /accounts/{uuid}/sub-accounts -> Returns Single SubAccount
-  fun stubCreateSubAccount(parentId: String, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
+  fun stubCreateSubAccount(parentId: UUID, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
     val response = GlSubAccountResponse(
       id = UUID.fromString(returnUuid),
-      parentAccountId = UUID.fromString(parentId),
+      parentAccountId = UUID.randomUUID(),
       reference = reference,
       createdAt = LocalDateTime.now(),
       createdBy = "MOCK_USER",

@@ -15,15 +15,15 @@ class LedgerAccountMappingService {
 
   fun mapPrisonSubAccount(nomisAccountCode: Int, transactionType: String): String = "$nomisAccountCode:$transactionType"
 
-  fun mapSubAccountGLReferenceToNOMIS(GLReferenceCode: String): PrisonAccountDetails {
-    val splitReference = GLReferenceCode.trim().split(":")
+  fun mapSubAccountGLReferenceToNOMIS(referenceGLCode: String): PrisonAccountDetails {
+    val splitReference = referenceGLCode.trim().split(":")
 
     if (splitReference.size != 2) {
       throw IllegalArgumentException("GL Reference code should only have 2 elements")
     }
 
     val code = splitReference[0].toIntOrNull()
-      ?: throw IllegalArgumentException("GL Reference code $GLReferenceCode is not a valid number")
+      ?: throw IllegalArgumentException("GL Reference code $referenceGLCode is not a valid number")
 
     return PrisonAccountDetails(code, splitReference[1].trim())
   }
@@ -33,5 +33,14 @@ class LedgerAccountMappingService {
     "SPENDS" -> 2102
     "SAVINGS" -> 2103
     else -> throw IllegalArgumentException("Unknown GL Prisoner reference Code: $referenceGLCode")
+  }
+
+  fun isValidPrisonerAccountCode(prisonerAccountCode: Int): Boolean {
+    try {
+      mapPrisonerSubAccount(prisonerAccountCode)
+      return true
+    } catch (_: IllegalArgumentException) {
+      return false
+    }
   }
 }

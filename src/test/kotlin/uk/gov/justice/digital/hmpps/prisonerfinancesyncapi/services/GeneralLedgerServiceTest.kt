@@ -13,7 +13,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -21,6 +23,8 @@ import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -34,6 +38,9 @@ class GeneralLedgerServiceTest {
 
   @InjectMocks
   private lateinit var generalLedgerService: GeneralLedgerService
+
+  @Spy
+  private lateinit var accountMapping: LedgerAccountMappingService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 
@@ -154,10 +161,13 @@ class GeneralLedgerServiceTest {
 
     @Test
     fun `should propagate exception from findAccountByReference`() {
-      val request = createOffenderRequest(offenderDisplayId)
+      val request = mock<SyncOffenderTransactionRequest>()
+      whenever(request.caseloadId).thenReturn("TES")
+
       val expectedError = RuntimeException("Network Error")
 
-      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId)).thenThrow(expectedError)
+      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId))
+        .thenThrow(expectedError)
 
       assertThatThrownBy {
         generalLedgerService.syncOffenderTransaction(request)
@@ -188,6 +198,318 @@ class GeneralLedgerServiceTest {
         generalLedgerService.syncGeneralLedgerTransaction(request)
       }.isInstanceOf(NotImplementedError::class.java)
         .hasMessageContaining("not yet supported")
+    }
+  }
+
+  @Nested
+  @DisplayName("syncOffenderTransactionSubAccount")
+  inner class SyncOffenderTransactionSubAccount {
+
+    fun makeMockTransactions(
+      prisonerDisplayId: String,
+      prisonCode: String,
+      transactionType: String,
+      transactionEntries: List<GeneralLedgerEntry>,
+    ): SyncOffenderTransactionRequest {
+      val transaction =
+        OffenderTransaction(
+          entrySequence = 1,
+          offenderId = 1L,
+          offenderDisplayId = prisonerDisplayId,
+          offenderBookingId = 100L,
+          subAccountType = "SPND",
+          postingType = "DR",
+          type = transactionType,
+          description = "Test Transaction",
+          amount = 10.00,
+          reference = "REF",
+          generalLedgerEntries = transactionEntries,
+        )
+
+      val syncOffenderTransactionRequest = mock<SyncOffenderTransactionRequest>()
+      whenever(syncOffenderTransactionRequest.offenderTransactions).thenReturn(listOf(transaction))
+
+      whenever(syncOffenderTransactionRequest.caseloadId).thenReturn(prisonCode)
+
+      return syncOffenderTransactionRequest
+    }
+
+    @Test
+    fun `should find prisoner SUB account when prisoner account exists`() {
+      val prisonerDisplayId = "A123456"
+      val prisonCode = "MDI"
+
+      val syncOffenderTransactionRequest = makeMockTransactions(
+        prisonerDisplayId,
+        prisonCode,
+        "TEST",
+        listOf(
+          GeneralLedgerEntry(1, 2102, "DR", 10.00),
+          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+        ),
+      )
+
+      val glResponse = mock<GlAccountResponse>()
+      whenever(glResponse.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonerDisplayId))
+        .thenReturn(glResponse)
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
+        .thenReturn(mock<GlAccountResponse>())
+
+      syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries.forEach { entry ->
+        whenever(
+          generalLedgerApiClient.findSubAccount(
+            prisonerDisplayId,
+            accountMapping.mapPrisonerSubAccount(entry.code),
+          ),
+        ).thenReturn(mock<GlSubAccountResponse>())
+      }
+
+      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
+
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        prisonerDisplayId,
+        accountMapping.mapPrisonerSubAccount(
+          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
+        ),
+      )
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        prisonerDisplayId,
+        accountMapping.mapPrisonerSubAccount(
+          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
+        ),
+      )
+    }
+
+    @Test
+    fun `should find prison SUB account when prison sub account exists`() {
+      val prisonerDisplayId = "A123456"
+      val prisonCode = "MDI"
+      val transactionType = "CANT"
+      val prisonerSubAccount = 2101
+      val prisonSubAccount = 1502
+
+      val syncOffenderTransactionRequest = makeMockTransactions(
+        prisonerDisplayId,
+        prisonCode,
+        transactionType,
+        listOf(
+          GeneralLedgerEntry(1, prisonSubAccount, "DR", 10.00),
+          GeneralLedgerEntry(2, prisonerSubAccount, "CR", 10.00),
+        ),
+      )
+
+      val glResponsePrisoner = mock<GlAccountResponse>()
+      whenever(glResponsePrisoner.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonerDisplayId))
+        .thenReturn(glResponsePrisoner)
+
+      val glResponsePrison = mock<GlAccountResponse>()
+
+      whenever(glResponsePrison.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
+        .thenReturn(glResponsePrison)
+
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          prisonCode,
+          accountMapping.mapPrisonSubAccount(prisonSubAccount, transactionType),
+        ),
+      ).thenReturn(mock<GlSubAccountResponse>())
+
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          prisonerDisplayId,
+          accountMapping.mapPrisonerSubAccount(prisonerSubAccount),
+        ),
+      ).thenReturn(mock<GlSubAccountResponse>())
+
+      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
+
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        prisonCode,
+        accountMapping.mapPrisonSubAccount(
+          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
+          transactionType,
+        ),
+      )
+    }
+
+    @Test
+    fun `should find prisoner and prison SUB accounts when prisoner and prison sub accounts exist`() {
+      val prisonerDisplayId = "A123456"
+      val prisonCode = "MDI"
+      val transactionType = "CANT"
+      val prisonerSubAccount = 2101
+      val prisonSubAccount = 1502
+
+      val syncOffenderTransactionRequest = makeMockTransactions(
+        prisonerDisplayId,
+        prisonCode,
+        transactionType,
+        listOf(
+          GeneralLedgerEntry(1, prisonSubAccount, "DR", 10.00),
+          GeneralLedgerEntry(2, prisonerSubAccount, "CR", 10.00),
+        ),
+      )
+
+      val glResponsePrisoner = mock<GlAccountResponse>()
+      whenever(glResponsePrisoner.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonerDisplayId))
+        .thenReturn(glResponsePrisoner)
+
+      val glResponsePrison = mock<GlAccountResponse>()
+
+      whenever(glResponsePrison.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
+        .thenReturn(glResponsePrison)
+
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          prisonCode,
+          accountMapping.mapPrisonSubAccount(prisonSubAccount, transactionType),
+        ),
+      ).thenReturn(mock<GlSubAccountResponse>())
+
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          prisonerDisplayId,
+          accountMapping.mapPrisonerSubAccount(prisonerSubAccount),
+        ),
+      ).thenReturn(mock<GlSubAccountResponse>())
+
+      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
+
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        prisonCode,
+        accountMapping.mapPrisonSubAccount(
+          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
+          transactionType,
+        ),
+      )
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        prisonerDisplayId,
+        accountMapping.mapPrisonerSubAccount(
+          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
+        ),
+      )
+
+      verify(generalLedgerApiClient, times(0)).createSubAccount(
+        any(),
+        any(),
+      )
+    }
+
+    @Test
+    fun `should find and create prisoner SUB account when prisoner sub account doesnt exist`() {
+      val prisonerDisplayId = "A123456"
+      val prisonCode = "MDI"
+
+      val syncOffenderTransactionRequest = makeMockTransactions(
+        prisonerDisplayId,
+        prisonCode,
+        "TEST",
+        listOf(
+          GeneralLedgerEntry(1, 2102, "DR", 10.00),
+          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+        ),
+      )
+
+      val glResponsePrisoner = mock<GlAccountResponse>()
+      whenever(glResponsePrisoner.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonerDisplayId))
+        .thenReturn(glResponsePrisoner)
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
+        .thenReturn(mock<GlAccountResponse>())
+
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          prisonerDisplayId,
+          accountMapping.mapPrisonerSubAccount(
+            syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
+          ),
+        ),
+      ).thenReturn(null)
+
+      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
+
+      val prisonSubAccountRef = accountMapping.mapPrisonerSubAccount(
+        syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
+      )
+
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        prisonerDisplayId,
+        prisonSubAccountRef,
+      )
+
+      verify(generalLedgerApiClient, times(1)).createSubAccount(
+        glResponsePrisoner.id,
+        prisonSubAccountRef,
+      )
+    }
+
+    @Test
+    fun `should find and create prison SUB account when prison sub account doesnt exist`() {
+      val prisonerDisplayId = "A123456"
+      val prisonCode = "MDI"
+      val transactionType = "CANT"
+
+      val syncOffenderTransactionRequest = makeMockTransactions(
+        prisonerDisplayId,
+        prisonCode,
+        transactionType,
+        listOf(
+          GeneralLedgerEntry(1, 1502, "DR", 10.00),
+          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+        ),
+      )
+
+      val glResponsePrisoner = mock<GlAccountResponse>()
+      whenever(glResponsePrisoner.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonerDisplayId))
+        .thenReturn(glResponsePrisoner)
+
+      val glResponsePrison = mock<GlAccountResponse>()
+
+      whenever(glResponsePrison.id).thenReturn(UUID.randomUUID())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonCode))
+        .thenReturn(glResponsePrison)
+
+      val prisonSubAccountRef = accountMapping.mapPrisonSubAccount(
+        syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
+        transactionType,
+      )
+
+      whenever(
+        generalLedgerApiClient.findSubAccount(
+          prisonCode,
+          prisonSubAccountRef,
+        ),
+      ).thenReturn(null)
+
+      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
+
+      verify(generalLedgerApiClient, times(1)).findSubAccount(
+        prisonerDisplayId,
+        accountMapping.mapPrisonerSubAccount(
+          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
+        ),
+      )
+
+      verify(generalLedgerApiClient, times(1)).createSubAccount(
+        glResponsePrison.id,
+        prisonSubAccountRef,
+      )
     }
   }
 }
