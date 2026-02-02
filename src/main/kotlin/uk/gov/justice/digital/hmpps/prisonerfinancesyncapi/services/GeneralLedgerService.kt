@@ -4,9 +4,15 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.ToGLPostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toGLLong
+import java.time.ZoneOffset
+import java.util.Map.entry
 import java.util.UUID
 
 @Service("generalLedgerService")
@@ -54,6 +60,9 @@ class GeneralLedgerService(
     val prisonerAccount = getOrCreateAccount(offenderId)
 
     request.offenderTransactions.forEach { transaction ->
+
+      val glEntries = mutableListOf<GlPostingRequest>()
+
       transaction.generalLedgerEntries.forEach { entry ->
 
         val isPrisonerAccount = accountMapping.isValidPrisonerAccountCode(entry.code)
@@ -71,7 +80,24 @@ class GeneralLedgerService(
         val parentAccount = if (isPrisonerAccount) prisonerAccount else prisonAccount
 
         val subAccount = getOrCreateSubAccount(parentAccountString, parentAccount.id, accountReference)
+        glEntries.add(
+          GlPostingRequest(
+            subAccount.id,
+            type = entry.postingType.ToGLPostingType(),
+            amount = entry.amount.toGLLong(),
+          ),
+        )
       }
+
+      val glTransactionRequest = GlTransactionRequest(
+        transaction.reference ?: "",
+        description = transaction.description,
+        timestamp = request.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        amount = transaction.amount.toGLLong(),
+        postings = glEntries,
+      )
+
+      generalLedgerApiClient.postTransaction(glTransactionRequest)
     }
     return UUID.randomUUID()
   }

@@ -1,3 +1,3 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils
 
-fun Double.toGLInt(): Int = (this * 100).toInt()
+fun Double.toGLLong(): Long = (this * 100).toLong()

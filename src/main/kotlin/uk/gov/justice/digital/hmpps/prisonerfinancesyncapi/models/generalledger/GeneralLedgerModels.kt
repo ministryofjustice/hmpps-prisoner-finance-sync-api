@@ -1,5 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger
 
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingType.CR
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingType.DR
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
@@ -21,6 +23,13 @@ data class GlPostingRequest(
 enum class PostingType {
   DR,
   CR,
+}
+
+fun String.ToGLPostingType() = when (this) {
+  "DR" -> DR
+  "CR" -> CR
+  else ->
+    throw IllegalArgumentException("Invalid posting type $this")
 }
 
 data class GlSubAccountRequest(
