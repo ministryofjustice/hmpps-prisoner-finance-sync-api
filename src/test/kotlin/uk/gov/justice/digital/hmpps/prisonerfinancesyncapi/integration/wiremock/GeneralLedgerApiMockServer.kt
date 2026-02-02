@@ -196,6 +196,10 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  fun verifyTransactionPosted() {
+    verify(1, postRequestedFor(urlPathEqualTo("/transactions")))
+  }
+
   // POST /transactions
   fun stubPostTransaction(
     creditorSubAccountUuid: String? = null,
