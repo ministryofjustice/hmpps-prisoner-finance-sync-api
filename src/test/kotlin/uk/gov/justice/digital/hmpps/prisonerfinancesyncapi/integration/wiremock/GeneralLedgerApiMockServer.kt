@@ -168,7 +168,7 @@ class GeneralLedgerApiMockServer :
   }
 
   // POST /accounts/{uuid}/sub-accounts -> Returns Single SubAccount
-  fun stubCreateSubAccount(parentId: String, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
+  fun stubCreateSubAccount(parentId: UUID, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
     val response = GlSubAccountResponse(
       id = UUID.fromString(returnUuid),
       parentAccountId = UUID.randomUUID(),
