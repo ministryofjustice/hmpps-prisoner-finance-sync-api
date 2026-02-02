@@ -53,7 +53,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `should lookup and create prisoner SUB accounts`() {
+  fun `should lookup and create prisoner SUB accounts when account doesnt exist`() {
     val transaction =
       OffenderTransaction(
         entrySequence = 1,
@@ -68,7 +68,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         reference = "REF",
         generalLedgerEntries = listOf(
           GeneralLedgerEntry(1, 1501, "DR", 10.00),
-          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+          GeneralLedgerEntry(2, 2102, "CR", 10.00),
         ),
       )
     val request = createRequest(testPrisonerId, "TES", listOf(transaction))
@@ -125,12 +125,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     )
 
     generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
-    generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
   @Test
-  fun `should lookup and create prison SUB accounts`() {
+  fun `should lookup and create prison SUB accounts when account doesnt exist`() {
     val transaction =
       OffenderTransaction(
         entrySequence = 1,
@@ -145,7 +145,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         reference = "REF",
         generalLedgerEntries = listOf(
           GeneralLedgerEntry(1, 1501, "DR", 10.00),
-          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+          GeneralLedgerEntry(2, 2103, "CR", 10.00),
         ),
       )
     val request = createRequest(testPrisonerId, "TES", listOf(transaction))
@@ -202,12 +202,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     )
 
     generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
-    generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
   @Test
-  fun `should lookup prison SUB accounts`() {
+  fun `should find existing prison SUB account and not create new one`() {
     val transaction =
       OffenderTransaction(
         entrySequence = 1,
@@ -277,12 +277,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     )
 
     generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
-    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
   @Test
-  fun `should lookup prisoner SUB accounts`() {
+  fun `should find existing prisoner SUB accounts and not create new one`() {
     val transaction =
       OffenderTransaction(
         entrySequence = 1,
@@ -338,7 +338,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/sub-accounts.*")))
 
     generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
-    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
@@ -358,7 +358,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       .expectStatus().isCreated
 
     generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
-    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts.*")))
+    generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
     generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
   }
 
@@ -394,7 +394,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `should not post any transaction`() {
+  fun `should not post any transactions`() {
     val request = createRequest(testPrisonerId)
 
     webTestClient.post()
