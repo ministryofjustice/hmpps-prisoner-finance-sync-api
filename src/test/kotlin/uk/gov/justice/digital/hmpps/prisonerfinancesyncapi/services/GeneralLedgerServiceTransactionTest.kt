@@ -25,13 +25,16 @@ import java.util.UUID
 import kotlin.random.Random
 
 @ExtendWith(MockitoExtension::class)
-public class GeneralLedgerServiceTransactionTest {
+class GeneralLedgerServiceTransactionTest {
 
   @Mock
   private lateinit var generalLedgerApiClient: GeneralLedgerApiClient
 
   @InjectMocks
   private lateinit var generalLedgerService: GeneralLedgerService
+
+  @Spy
+  private lateinit var timeConversionService: TimeConversionService
 
   @Spy
   private lateinit var accountMapping: LedgerAccountMappingService

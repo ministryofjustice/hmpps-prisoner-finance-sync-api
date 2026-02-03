@@ -7,18 +7,17 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.ToGLPostingType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toGLLong
-import java.time.ZoneOffset
-import java.util.Map.entry
 import java.util.UUID
 
 @Service("generalLedgerService")
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
+  private val timeConversionService: TimeConversionService,
 ) : LedgerService {
 
   private companion object {
@@ -83,7 +82,7 @@ class GeneralLedgerService(
         glEntries.add(
           GlPostingRequest(
             subAccount.id,
-            type = entry.postingType.ToGLPostingType(),
+            type = entry.postingType.toGLPostingType(),
             amount = entry.amount.toGLLong(),
           ),
         )
@@ -92,7 +91,7 @@ class GeneralLedgerService(
       val glTransactionRequest = GlTransactionRequest(
         transaction.reference ?: "",
         description = transaction.description,
-        timestamp = request.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = transaction.amount.toGLLong(),
         postings = glEntries,
       )

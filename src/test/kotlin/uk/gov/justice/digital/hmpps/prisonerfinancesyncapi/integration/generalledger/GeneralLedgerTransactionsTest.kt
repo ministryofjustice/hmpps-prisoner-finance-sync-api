@@ -2,7 +2,6 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.generall
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,7 +22,6 @@ import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
 
-@Disabled
 @TestPropertySource(
   properties = [
     "feature.general-ledger-api.enabled=true",
@@ -133,7 +131,7 @@ class GeneralLedgerTransactionsTest : IntegrationTestBase() {
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
 
     val canteenSubRef = "2501:CANT"
-    val spendsSubRef = "SPND"
+    val spendsSubRef = "SPENDS"
 
     val prisoner1 = testPrisonerId
     val amount1 = BigDecimal("1.40")
@@ -225,7 +223,10 @@ class GeneralLedgerTransactionsTest : IntegrationTestBase() {
       .expectStatus().isCreated
 
     generalLedgerApi.verifyCreateAccount(prisoner1)
-    generalLedgerApi.verifyCreateAccount(prisoner2)
+
+    // TODO uncomment this once we remove the prisoner filter
+    // generalLedgerApi.verifyCreateAccount(prisoner2)
+
     generalLedgerApi.verifyCreateAccount(prisonId)
   }
 

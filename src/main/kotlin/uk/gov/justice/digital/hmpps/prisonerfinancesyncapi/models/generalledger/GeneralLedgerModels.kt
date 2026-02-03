@@ -25,7 +25,7 @@ enum class PostingType {
   CR,
 }
 
-fun String.ToGLPostingType() = when (this) {
+fun String.toGLPostingType() = when (this) {
   "DR" -> DR
   "CR" -> CR
   else ->
