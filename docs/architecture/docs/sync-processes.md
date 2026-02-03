@@ -14,27 +14,43 @@ transactions are included in the calculated balance.
 sequenceDiagram
     actor SYSCON as Syscon developer
     box NOMIS
-        participant NOMIS.DB as Database
         participant NOMIS.sync as Sync service
     end
     box Prisoner Finance
         participant PF.sync as Sync service
         participant PF.log as Sync log
-        participant PF.ledger as General Ledger
-        participant PF.calculator as Balance calculator
+        participant PF.ledger as Internal Ledger
+        participant PF.newGL as General Ledger API
     end
 
     autonumber
 
     SYSCON ->> NOMIS.sync: Trigger balance update
-    NOMIS.sync ->>+ NOMIS.DB: SELECT <Balance>
-    NOMIS.DB -->>- NOMIS.sync: Return <Balance>
-    NOMIS.sync ->>+ PF.sync: POST <Balance>
+    NOMIS.sync ->>+ PF.sync: POST /migrate/prisoner-balances (JSON Payload)
+
+%% LEGACY FLOW
     PF.sync ->>+ PF.log: Create <Balance> log
     PF.log -->>- PF.sync: Success response
-    PF.sync ->>+ PF.ledger: POST <Transaction>
+    PF.sync ->>+ PF.ledger: POST <Transaction> (Internal Ledger)
     PF.ledger -->>- PF.sync: Success response
-    PF.sync -->> NOMIS.sync: Success response
+
+%% NEW GL MIGRATION FLOW
+    rect rgb(240, 248, 255)
+        note right of PF.sync: Feature Flag & Test Prisoner Check
+
+        PF.sync ->> PF.sync: Aggregate Balances (Sum by Code)
+        PF.sync ->> PF.sync: Resolve Max Timestamp
+
+        PF.sync ->>+ PF.newGL: GET /accounts?reference={prisonNumber}
+        PF.newGL -->>- PF.sync: Return Account + Sub-Account UUIDs
+
+        loop For each Aggregated Account Type (e.g. CASH)
+            PF.sync ->>+ PF.newGL: POST .../sub-accounts/{uuid}/balance
+            PF.newGL -->>- PF.sync: 201 Created / 200 OK
+        end
+    end
+
+    PF.sync -->>- NOMIS.sync: Success response
 ```
 
 ### Verify current balance
