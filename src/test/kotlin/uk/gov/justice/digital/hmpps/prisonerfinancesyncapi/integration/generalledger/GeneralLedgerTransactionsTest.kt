@@ -68,11 +68,6 @@ class GeneralLedgerTransactionsTest : IntegrationTestBase() {
     generalLedgerApi.stubGetSubAccountNotFound(prisonId, prisonSubRef)
     generalLedgerApi.stubCreateSubAccount(prisonParentUuid, prisonSubRef, prisonSubUuid)
 
-    generalLedgerApi.stubPostTransaction(
-      creditorSubAccountUuid = prisonerSubUuid, // 2102 CR
-      debtorSubAccountUuid = prisonSubUuid, // 1502 DR
-    )
-
     val transactionId = Random.nextLong(10000, 99999)
     val timestamp = LocalDateTime.now()
 
@@ -228,6 +223,7 @@ class GeneralLedgerTransactionsTest : IntegrationTestBase() {
     // generalLedgerApi.verifyCreateAccount(prisoner2)
 
     generalLedgerApi.verifyCreateAccount(prisonId)
+    generalLedgerApi.verifyTransactionPosted(times = 2)
   }
 
   @Test

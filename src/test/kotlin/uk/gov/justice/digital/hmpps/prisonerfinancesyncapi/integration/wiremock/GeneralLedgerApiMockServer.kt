@@ -196,8 +196,8 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun verifyTransactionPosted() {
-    verify(1, postRequestedFor(urlPathEqualTo("/transactions")))
+  fun verifyTransactionPosted(times: Int = 1) {
+    verify(times, postRequestedFor(urlPathEqualTo("/transactions")))
   }
 
   // POST /transactions
@@ -205,9 +205,10 @@ class GeneralLedgerApiMockServer :
     creditorSubAccountUuid: String? = null,
     debtorSubAccountUuid: String? = null,
     reference: String? = null,
+    returnUUID: UUID = UUID.randomUUID(),
   ) {
     val response = GlTransactionReceipt(
-      id = UUID.randomUUID(),
+      id = returnUUID,
       reference = reference ?: "MOCK_TXN",
       amount = 1000,
     )

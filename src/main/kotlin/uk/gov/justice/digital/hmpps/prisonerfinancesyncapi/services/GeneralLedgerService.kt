@@ -97,8 +97,10 @@ class GeneralLedgerService(
         postings = glEntries,
       )
 
-      transactionGLUUIDs.add(generalLedgerApiClient.postTransaction(glTransactionRequest))
+      val transactionGLUUID = generalLedgerApiClient.postTransaction(glTransactionRequest)
+      transactionGLUUIDs.add(transactionGLUUID)
     }
+
     return transactionGLUUIDs.first()
   }
 
