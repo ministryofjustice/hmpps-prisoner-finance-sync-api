@@ -71,12 +71,11 @@ sequenceDiagram
 %% NEW GL VERIFICATION FLOW
     rect rgb(240, 248, 255)
         note right of PF.sync: Feature Flag Enabled?
-        PF.sync ->>+ PF.newGL: GET /accounts?reference={ref}
-        PF.newGL -->>- PF.sync: Return Prisoner UUID
-        PF.sync ->>+ PF.newGL: GET /sub-accounts?accountReference={ref}
-        PF.newGL -->>- PF.sync: Return Sub-Account UUIDs (Cash, Spends, Savings)
 
-        loop For each Sub-Account
+        PF.sync ->>+ PF.newGL: GET /accounts?reference={prisonNumber}
+        PF.newGL -->>- PF.sync: Return Account + List of Sub-Accounts (UUIDs)
+
+        loop For each Sub-Account (Cash, Spends, Savings)
             PF.sync ->>+ PF.newGL: GET /sub-accounts/{uuid}/balance
             PF.newGL -->>- PF.sync: Return Balance
         end
