@@ -58,6 +58,7 @@ class GeneralLedgerService(
     val offenderId = request.offenderTransactions.first().offenderDisplayId
     val prisonerAccount = getOrCreateAccount(offenderId)
 
+    val transactionGLUUIDs = mutableListOf<UUID>()
     request.offenderTransactions.forEach { transaction ->
 
       val glEntries = mutableListOf<GlPostingRequest>()
@@ -96,9 +97,9 @@ class GeneralLedgerService(
         postings = glEntries,
       )
 
-      generalLedgerApiClient.postTransaction(glTransactionRequest)
+      transactionGLUUIDs.add(generalLedgerApiClient.postTransaction(glTransactionRequest))
     }
-    return UUID.randomUUID()
+    return transactionGLUUIDs.first()
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
