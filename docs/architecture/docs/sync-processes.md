@@ -49,23 +49,47 @@ sequenceDiagram
     box Prisoner Finance
         participant PF.sync as Sync service
         participant PF.log as Sync log
-        participant PF.ledger as General Ledger
+        participant PF.ledger as Internal Ledger
         participant PF.calculator as Balance calculator
+        participant PF.newGL as General Ledger API
     end
 
     autonumber
 
     SYSCON ->> NOMIS.sync: Trigger balance update
     NOMIS.sync ->>+ PF.sync: GET <Balance>
-    PF.sync ->>+ PF.calculator: GET <Balance>
+
+%% LEGACY FLOW
     PF.sync ->>+ PF.calculator: GET <Balance>
     PF.calculator ->>+ PF.log: GET <Balance>
     PF.log -->>- PF.calculator: Return <Balance>
     PF.calculator ->>+ PF.ledger: GET <GLTransaction>
     PF.ledger -->>- PF.calculator: Return <>
-    PF.calculator -->> PF.calculator: Calculate
-    PF.calculator -->>- PF.sync: Return <Balance>
-    PF.sync -->>- NOMIS.sync: Return <Balance>
+    PF.calculator -->> PF.calculator: Calculate Legacy Balance
+    PF.calculator -->>- PF.sync: Return <Legacy Balance>
+
+%% NEW GL VERIFICATION FLOW
+    rect rgb(240, 248, 255)
+        note right of PF.sync: Feature Flag Enabled?
+        PF.sync ->>+ PF.newGL: GET /accounts?reference={ref}
+        PF.newGL -->>- PF.sync: Return Prisoner UUID
+        PF.sync ->>+ PF.newGL: GET /sub-accounts?accountReference={ref}
+        PF.newGL -->>- PF.sync: Return Sub-Account UUIDs (Cash, Spends, Savings)
+
+        loop For each Sub-Account
+            PF.sync ->>+ PF.newGL: GET /sub-accounts/{uuid}/balance
+            PF.newGL -->>- PF.sync: Return Balance
+        end
+
+        PF.sync ->> PF.sync: Aggregate Legacy vs GL
+        opt Mismatch Detected
+            PF.sync ->> PF.log: Log WARN <Balance Mismatch>
+        end
+    end
+
+    PF.sync -->>- NOMIS.sync: Return <Legacy Balance>
+
+%% NOMIS VERIFICATION
     NOMIS.sync ->>+ NOMIS.DB: SELECT <Balance>
     NOMIS.DB -->>- NOMIS.sync: Return <Balance>
     NOMIS.sync ->> NOMIS.sync: Compare
