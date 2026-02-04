@@ -4,15 +4,20 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
 
 @Service("generalLedgerService")
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
+  private val timeConversionService: TimeConversionService,
 ) : LedgerService {
 
   private companion object {
@@ -48,12 +53,18 @@ class GeneralLedgerService(
 
   override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
     val prisonAccount = getOrCreateAccount(request.caseloadId)
+    val transactionGLUUIDs = mutableListOf<UUID>()
 
-    // NB. this might need to be moved in the foreach block to handle multiple prisoners for transaction
-    val offenderId = request.offenderTransactions.first().offenderDisplayId
-    val prisonerAccount = getOrCreateAccount(offenderId)
+    val prisonerAccounts = mutableMapOf<String, GlAccountResponse>()
 
     request.offenderTransactions.forEach { transaction ->
+      val offenderId = transaction.offenderDisplayId
+      val prisonerAccount = prisonerAccounts.getOrPut(offenderId) {
+        getOrCreateAccount(offenderId)
+      }
+
+      val glEntries = mutableListOf<GlPostingRequest>()
+
       transaction.generalLedgerEntries.forEach { entry ->
 
         val isPrisonerAccount = accountMapping.isValidPrisonerAccountCode(entry.code)
@@ -71,9 +82,32 @@ class GeneralLedgerService(
         val parentAccount = if (isPrisonerAccount) prisonerAccount else prisonAccount
 
         val subAccount = getOrCreateSubAccount(parentAccountString, parentAccount.id, accountReference)
+        glEntries.add(
+          GlPostingRequest(
+            subAccount.id,
+            type = entry.postingType.toGLPostingType(),
+            amount = entry.amount.toPence(),
+          ),
+        )
       }
+
+      val glTransactionRequest = GlTransactionRequest(
+        transaction.reference ?: "",
+        description = transaction.description,
+        timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
+        amount = transaction.amount.toPence(),
+        postings = glEntries,
+      )
+
+      val transactionGLUUID = generalLedgerApiClient.postTransaction(glTransactionRequest)
+      transactionGLUUIDs.add(transactionGLUUID)
     }
-    return UUID.randomUUID()
+
+    if (transactionGLUUIDs.isEmpty()) {
+      throw IllegalStateException("No General Ledger Transaction returned")
+    }
+
+    return transactionGLUUIDs.first()
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")

@@ -1,4 +1,4 @@
-package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.util
+package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils
 
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.AppenderBase

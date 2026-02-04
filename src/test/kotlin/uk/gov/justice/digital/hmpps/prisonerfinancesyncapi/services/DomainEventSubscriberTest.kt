@@ -11,7 +11,7 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.domainevents.DomainEventSubscriber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.util.mockLogger
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.mockLogger
 
 fun makePrisonerMergeEvent(removedPrisonerNumber: String, prisonerNumber: String, eventType: String = "prison-offender-events.prisoner.merged") =
   """
