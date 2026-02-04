@@ -53,13 +53,15 @@ class GeneralLedgerService(
 
   override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
     val prisonAccount = getOrCreateAccount(request.caseloadId)
-
-    // NB. this might need to be moved in the foreach block to handle multiple prisoners for transaction
-    val offenderId = request.offenderTransactions.first().offenderDisplayId
-    val prisonerAccount = getOrCreateAccount(offenderId)
-
     val transactionGLUUIDs = mutableListOf<UUID>()
+
+    val prisonerAccounts = mutableMapOf<String, GlAccountResponse>()
+
     request.offenderTransactions.forEach { transaction ->
+      val offenderId = transaction.offenderDisplayId
+      val prisonerAccount = prisonerAccounts.getOrPut(offenderId) {
+        getOrCreateAccount(offenderId)
+      }
 
       val glEntries = mutableListOf<GlPostingRequest>()
 
@@ -99,6 +101,10 @@ class GeneralLedgerService(
 
       val transactionGLUUID = generalLedgerApiClient.postTransaction(glTransactionRequest)
       transactionGLUUIDs.add(transactionGLUUID)
+    }
+
+    if (transactionGLUUIDs.isEmpty()) {
+      throw IllegalStateException("No General Ledger Transaction returned")
     }
 
     return transactionGLUUIDs.first()
