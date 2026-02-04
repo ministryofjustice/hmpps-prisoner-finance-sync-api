@@ -201,30 +201,34 @@ class DualWriteLedgerServiceTest {
   @Nested
   @DisplayName("prisonerReconciliation")
   inner class PrisonerReconciliation {
-    val prisonerNumber = "A1234AA"
+    val prisonNumber = "A1234AA"
 
     @Test
     fun `should call both internal ledger and GL when reconciling a prisoner`() {
-      dualWriteService.reconcilePrisoner(prisonerNumber)
+      dualWriteService.reconcilePrisoner(prisonNumber)
 
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonerNumber)
-      verify(generalLedger).reconcilePrisoner(prisonerNumber)
+      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
+      verify(generalLedger).reconcilePrisoner(prisonNumber)
     }
 
     @Test
     fun `should handle exception  when it's thrown by GL when reconciling a prisoner and log error`() {
       val expectedException = RuntimeException("Expected Exception")
-      whenever(generalLedger.reconcilePrisoner(prisonerNumber)).thenThrow(expectedException)
+      whenever(generalLedger.reconcilePrisoner(prisonNumber)).thenThrow(expectedException)
 
       val resultItem = listOf(mock<PrisonerEstablishmentBalanceDetails>())
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonerNumber))
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber))
         .thenReturn(resultItem)
 
-      val res = dualWriteService.reconcilePrisoner(prisonerNumber)
+      val res = dualWriteService.reconcilePrisoner(prisonNumber)
 
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonerNumber)
-      verify(generalLedger).reconcilePrisoner(prisonerNumber)
+      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
+      verify(generalLedger).reconcilePrisoner(prisonNumber)
 
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs).anyMatch {
+        it.contains("Failed to reconcile prisoner $prisonNumber to General Ledger")
+      }
       assertThat(res).isEqualTo(PrisonerEstablishmentBalanceDetailsList(resultItem))
     }
   }
