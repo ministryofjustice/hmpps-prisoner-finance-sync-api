@@ -18,12 +18,14 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
 class ReconciliationController(
   @param:Autowired private val ledgerQueryService: LedgerQueryService,
+  @param:Autowired private val reconciliationService: ReconciliationService,
 ) {
   @Operation(
     summary = "Get a list of all subaccount balances for a prisoner, grouped by establishment where transactions occurred",
@@ -44,8 +46,7 @@ class ReconciliationController(
   fun listPrisonerBalancesByEstablishment(
     @PathVariable prisonNumber: String,
   ): ResponseEntity<PrisonerEstablishmentBalanceDetailsList> {
-    val items = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
-    val body = PrisonerEstablishmentBalanceDetailsList(items)
+    val body = reconciliationService.reconcilePrisoner(prisonNumber)
     return ResponseEntity.ok(body)
   }
 

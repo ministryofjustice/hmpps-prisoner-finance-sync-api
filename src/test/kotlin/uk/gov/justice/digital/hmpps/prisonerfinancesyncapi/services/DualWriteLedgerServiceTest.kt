@@ -36,6 +36,7 @@ class DualWriteLedgerServiceTest {
   private lateinit var generalLedger: LedgerService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
+
   private lateinit var dualWriteService: DualWriteLedgerService
 
   private val matchingPrisonerId = "A1234AA"
@@ -45,6 +46,7 @@ class DualWriteLedgerServiceTest {
 
   @BeforeEach
   fun setup() {
+    dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
     listAppender = ListAppender<ILoggingEvent>().apply { start() }
     logger.addAppender(listAppender)
   }
@@ -57,7 +59,6 @@ class DualWriteLedgerServiceTest {
   @Test
   fun `should log configuration on startup`() {
     dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, "TEST_ID")
-
     val logs = listAppender.list.map { it.formattedMessage }
     assertThat(logs).anyMatch {
       it.contains("General Ledger Dual Write Service initialized. Enabled: true. Test Prisoner ID: TEST_ID")
@@ -71,7 +72,6 @@ class DualWriteLedgerServiceTest {
     @Test
     fun `should only call the internal ledger when feature flag is disabled`() {
       dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, false, matchingPrisonerId)
-
       val request = createRequest(matchingPrisonerId)
       val expectedUuid = UUID.randomUUID()
 
@@ -86,8 +86,6 @@ class DualWriteLedgerServiceTest {
 
     @Test
     fun `should call both ledgers when feature flag is enabled and prisoner ID matches`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
-
       val request = createRequest(matchingPrisonerId)
       val expectedUuid = UUID.randomUUID()
 
@@ -104,8 +102,6 @@ class DualWriteLedgerServiceTest {
 
     @Test
     fun `should skip general ledger when feature flag is enabled but prisoner id does not match`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
-
       val request = createRequest(nonMatchingPrisonerId)
       val expectedUuid = UUID.randomUUID()
 
@@ -121,8 +117,6 @@ class DualWriteLedgerServiceTest {
 
     @Test
     fun `should suppress exception from general ledger and log an error when flag is enabled and id matches`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
-
       val request = createRequest(matchingPrisonerId)
       val expectedUuid = UUID.randomUUID()
       val transactionId = 12345L
@@ -145,8 +139,6 @@ class DualWriteLedgerServiceTest {
 
     @Test
     fun `should throw exception if internal ledger throws`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
-
       val request = createRequest(matchingPrisonerId)
 
       whenever(internalLedger.syncOffenderTransaction(request)).thenThrow(RuntimeException("DB Error"))
@@ -175,7 +167,6 @@ class DualWriteLedgerServiceTest {
   inner class SyncGeneralLedgerTransaction {
     @Test
     fun `should only call internal ledger (feature flag ignored for GL Transactions)`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
       val request = mock<SyncGeneralLedgerTransactionRequest>()
       val expectedUuid = UUID.randomUUID()
 
@@ -190,7 +181,6 @@ class DualWriteLedgerServiceTest {
 
     @Test
     fun `should throw exception if internal ledger fails`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
       val request = mock<SyncGeneralLedgerTransactionRequest>()
 
       whenever(internalLedger.syncGeneralLedgerTransaction(request)).thenThrow(RuntimeException("Internal DB Error"))
