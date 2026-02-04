@@ -26,6 +26,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
@@ -33,7 +34,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGener
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.UUID
+import kotlin.random.Random
 
 @ExtendWith(MockitoExtension::class)
 class GeneralLedgerServiceTest {
@@ -53,6 +56,8 @@ class GeneralLedgerServiceTest {
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 
   private val logger = LoggerFactory.getLogger(GeneralLedgerService::class.java) as Logger
+
+  private val offenderDisplayId = "A1234AA"
 
   fun mockAccount(reference: String, accountUUID: UUID = UUID.randomUUID()): GlAccountResponse {
     val mockGLAccountResponse = mock<GlAccountResponse>()
@@ -129,8 +134,6 @@ class GeneralLedgerServiceTest {
   @Nested
   @DisplayName("syncOffenderTransaction")
   inner class SyncOffenderTransaction {
-
-    private val offenderDisplayId = "A1234AA"
 
     @Test
     fun `should log accountId when existing prison and prisoner account found`() {
@@ -418,6 +421,238 @@ class GeneralLedgerServiceTest {
         generalLedgerService.syncGeneralLedgerTransaction(request)
       }.isInstanceOf(NotImplementedError::class.java)
         .hasMessageContaining("not yet supported")
+    }
+
+    @Test
+    fun `should throw exception when there are no transactions`() {
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+      val prisonId = "LEI"
+
+      val requestWithNoOffenderTransactions = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp.plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = emptyList(),
+      )
+
+      val accountUUIDPrison = UUID.randomUUID()
+
+      mockAccount(requestWithNoOffenderTransactions.caseloadId, accountUUIDPrison)
+
+      assertThatThrownBy {
+        generalLedgerService.syncOffenderTransaction(requestWithNoOffenderTransactions)
+      }.isInstanceOf(IllegalStateException::class.java)
+    }
+
+    @Test
+    fun `should call POST transaction`() {
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+      val prisonId = "LEI"
+      val amount = 5.00
+
+      val prisonerAccountCode = 2102
+      val prisonAccountCode = 1502
+
+      val transactionType = "ADV"
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp.plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = transactionType,
+            description = "Test Transaction for Balance Check",
+            amount = amount,
+            reference = "REF-$transactionId",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, prisonAccountCode, "CR", amount),
+              GeneralLedgerEntry(2, prisonerAccountCode, "DR", amount),
+            ),
+          ),
+        ),
+      )
+
+      val accountUUIDPrisoner = UUID.randomUUID()
+      val accountUUIDPrison = UUID.randomUUID()
+
+      val subAccountUUIDPrisoner = UUID.randomUUID()
+      val subAccountUUIDPrison = UUID.randomUUID()
+
+      mockAccount(request.caseloadId, accountUUIDPrison)
+
+      mockAccount(offenderDisplayId, accountUUIDPrisoner)
+
+      mockSubAccount(
+        prisonId,
+        accountMapping.mapPrisonSubAccount(prisonAccountCode, transactionType),
+        subAccountUUIDPrison,
+      )
+
+      mockSubAccount(
+        offenderDisplayId,
+        accountMapping.mapPrisonerSubAccount(prisonerAccountCode),
+        subAccountUUIDPrisoner,
+      )
+
+      generalLedgerService.syncOffenderTransaction(request)
+
+      val glTransactionRequest = GlTransactionRequest(
+        reference = request.offenderTransactions[0].reference!!,
+        description = request.offenderTransactions[0].description,
+        timestamp = request.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        amount = amount.toPence(),
+        postings = listOf(
+          GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toPence()),
+          GlPostingRequest(subAccountUUIDPrisoner, PostingType.DR, amount.toPence()),
+        ),
+      )
+
+      verify(generalLedgerApiClient).postTransaction(glTransactionRequest)
+    }
+
+    @Test
+    fun `should post multiple transactions where there are multiple prisoners`() {
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+      val prisonId = "LEI"
+      val amount = 5.00
+
+      val prisoner1DisplayId = "A1234AA"
+      val prisoner2DisplayId = "B4321ZZ"
+
+      val prisonerAccountCode = 2102
+      val prisonAccountCode = 1502
+
+      val transactionType = "CANT"
+
+      val requestTransactionWithMultiplePrisoners = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp.plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = prisoner1DisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = transactionType,
+            description = "Test Transaction for Balance Check",
+            amount = amount,
+            reference = "REF-$transactionId",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, prisonAccountCode, "CR", amount),
+              GeneralLedgerEntry(2, prisonerAccountCode, "DR", amount),
+            ),
+          ),
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306471,
+            offenderDisplayId = prisoner2DisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = transactionType,
+            description = "Test Transaction for Balance Check",
+            amount = amount,
+            reference = "REF-$transactionId",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, prisonAccountCode, "CR", amount),
+              GeneralLedgerEntry(2, prisonerAccountCode, "DR", amount),
+            ),
+          ),
+        ),
+      )
+
+      val accountUUIDPrisoner1 = UUID.randomUUID()
+      val accountUUIDPrisoner2 = UUID.randomUUID()
+      val accountUUIDPrison = UUID.randomUUID()
+
+      val subAccountUUIDPrisoner1 = UUID.randomUUID()
+      val subAccountUUIDPrisoner2 = UUID.randomUUID()
+      val subAccountUUIDPrison = UUID.randomUUID()
+
+      mockAccount(requestTransactionWithMultiplePrisoners.caseloadId, accountUUIDPrison)
+
+      mockAccount(prisoner1DisplayId, accountUUIDPrisoner1)
+
+      mockAccount(prisoner2DisplayId, accountUUIDPrisoner2)
+
+      mockSubAccount(
+        prisonId,
+        accountMapping.mapPrisonSubAccount(prisonAccountCode, transactionType),
+        subAccountUUIDPrison,
+      )
+
+      mockSubAccount(
+        prisoner1DisplayId,
+        accountMapping.mapPrisonerSubAccount(prisonerAccountCode),
+        subAccountUUIDPrisoner1,
+      )
+
+      mockSubAccount(
+        prisoner2DisplayId,
+        accountMapping.mapPrisonerSubAccount(prisonerAccountCode),
+        subAccountUUIDPrisoner2,
+      )
+
+      generalLedgerService.syncOffenderTransaction(requestTransactionWithMultiplePrisoners)
+
+      val glTransactionRequestPrisoner1 = GlTransactionRequest(
+        reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
+        description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
+        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        amount = amount.toPence(),
+        postings = listOf(
+          GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toPence()),
+          GlPostingRequest(subAccountUUIDPrisoner1, PostingType.DR, amount.toPence()),
+        ),
+      )
+
+      val glTransactionRequestPrisoner2 = GlTransactionRequest(
+        reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
+        description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
+        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        amount = amount.toPence(),
+        postings = listOf(
+          GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toPence()),
+          GlPostingRequest(subAccountUUIDPrisoner2, PostingType.DR, amount.toPence()),
+        ),
+      )
+
+      verify(generalLedgerApiClient).postTransaction(glTransactionRequestPrisoner1)
+      verify(generalLedgerApiClient).postTransaction(glTransactionRequestPrisoner2)
     }
   }
 
