@@ -33,7 +33,7 @@ class DualWriteLedgerServiceTest {
   private lateinit var internalLedger: LedgerService
 
   @Mock
-  private lateinit var generalLedger: GeneralLedgerService
+  private lateinit var generalLedger: LedgerService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 
@@ -71,7 +71,7 @@ class DualWriteLedgerServiceTest {
 
     @Test
     fun `should only call the internal ledger when feature flag is disabled`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, false, "TEST_ID")
+      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, false, matchingPrisonerId)
       val request = createRequest(matchingPrisonerId)
       val expectedUuid = UUID.randomUUID()
 

@@ -13,7 +13,7 @@ import java.util.UUID
 @Service
 class DualWriteLedgerService(
   @Qualifier("internalLedgerService") private val internalLedger: LedgerService,
-  @Qualifier("generalLedgerService") private val generalLedger: GeneralLedgerService,
+  @Qualifier("generalLedgerService") private val generalLedger: LedgerService,
   @Value("\${feature.general-ledger-api.enabled:false}") private val shouldSyncToGeneralLedger: Boolean,
   @Value("\${feature.general-ledger-api.test-prisoner-id:DISABLED}") private val testPrisonerId: String,
 ) : LedgerService {
