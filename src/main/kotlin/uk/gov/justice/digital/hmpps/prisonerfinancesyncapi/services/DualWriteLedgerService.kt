@@ -5,10 +5,8 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import java.util.UUID
 
 @Primary
@@ -16,12 +14,9 @@ import java.util.UUID
 class DualWriteLedgerService(
   @Qualifier("internalLedgerService") private val internalLedger: LedgerService,
   @Qualifier("generalLedgerService") private val generalLedger: GeneralLedgerService,
-  private val ledgerQueryService: LedgerQueryService,
-
   @Value("\${feature.general-ledger-api.enabled:false}") private val shouldSyncToGeneralLedger: Boolean,
   @Value("\${feature.general-ledger-api.test-prisoner-id:DISABLED}") private val testPrisonerId: String,
-) : LedgerService,
-  ReconciliationService {
+) : LedgerService {
 
   private companion object {
     private val log = LoggerFactory.getLogger(DualWriteLedgerService::class.java)
@@ -50,18 +45,4 @@ class DualWriteLedgerService(
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = internalLedger.syncGeneralLedgerTransaction(request)
-
-  override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
-    val items = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
-
-    if (prisonNumber == testPrisonerId) {
-      try {
-        generalLedger.reconcilePrisoner(prisonNumber)
-      } catch (e: Exception) {
-        log.error("Failed to reconcile prisoner $prisonNumber to General Ledger", e)
-      }
-    }
-
-    return PrisonerEstablishmentBalanceDetailsList(items)
-  }
 }

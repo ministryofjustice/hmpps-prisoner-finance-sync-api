@@ -22,11 +22,8 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
@@ -37,9 +34,6 @@ class DualWriteLedgerServiceTest {
 
   @Mock
   private lateinit var generalLedger: GeneralLedgerService
-
-  @Mock
-  private lateinit var ledgerQueryService: LedgerQueryService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 
@@ -52,7 +46,7 @@ class DualWriteLedgerServiceTest {
 
   @BeforeEach
   fun setup() {
-    dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, ledgerQueryService, true, matchingPrisonerId)
+    dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, matchingPrisonerId)
     listAppender = ListAppender<ILoggingEvent>().apply { start() }
     logger.addAppender(listAppender)
   }
@@ -64,7 +58,7 @@ class DualWriteLedgerServiceTest {
 
   @Test
   fun `should log configuration on startup`() {
-    dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, ledgerQueryService, true, "TEST_ID")
+    dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, true, "TEST_ID")
     val logs = listAppender.list.map { it.formattedMessage }
     assertThat(logs).anyMatch {
       it.contains("General Ledger Dual Write Service initialized. Enabled: true. Test Prisoner ID: TEST_ID")
@@ -77,7 +71,7 @@ class DualWriteLedgerServiceTest {
 
     @Test
     fun `should only call the internal ledger when feature flag is disabled`() {
-      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, ledgerQueryService, false, "TEST_ID")
+      dualWriteService = DualWriteLedgerService(internalLedger, generalLedger, false, "TEST_ID")
       val request = createRequest(matchingPrisonerId)
       val expectedUuid = UUID.randomUUID()
 
@@ -195,41 +189,6 @@ class DualWriteLedgerServiceTest {
         dualWriteService.syncGeneralLedgerTransaction(request)
       }.isInstanceOf(RuntimeException::class.java)
         .hasMessage("Internal DB Error")
-    }
-  }
-
-  @Nested
-  @DisplayName("prisonerReconciliation")
-  inner class PrisonerReconciliation {
-    val prisonNumber = "A1234AA"
-
-    @Test
-    fun `should call both internal ledger and GL when reconciling a prisoner`() {
-      dualWriteService.reconcilePrisoner(prisonNumber)
-
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
-      verify(generalLedger).reconcilePrisoner(prisonNumber)
-    }
-
-    @Test
-    fun `should handle exception  when it's thrown by GL when reconciling a prisoner and log error`() {
-      val expectedException = RuntimeException("Expected Exception")
-      whenever(generalLedger.reconcilePrisoner(prisonNumber)).thenThrow(expectedException)
-
-      val resultItem = listOf(mock<PrisonerEstablishmentBalanceDetails>())
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber))
-        .thenReturn(resultItem)
-
-      val res = dualWriteService.reconcilePrisoner(prisonNumber)
-
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
-      verify(generalLedger).reconcilePrisoner(prisonNumber)
-
-      val logs = listAppender.list.map { it.formattedMessage }
-      assertThat(logs).anyMatch {
-        it.contains("Failed to reconcile prisoner $prisonNumber to General Ledger")
-      }
-      assertThat(res).isEqualTo(PrisonerEstablishmentBalanceDetailsList(resultItem))
     }
   }
 }
