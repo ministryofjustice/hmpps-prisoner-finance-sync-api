@@ -1,3 +1,5 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils
 
-fun Double.toGLLong(): Long = (this * 100).toLong()
+import java.math.BigDecimal
+
+fun Double.toPence(): Long = BigDecimal.valueOf(this).movePointRight(2).toLong()

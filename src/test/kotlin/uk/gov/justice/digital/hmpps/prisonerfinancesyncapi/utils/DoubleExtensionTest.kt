@@ -17,9 +17,10 @@ class DoubleExtensionTest {
     "3.33,333",
     "9.99,999",
     "0.01,1",
+    "1.15,115",
     "100000.00,10000000",
   )
   fun `should cast Double to GL Long`(inputVal: Double, expected: Long) {
-    assertThat(inputVal.toGLLong()).isEqualTo(expected)
+    assertThat(inputVal.toPence()).isEqualTo(expected)
   }
 }

@@ -10,7 +10,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toGLLong
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
 
 @Service("generalLedgerService")
@@ -84,7 +84,7 @@ class GeneralLedgerService(
           GlPostingRequest(
             subAccount.id,
             type = entry.postingType.toGLPostingType(),
-            amount = entry.amount.toGLLong(),
+            amount = entry.amount.toPence(),
           ),
         )
       }
@@ -93,7 +93,7 @@ class GeneralLedgerService(
         transaction.reference ?: "",
         description = transaction.description,
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
-        amount = transaction.amount.toGLLong(),
+        amount = transaction.amount.toPence(),
         postings = glEntries,
       )
 

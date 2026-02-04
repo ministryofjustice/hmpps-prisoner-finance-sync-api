@@ -18,7 +18,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toGLLong
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -128,10 +128,10 @@ class GeneralLedgerServiceTransactionTest {
       reference = request.offenderTransactions[0].reference!!,
       description = request.offenderTransactions[0].description,
       timestamp = request.transactionTimestamp.toInstant(ZoneOffset.UTC),
-      amount = amount.toGLLong(),
+      amount = amount.toPence(),
       postings = listOf(
-        GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toGLLong()),
-        GlPostingRequest(subAccountUUIDPrisoner, PostingType.DR, amount.toGLLong()),
+        GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toPence()),
+        GlPostingRequest(subAccountUUIDPrisoner, PostingType.DR, amount.toPence()),
       ),
     )
 

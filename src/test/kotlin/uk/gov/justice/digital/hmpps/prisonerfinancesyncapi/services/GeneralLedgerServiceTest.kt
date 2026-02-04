@@ -31,7 +31,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLe
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toGLLong
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -106,7 +106,7 @@ class GeneralLedgerServiceTest {
       request.offenderTransactions[0].reference!!,
       request.offenderTransactions[0].description,
       timeConversionService.toUtcInstant(request.transactionTimestamp),
-      request.offenderTransactions[0].amount.toGLLong(),
+      request.offenderTransactions[0].amount.toPence(),
       postingsGL,
     )
 
@@ -166,12 +166,12 @@ class GeneralLedgerServiceTest {
           GlPostingRequest(
             subAccountPrisonUUID,
             request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
           GlPostingRequest(
             subAccountPrisonerUUID,
             request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
@@ -226,12 +226,12 @@ class GeneralLedgerServiceTest {
           GlPostingRequest(
             subAccountPrisonUUID,
             request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
           GlPostingRequest(
             subAccountPrisonerUUID,
             request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
@@ -279,12 +279,12 @@ class GeneralLedgerServiceTest {
           GlPostingRequest(
             subAccountPrisonUUID,
             request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
           GlPostingRequest(
             subAccountPrisonerUUID,
             request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
@@ -337,12 +337,12 @@ class GeneralLedgerServiceTest {
           GlPostingRequest(
             subAccountPrisonUUID,
             request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
           GlPostingRequest(
             subAccountPrisonerUUID,
             request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toGLLong(),
+            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
