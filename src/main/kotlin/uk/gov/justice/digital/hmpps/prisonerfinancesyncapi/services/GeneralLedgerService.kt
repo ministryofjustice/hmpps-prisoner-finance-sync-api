@@ -8,6 +8,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
@@ -18,7 +19,8 @@ class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
   private val timeConversionService: TimeConversionService,
-) : LedgerService {
+) : LedgerService,
+  ReconciliationService {
 
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -111,4 +113,6 @@ class GeneralLedgerService(
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
+
+  override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList = PrisonerEstablishmentBalanceDetailsList(emptyList())
 }
