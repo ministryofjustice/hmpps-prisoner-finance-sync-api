@@ -65,7 +65,8 @@ class LegacyQueryServiceTest {
       ),
     )
 
-    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, prisonNumber)
+    val balances = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
+    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, balances)
 
     verify(ledgerQueryService)
       .listPrisonerBalancesByEstablishment(prisonNumber)
@@ -94,7 +95,8 @@ class LegacyQueryServiceTest {
       ),
     )
 
-    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, prisonNumber)
+    val balances = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
+    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, balances)
 
     verify(ledgerQueryService)
       .listPrisonerBalancesByEstablishment(prisonNumber)
@@ -135,15 +137,16 @@ class LegacyQueryServiceTest {
       ),
     )
 
-    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, prisonNumber)
+    val balances = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
+    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, balances)
 
     verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
 
     val expected = when (accountCode) {
-      2101 -> BigDecimal("27.00")
-      2102 -> BigDecimal("100.00")
-      2103 -> BigDecimal("4.00")
-      else -> BigDecimal.ZERO
+      2101 -> 2700L
+      2102 -> 10000L
+      2103 -> 400L
+      else -> 0L
     }
     assertThat(balanceByAccountCode).isEqualByComparingTo(expected)
   }

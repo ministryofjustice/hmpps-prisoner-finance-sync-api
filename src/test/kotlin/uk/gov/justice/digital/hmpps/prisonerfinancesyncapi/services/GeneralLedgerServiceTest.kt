@@ -31,6 +31,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
@@ -933,9 +934,15 @@ class GeneralLedgerServiceTest {
 
     @Test
     fun `should calculate legacy balances when called`() {
+      val mockList = mock<List<PrisonerEstablishmentBalanceDetails>>()
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(mockList)
       generalLedgerService.reconcilePrisoner(prisonNumber)
 
-      verify(ledgerQueryService).aggregatedLegacyBalanceByPrisoner(prisonNumber)
+      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
+
+      for (accountCode in accountMapping.prisonerSubAccounts.values) {
+        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, mockList)
+      }
     }
   }
 }

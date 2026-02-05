@@ -118,7 +118,15 @@ class GeneralLedgerService(
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
-    val legacyBalances = ledgerQueryService.aggregatedLegacyBalanceByPrisoner(prisonNumber)
+    val legacyBalances = mutableMapOf<String, Long>()
+    val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
+
+    for (accountCode in accountMapping.prisonerSubAccounts.keys) {
+      legacyBalances[accountCode] = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(
+        accountMapping.mapSubAccountPrisonerReferenceToNOMIS(accountCode),
+        legacyBalancesByEstablishment,
+      )
+    }
 
     return PrisonerEstablishmentBalanceDetailsList(emptyList())
   }
