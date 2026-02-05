@@ -16,6 +16,7 @@ import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -115,7 +116,7 @@ class GeneralLedgerServiceTest {
       postingsGL,
     )
 
-    whenever(generalLedgerApiClient.postTransaction(requestGL)).thenReturn(returnUUID)
+    whenever(generalLedgerApiClient.postTransaction(eq(requestGL), any())).thenReturn(returnUUID)
 
     return requestGL
   }
@@ -304,7 +305,7 @@ class GeneralLedgerServiceTest {
 
       verify(generalLedgerApiClient, times(1)).createAccount(offenderDisplayId)
 
-      verify(generalLedgerApiClient, times(1)).postTransaction(mockTransaction)
+      verify(generalLedgerApiClient, times(1)).postTransaction(eq(mockTransaction), any())
     }
 
     @Test
@@ -517,8 +518,6 @@ class GeneralLedgerServiceTest {
         subAccountUUIDPrisoner,
       )
 
-      generalLedgerService.syncOffenderTransaction(request)
-
       val glTransactionRequest = GlTransactionRequest(
         reference = request.offenderTransactions[0].reference!!,
         description = request.offenderTransactions[0].description,
@@ -529,8 +528,12 @@ class GeneralLedgerServiceTest {
           GlPostingRequest(subAccountUUIDPrisoner, PostingType.DR, amount.toPence()),
         ),
       )
+      val expectedUUID = UUID.randomUUID()
+      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequest), any())).thenReturn(expectedUUID)
 
-      verify(generalLedgerApiClient).postTransaction(glTransactionRequest)
+      generalLedgerService.syncOffenderTransaction(request)
+
+      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequest), any())
     }
 
     @Test
@@ -627,8 +630,6 @@ class GeneralLedgerServiceTest {
         subAccountUUIDPrisoner2,
       )
 
-      generalLedgerService.syncOffenderTransaction(requestTransactionWithMultiplePrisoners)
-
       val glTransactionRequestPrisoner1 = GlTransactionRequest(
         reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
         description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
@@ -650,9 +651,13 @@ class GeneralLedgerServiceTest {
           GlPostingRequest(subAccountUUIDPrisoner2, PostingType.DR, amount.toPence()),
         ),
       )
+      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner1), any())).thenReturn(UUID.randomUUID())
+      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner2), any())).thenReturn(UUID.randomUUID())
 
-      verify(generalLedgerApiClient).postTransaction(glTransactionRequestPrisoner1)
-      verify(generalLedgerApiClient).postTransaction(glTransactionRequestPrisoner2)
+      generalLedgerService.syncOffenderTransaction(requestTransactionWithMultiplePrisoners)
+
+      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner1), any())
+      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner2), any())
     }
   }
 

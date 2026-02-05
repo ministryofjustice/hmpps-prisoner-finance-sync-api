@@ -6,6 +6,7 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.github.tomakehurst.wiremock.client.WireMock.matching
 import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
 import com.github.tomakehurst.wiremock.client.WireMock.post
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
@@ -196,8 +197,23 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun verifyTransactionPosted(times: Int = 1) {
-    verify(times, postRequestedFor(urlPathEqualTo("/transactions")))
+  fun verifyTransactionPosted(times: Int = 1, debtorSubAccountUuid: String? = null, creditorSubAccountUuid: String? = null) {
+    var verification = postRequestedFor(urlPathEqualTo("/transactions"))
+      .withHeader("Idempotency-Key", matching(".*"))
+
+    if (debtorSubAccountUuid != null) {
+      verification = verification.withRequestBody(
+        matchingJsonPath("$.postings[?(@.type == 'DR' && @.subAccountId == '$debtorSubAccountUuid')]"),
+      )
+    }
+
+    if (creditorSubAccountUuid != null) {
+      verification = verification.withRequestBody(
+        matchingJsonPath("$.postings[?(@.type == 'CR' && @.subAccountId == '$creditorSubAccountUuid')]"),
+      )
+    }
+
+    verify(times, verification)
   }
 
   // POST /transactions
@@ -214,6 +230,7 @@ class GeneralLedgerApiMockServer :
     )
 
     var mapping = post(urlEqualTo("/transactions"))
+      .withHeader("Idempotency-Key", matching(".*"))
       .willReturn(
         aResponse()
           .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)

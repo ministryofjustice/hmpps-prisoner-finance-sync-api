@@ -99,7 +99,8 @@ class GeneralLedgerService(
         postings = glEntries,
       )
 
-      val transactionGLUUID = generalLedgerApiClient.postTransaction(glTransactionRequest)
+      // TODO: this should be the request.requestId once we have a transaction endpoint that supports multiple postings
+      val transactionGLUUID = generalLedgerApiClient.postTransaction(glTransactionRequest, UUID.randomUUID())
       transactionGLUUIDs.add(transactionGLUUID)
     }
 

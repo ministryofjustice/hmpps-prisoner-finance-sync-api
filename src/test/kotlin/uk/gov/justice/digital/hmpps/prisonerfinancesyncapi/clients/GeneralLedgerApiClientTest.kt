@@ -252,8 +252,9 @@ class GeneralLedgerApiClientTest {
   @Nested
   inner class PostTransaction {
     @Test
-    fun `should post transaction and return ID`() {
+    fun `should post transaction with idempotency key and return ID`() {
       val txId = UUID.randomUUID()
+      val idempotencyKey = UUID.randomUUID()
       val request = GlTransactionRequest(
         reference = "REF",
         description = "Desc",
@@ -265,17 +266,24 @@ class GeneralLedgerApiClientTest {
 
       whenever(webClient.post()).thenReturn(requestBodyUriSpec)
       whenever(requestBodyUriSpec.uri(any<String>())).thenReturn(requestBodyUriSpec)
+
+      whenever(requestBodyUriSpec.header(eq("Idempotency-Key"), eq(idempotencyKey.toString())))
+        .thenReturn(requestBodyUriSpec)
+
       whenever(requestBodyUriSpec.bodyValue(eq(request))).thenReturn(requestHeadersSpec)
       whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
       whenever(responseSpec.bodyToMono(GlTransactionReceipt::class.java)).thenReturn(Mono.just(receipt))
 
-      val result = apiClient.postTransaction(request)
+      val result = apiClient.postTransaction(request, idempotencyKey)
 
       assertThat(result).isEqualTo(txId)
+
+      verify(requestBodyUriSpec).header("Idempotency-Key", idempotencyKey.toString())
     }
 
     @Test
     fun `should throw IllegalStateException if response body is null`() {
+      val idempotencyKey = UUID.randomUUID()
       val request = GlTransactionRequest(
         reference = "REF",
         description = "Desc",
@@ -286,12 +294,16 @@ class GeneralLedgerApiClientTest {
 
       whenever(webClient.post()).thenReturn(requestBodyUriSpec)
       whenever(requestBodyUriSpec.uri(any<String>())).thenReturn(requestBodyUriSpec)
+
+      whenever(requestBodyUriSpec.header(eq("Idempotency-Key"), any()))
+        .thenReturn(requestBodyUriSpec)
+
       whenever(requestBodyUriSpec.bodyValue(any())).thenReturn(requestHeadersSpec)
       whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
       whenever(responseSpec.bodyToMono(GlTransactionReceipt::class.java)).thenReturn(Mono.empty())
 
       assertThatThrownBy {
-        apiClient.postTransaction(request)
+        apiClient.postTransaction(request, idempotencyKey)
       }.isInstanceOf(IllegalStateException::class.java)
         .hasMessageContaining("returned null body")
     }
