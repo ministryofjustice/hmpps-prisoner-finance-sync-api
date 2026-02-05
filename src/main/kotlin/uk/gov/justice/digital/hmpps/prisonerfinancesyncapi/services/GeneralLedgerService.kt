@@ -11,6 +11,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
 
@@ -19,6 +20,7 @@ class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
   private val timeConversionService: TimeConversionService,
+  private val ledgerQueryService: LedgerQueryService,
 ) : LedgerService,
   ReconciliationService {
 
@@ -115,5 +117,17 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
-  override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList = PrisonerEstablishmentBalanceDetailsList(emptyList())
+  override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
+    val legacyBalances = mutableMapOf<String, Long>()
+    val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
+
+    for (accountCode in accountMapping.prisonerSubAccounts.keys) {
+      legacyBalances[accountCode] = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(
+        accountMapping.mapSubAccountPrisonerReferenceToNOMIS(accountCode),
+        legacyBalancesByEstablishment,
+      )
+    }
+
+    return PrisonerEstablishmentBalanceDetailsList(emptyList())
+  }
 }
