@@ -65,14 +65,18 @@ class GeneralLedgerServiceTest {
 
   private val offenderDisplayId = "A1234AA"
 
-  fun mockAccount(reference: String, accountUUID: UUID = UUID.randomUUID()): GlAccountResponse {
-    val mockGLAccountResponse = mock<GlAccountResponse>()
+  fun mockAccount(reference: String, accountUUID: UUID = UUID.randomUUID(), subAccounts: List<GlSubAccountResponse> = emptyList()): GlAccountResponse {
+    val accountResponse = GlAccountResponse(
+      id = accountUUID,
+      reference = reference,
+      createdAt = LocalDateTime.now(),
+      createdBy = "OMS_OWNER",
+      subAccounts = subAccounts,
+    )
     whenever(generalLedgerApiClient.findAccountByReference(reference))
-      .thenReturn(mockGLAccountResponse)
+      .thenReturn(accountResponse)
 
-    whenever(mockGLAccountResponse.id).thenReturn(accountUUID)
-
-    return mockGLAccountResponse
+    return accountResponse
   }
 
   fun mockSubAccount(parentReference: String, subAccountReference: String, accountUUID: UUID = UUID.randomUUID()): GlSubAccountResponse {
@@ -135,6 +139,76 @@ class GeneralLedgerServiceTest {
   @AfterEach
   fun tearDown() {
     logger.detachAppender(listAppender)
+  }
+
+  @Nested
+  @DisplayName("reconcilePrisonerBalances")
+  inner class ReconcilePrisonerBalances {
+
+    val prisonNumber = "A1234AA"
+    val prisonerAccounts = listOf("CASH", "SAVINGS", "SPENDS")
+
+    @Test
+    fun `Should log error if Prisoner sub balance account is not found`() {
+      val parentUUID = UUID.randomUUID()
+      val subAccounts = mutableListOf<GlSubAccountResponse>()
+
+      for (account in prisonerAccounts) {
+        val subAccount =
+          GlSubAccountResponse(
+            UUID.randomUUID(),
+            parentUUID,
+            account,
+            LocalDateTime.now(),
+            "TEST",
+          )
+
+        subAccounts.add(subAccount)
+        whenever(generalLedgerApiClient.findAccountBalanceByAccountId(subAccount.id))
+          .thenReturn(null)
+      }
+
+      mockAccount(offenderDisplayId, parentUUID, subAccounts)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      for (account in subAccounts) {
+        assertThat(logs).contains("No balance found for account ${account.id} but it was in the parent subaccounts list")
+        verify(generalLedgerApiClient).findAccountBalanceByAccountId(account.id)
+      }
+    }
+
+    @Test
+    fun `should get all Prisoner SUB accounts`() {
+      val parentUUID = UUID.randomUUID()
+      val subAccounts = mutableListOf<GlSubAccountResponse>()
+
+      for (account in prisonerAccounts) {
+        subAccounts.add(
+          GlSubAccountResponse(
+            UUID.randomUUID(),
+            parentUUID,
+            account,
+            LocalDateTime.now(),
+            "TEST",
+          ),
+        )
+      }
+
+      mockAccount(offenderDisplayId, parentUUID, subAccounts)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+
+      for (account in subAccounts) {
+        verify(generalLedgerApiClient).findAccountBalanceByAccountId(account.id)
+      }
+    }
   }
 
   @Nested

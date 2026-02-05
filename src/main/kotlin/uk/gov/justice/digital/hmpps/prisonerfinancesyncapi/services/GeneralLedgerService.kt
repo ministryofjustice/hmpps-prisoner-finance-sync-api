@@ -117,7 +117,30 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
+
+  private fun getGLPrisonerBalances(prisonNumber: String): Long {
+    val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
+
+    if (parentAccount == null || parentAccount.subAccounts == null) {
+      return 0
+    }
+
+    var totalBalance = 0L
+    for (account in parentAccount.subAccounts) {
+      val balance = generalLedgerApiClient.findAccountBalanceByAccountId(account.id)
+      if (balance == null) {
+        log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
+        continue
+      }
+      totalBalance += balance.amount
+    }
+
+    return totalBalance
+  }
+
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
+    getGLPrisonerBalances(prisonNumber)
+
     val legacyBalances = mutableMapOf<String, Long>()
     val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
 
