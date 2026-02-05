@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
@@ -15,6 +16,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
+import kotlin.math.abs
 
 @Service("generalLedgerService")
 class GeneralLedgerService(
@@ -118,27 +120,27 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
-  private fun getGLPrisonerBalances(prisonNumber: String): List<GlAccountBalanceResponse> {
+  private fun getGLPrisonerBalances(prisonNumber: String): Map<String, GlAccountBalanceResponse> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
 
     if (parentAccount == null) {
       log.error("No parent account found for prisoner $prisonNumber")
-      return emptyList()
+      return emptyMap()
     }
 
     if (parentAccount.subAccounts.isNullOrEmpty()) {
       log.error("No sub accounts found for prisoner $prisonNumber")
-      return emptyList()
+      return emptyMap()
     }
 
-    val subAccounts = mutableListOf<GlAccountBalanceResponse>()
+    val subAccounts = mutableMapOf<String, GlAccountBalanceResponse>()
     for (account in parentAccount.subAccounts) {
       val subAccountBalance = generalLedgerApiClient.findAccountBalanceByAccountId(account.id)
       if (subAccountBalance == null) {
         log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
         continue
       }
-      subAccounts.add(subAccountBalance)
+      subAccounts[account.reference] = subAccountBalance
     }
 
     return subAccounts
@@ -151,10 +153,25 @@ class GeneralLedgerService(
     val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
 
     for (accountCode in accountMapping.prisonerSubAccounts.keys) {
-      legacyBalances[accountCode] = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(
+      val legacyBalance = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(
         accountMapping.mapSubAccountPrisonerReferenceToNOMIS(accountCode),
         legacyBalancesByEstablishment,
       )
+
+      val glAccount = subAccountsGL[accountCode]
+      if (glAccount == null || legacyBalance != glAccount.amount) {
+        val errorDetails = GeneralLedgerDiscrepancyDetails(
+          "Discrepancy found for prisoner $prisonNumber",
+          prisonNumber,
+          accountCode,
+          legacyBalance,
+          glAccount!!.amount,
+          discrepancy = abs(legacyBalance - glAccount.amount),
+          glBreakdown = subAccountsGL.values.toList(),
+          legacyBreakdown = legacyBalancesByEstablishment,
+        )
+        log.warn("{}", errorDetails)
+      }
     }
 
     return PrisonerEstablishmentBalanceDetailsList(emptyList())

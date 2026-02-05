@@ -24,6 +24,7 @@ import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
@@ -37,6 +38,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGener
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -148,6 +150,120 @@ class GeneralLedgerServiceTest {
 
     val prisonNumber = "A1234AA"
     val prisonerAccounts = listOf("CASH", "SAVINGS", "SPENDS")
+
+    @Test
+    fun `Should log reconciliation error when GL does NOT match internal Ledger`() {
+      val parentUUID = UUID.randomUUID()
+      val subAccounts = mutableListOf<GlSubAccountResponse>()
+
+      for (account in prisonerAccounts) {
+        subAccounts.add(
+          GlSubAccountResponse(
+            UUID.randomUUID(),
+            parentUUID,
+            account,
+            LocalDateTime.now(),
+            "TEST",
+          ),
+        )
+      }
+
+      mockAccount(offenderDisplayId, parentUUID, subAccounts)
+
+      // GL accounts
+      val testGlBalance = GlAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      for (account in subAccounts) {
+        whenever(generalLedgerApiClient.findAccountBalanceByAccountId(account.id))
+          .thenReturn(testGlBalance)
+      }
+
+      // InternalLedger
+      val internalLedgerBalances = listOf(
+        PrisonerEstablishmentBalanceDetails("LEI", 2101, BigDecimal("4"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2101, BigDecimal("4"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2102, BigDecimal("7"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2103, BigDecimal("2"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2103, BigDecimal("4"), BigDecimal.ZERO),
+      )
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(internalLedgerBalances)
+
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2101, internalLedgerBalances)).thenReturn(8)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2102, internalLedgerBalances)).thenReturn(7)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2103, internalLedgerBalances)).thenReturn(6)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      assertThat(logs).contains("Discrepancy found")
+
+      for (accountCode in accountMapping.prisonerSubAccounts.values) {
+        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, internalLedgerBalances)
+      }
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+
+      for (account in subAccounts) {
+        verify(generalLedgerApiClient).findAccountBalanceByAccountId(account.id)
+      }
+    }
+
+    @Test
+    fun `Should not log reconciliation error when GL matches internal Ledger`() {
+      val parentUUID = UUID.randomUUID()
+      val subAccounts = mutableListOf<GlSubAccountResponse>()
+
+      for (account in prisonerAccounts) {
+        subAccounts.add(
+          GlSubAccountResponse(
+            UUID.randomUUID(),
+            parentUUID,
+            account,
+            LocalDateTime.now(),
+            "TEST",
+          ),
+        )
+      }
+
+      mockAccount(offenderDisplayId, parentUUID, subAccounts)
+
+      // GL accounts
+      val testGlBalance = GlAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      for (account in subAccounts) {
+        whenever(generalLedgerApiClient.findAccountBalanceByAccountId(account.id))
+          .thenReturn(testGlBalance)
+      }
+
+      // InternalLedger
+      val internalLedgerBalances = listOf(
+        PrisonerEstablishmentBalanceDetails("LEI", 2101, BigDecimal("4"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2101, BigDecimal("1"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2102, BigDecimal("5"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2103, BigDecimal("1"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2103, BigDecimal("4"), BigDecimal.ZERO),
+      )
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(internalLedgerBalances)
+
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2101, internalLedgerBalances)).thenReturn(5)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2102, internalLedgerBalances)).thenReturn(5)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2103, internalLedgerBalances)).thenReturn(5)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      assertThat(logs).isEmpty()
+
+      for (accountCode in accountMapping.prisonerSubAccounts.values) {
+        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, internalLedgerBalances)
+      }
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+
+      for (account in subAccounts) {
+        verify(generalLedgerApiClient).findAccountBalanceByAccountId(account.id)
+      }
+    }
 
     @Test
     fun `should calculate legacy balances when called`() {
