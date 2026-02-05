@@ -220,7 +220,6 @@ open class LedgerQueryService(
 
   private fun findPrisonerAccount(prisonNumber: String, accountCode: Int): Account? = accountRepository.findByPrisonNumberAndAccountCode(prisonNumber, accountCode)
 
-  fun aggregatedLegacyBalanceForAccountCode(accountCode: Int, prisonNumber: String) = listPrisonerBalancesByEstablishment(prisonNumber)
-    .filter { it.accountCode == accountCode }
+  fun aggregatedLegacyBalanceByPrisoner(prisonNumber: String) = listPrisonerBalancesByEstablishment(prisonNumber)
     .fold(BigDecimal.ZERO) { acc, balance -> acc + balance.totalBalance }
 }

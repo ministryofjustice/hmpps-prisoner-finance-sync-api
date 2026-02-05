@@ -65,7 +65,7 @@ class LegacyQueryServiceTest {
       ),
     )
 
-    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, prisonNumber)
+    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceByPrisoner(prisonNumber)
 
     verify(ledgerQueryService)
       .listPrisonerBalancesByEstablishment(prisonNumber)
@@ -94,57 +94,12 @@ class LegacyQueryServiceTest {
       ),
     )
 
-    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, prisonNumber)
+    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceByPrisoner(prisonNumber)
 
     verify(ledgerQueryService)
       .listPrisonerBalancesByEstablishment(prisonNumber)
 
     assertThat(balanceByAccountCode)
       .isEqualByComparingTo("0")
-  }
-
-  @ParameterizedTest
-  @CsvSource("2101", "2102", "2103")
-  fun `should only return balance for requested account code even if other accounts exist`(accountCode: Int) {
-    whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(
-      listOf(
-        PrisonerEstablishmentBalanceDetails(
-          prisonId = "MDI",
-          accountCode = 2101,
-          totalBalance = BigDecimal("25.00"),
-          holdBalance = BigDecimal.ZERO,
-        ),
-        PrisonerEstablishmentBalanceDetails(
-          prisonId = "LEI",
-          accountCode = 2101,
-          totalBalance = BigDecimal("2.00"),
-          holdBalance = BigDecimal.ZERO,
-        ),
-        PrisonerEstablishmentBalanceDetails(
-          prisonId = "LEI",
-          accountCode = 2102,
-          totalBalance = BigDecimal("100.00"),
-          holdBalance = BigDecimal.ZERO,
-        ),
-        PrisonerEstablishmentBalanceDetails(
-          prisonId = "LEI",
-          accountCode = 2103,
-          totalBalance = BigDecimal("4.00"),
-          holdBalance = BigDecimal.ZERO,
-        ),
-      ),
-    )
-
-    val balanceByAccountCode = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(accountCode, prisonNumber)
-
-    verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
-
-    val expected = when (accountCode) {
-      2101 -> BigDecimal("27.00")
-      2102 -> BigDecimal("100.00")
-      2103 -> BigDecimal("4.00")
-      else -> BigDecimal.ZERO
-    }
-    assertThat(balanceByAccountCode).isEqualByComparingTo(expected)
   }
 }
