@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
@@ -117,7 +118,35 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
+  private fun getGLPrisonerBalances(prisonNumber: String): List<GlAccountBalanceResponse> {
+    val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
+
+    if (parentAccount == null) {
+      log.error("No parent account found for prisoner $prisonNumber")
+      return emptyList()
+    }
+
+    if (parentAccount.subAccounts.isNullOrEmpty()) {
+      log.error("No sub accounts found for prisoner $prisonNumber")
+      return emptyList()
+    }
+
+    val subAccounts = mutableListOf<GlAccountBalanceResponse>()
+    for (account in parentAccount.subAccounts) {
+      val subAccountBalance = generalLedgerApiClient.findAccountBalanceByAccountId(account.id)
+      if (subAccountBalance == null) {
+        log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
+        continue
+      }
+      subAccounts.add(subAccountBalance)
+    }
+
+    return subAccounts
+  }
+
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
+    val subAccountsGL = getGLPrisonerBalances(prisonNumber)
+
     val legacyBalances = mutableMapOf<String, Long>()
     val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
 
