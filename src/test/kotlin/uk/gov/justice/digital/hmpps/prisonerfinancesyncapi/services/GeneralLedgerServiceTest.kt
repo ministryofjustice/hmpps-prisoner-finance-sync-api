@@ -31,8 +31,10 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -44,6 +46,9 @@ class GeneralLedgerServiceTest {
 
   @Mock
   private lateinit var generalLedgerApiClient: GeneralLedgerApiClient
+
+  @Mock
+  private lateinit var ledgerQueryService: LedgerQueryService
 
   @InjectMocks
   private lateinit var generalLedgerService: GeneralLedgerService
@@ -918,6 +923,26 @@ class GeneralLedgerServiceTest {
         parentUUIDPrison,
         prisonSubAccountRef,
       )
+    }
+  }
+
+  @Nested
+  @DisplayName("reconcilePrisonerBalances")
+  inner class ReconcilePrisonerBalances {
+
+    val prisonNumber = "A1234AA"
+
+    @Test
+    fun `should calculate legacy balances when called`() {
+      val mockList = mock<List<PrisonerEstablishmentBalanceDetails>>()
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(mockList)
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
+
+      for (accountCode in accountMapping.prisonerSubAccounts.values) {
+        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, mockList)
+      }
     }
   }
 }
