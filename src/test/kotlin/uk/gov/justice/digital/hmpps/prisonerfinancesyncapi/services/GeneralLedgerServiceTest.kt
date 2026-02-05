@@ -20,6 +20,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
@@ -149,7 +150,21 @@ class GeneralLedgerServiceTest {
     val prisonerAccounts = listOf("CASH", "SAVINGS", "SPENDS")
 
     @Test
-    fun `Should log error if Prisoner sub balance account is not found`() {
+    fun `Should log error when prisoner parent account is not found`() {
+      whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(null)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+      verifyNoMoreInteractions(generalLedgerApiClient)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      assertThat(logs).contains("No parent account found for prisoner $prisonNumber")
+    }
+
+    @Test
+    fun `Should log error when prisoner sub balance account is not found`() {
       val parentUUID = UUID.randomUUID()
       val subAccounts = mutableListOf<GlSubAccountResponse>()
 
