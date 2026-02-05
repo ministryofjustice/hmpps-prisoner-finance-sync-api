@@ -150,6 +150,19 @@ class GeneralLedgerServiceTest {
     val prisonerAccounts = listOf("CASH", "SAVINGS", "SPENDS")
 
     @Test
+    fun `should calculate legacy balances when called`() {
+      val mockList = mock<List<PrisonerEstablishmentBalanceDetails>>()
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(mockList)
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
+
+      for (accountCode in accountMapping.prisonerSubAccounts.values) {
+        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, mockList)
+      }
+    }
+
+    @Test
     fun `Should log error when prisoner parent account is not found`() {
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(null)
 
@@ -1012,26 +1025,6 @@ class GeneralLedgerServiceTest {
         parentUUIDPrison,
         prisonSubAccountRef,
       )
-    }
-  }
-
-  @Nested
-  @DisplayName("reconcilePrisonerBalances")
-  inner class ReconcilePrisonerBalances {
-
-    val prisonNumber = "A1234AA"
-
-    @Test
-    fun `should calculate legacy balances when called`() {
-      val mockList = mock<List<PrisonerEstablishmentBalanceDetails>>()
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(mockList)
-      generalLedgerService.reconcilePrisoner(prisonNumber)
-
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
-
-      for (accountCode in accountMapping.prisonerSubAccounts.values) {
-        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, mockList)
-      }
     }
   }
 }
