@@ -82,11 +82,12 @@ class GeneralLedgerApiClient(
       ?: throw IllegalStateException("Received null response when creating account $reference")
   }
 
-  fun postTransaction(request: GlTransactionRequest): UUID {
-    log.info("Posting transaction. Ref: ${request.reference}. Amount: ${request.amount}")
+  fun postTransaction(request: GlTransactionRequest, idempotencyKey: UUID): UUID {
+    log.info("Posting transaction. Ref: ${request.reference}. Amount: ${request.amount}. Key: $idempotencyKey")
 
     val response = webClient.post()
       .uri("/transactions")
+      .header("Idempotency-Key", idempotencyKey.toString())
       .bodyValue(request)
       .retrieve()
       .bodyToMono(GlTransactionReceipt::class.java)
