@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GLAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountRequest
@@ -39,7 +39,7 @@ class GeneralLedgerApiClient(
   }
 
   // GET /accounts/{accountId}/balance?reference={reference}
-  fun findAccountBalanceByAccountId(accountId: UUID, prisonRef: String? = null): GLAccountBalanceResponse? {
+  fun findAccountBalanceByAccountId(accountId: UUID, prisonRef: String? = null): GlAccountBalanceResponse? {
     val response = webClient.get()
       .uri { uriBuilder ->
         uriBuilder.path("/accounts/$accountId/balance")
@@ -51,7 +51,7 @@ class GeneralLedgerApiClient(
           .build()
       }
       .retrieve()
-      .bodyToMono(object : ParameterizedTypeReference<GLAccountBalanceResponse>() {})
+      .bodyToMono(object : ParameterizedTypeReference<GlAccountBalanceResponse>() {})
       .block()
 
     return response

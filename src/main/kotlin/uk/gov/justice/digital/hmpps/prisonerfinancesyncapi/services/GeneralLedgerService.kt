@@ -3,7 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GLAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
@@ -118,7 +118,7 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
-  private fun getGLPrisonerBalances(prisonNumber: String): List<GLAccountBalanceResponse> {
+  private fun getGLPrisonerBalances(prisonNumber: String): List<GlAccountBalanceResponse> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
 
     if (parentAccount == null || parentAccount.subAccounts == null) {
@@ -126,7 +126,7 @@ class GeneralLedgerService(
       return emptyList()
     }
 
-    val subAccounts = mutableListOf<GLAccountBalanceResponse>()
+    val subAccounts = mutableListOf<GlAccountBalanceResponse>()
     for (account in parentAccount.subAccounts) {
       val subAccountBalance = generalLedgerApiClient.findAccountBalanceByAccountId(account.id)
       if (subAccountBalance == null) {
