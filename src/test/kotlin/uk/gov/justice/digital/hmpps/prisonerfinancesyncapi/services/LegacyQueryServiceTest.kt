@@ -71,7 +71,7 @@ class LegacyQueryServiceTest {
       .listPrisonerBalancesByEstablishment(prisonNumber)
 
     assertThat(balanceByAccountCode)
-      .isEqualByComparingTo("284.05")
+      .isEqualByComparingTo(28405)
   }
 
   @ParameterizedTest
@@ -100,6 +100,6 @@ class LegacyQueryServiceTest {
       .listPrisonerBalancesByEstablishment(prisonNumber)
 
     assertThat(balanceByAccountCode)
-      .isEqualByComparingTo("0")
+      .isEqualByComparingTo(0)
   }
 }

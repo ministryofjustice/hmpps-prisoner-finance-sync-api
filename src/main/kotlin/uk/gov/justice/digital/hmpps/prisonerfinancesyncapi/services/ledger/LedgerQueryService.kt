@@ -222,4 +222,5 @@ open class LedgerQueryService(
 
   fun aggregatedLegacyBalanceByPrisoner(prisonNumber: String) = listPrisonerBalancesByEstablishment(prisonNumber)
     .fold(BigDecimal.ZERO) { acc, balance -> acc + balance.totalBalance }
+    .movePointRight(2).toLong()
 }
