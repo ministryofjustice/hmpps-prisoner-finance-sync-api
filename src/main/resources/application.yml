@@ -6,8 +6,10 @@ spring:
   application:
     name: hmpps-prisoner-finance-sync-api
 
-  jackson:
-    date-format: "yyyy-MM-dd HH:mm:ss"
+#  This jackson configuration is only applied for java.util.Date.
+#  It is ignored for LocalDateTime, and therefore unnecessary for most projects
+#  jackson:
+#    date-format: "yyyy-MM-dd HH:mm:ss"
 
   datasource:
     url: 'jdbc:postgresql://${DB_SERVER}/${DB_NAME}?sslmode=prefer'
@@ -47,6 +49,9 @@ spring:
   http:
     codecs:
       max-in-memory-size: 10MB
+  web:
+    error:
+      include-message: always
 
 server:
   port: 8080
