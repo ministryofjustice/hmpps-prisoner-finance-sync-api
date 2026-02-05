@@ -245,6 +245,10 @@ class GeneralLedgerServiceTest {
 
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
+      for (account in subAccounts) {
+        whenever(generalLedgerApiClient.findAccountBalanceByAccountId(account.id)).thenReturn(mock())
+      }
+
       generalLedgerService.reconcilePrisoner(prisonNumber)
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
