@@ -121,8 +121,13 @@ class GeneralLedgerService(
   private fun getGLPrisonerBalances(prisonNumber: String): List<GlAccountBalanceResponse> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
 
-    if (parentAccount == null || parentAccount.subAccounts == null) {
+    if (parentAccount == null) {
       log.error("No parent account found for prisoner $prisonNumber")
+      return emptyList()
+    }
+
+    if (parentAccount.subAccounts.isNullOrEmpty()) {
+      log.error("No sub accounts found for prisoner $prisonNumber")
       return emptyList()
     }
 

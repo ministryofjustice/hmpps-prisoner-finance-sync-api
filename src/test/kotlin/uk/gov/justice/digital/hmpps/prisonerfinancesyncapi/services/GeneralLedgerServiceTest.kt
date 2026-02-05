@@ -163,6 +163,22 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
+    fun `Should log error when prisoner does not have any sub account`() {
+      val mockAccount = mockAccount(offenderDisplayId, subAccounts = emptyList())
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(mockAccount)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+      verifyNoMoreInteractions(generalLedgerApiClient)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      assertThat(logs).contains("No sub accounts found for prisoner $prisonNumber")
+    }
+
+    @Test
     fun `Should log error when prisoner parent account is not found`() {
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(null)
 
