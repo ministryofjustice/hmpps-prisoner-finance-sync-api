@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GLAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountRequest
@@ -35,6 +36,25 @@ class GeneralLedgerApiClient(
       .block()
 
     return responseList?.firstOrNull()
+  }
+
+  // GET /accounts/{accountId}/balance?reference={reference}
+  fun findAccountBalanceByAccountId(accountId: UUID, prisonRef: String? = null): GLAccountBalanceResponse? {
+    val response = webClient.get()
+      .uri { uriBuilder ->
+        uriBuilder.path("/accounts/$accountId/balance")
+          .apply {
+            if (prisonRef != null) {
+              queryParam("prisonRef", prisonRef)
+            }
+          }
+          .build()
+      }
+      .retrieve()
+      .bodyToMono(object : ParameterizedTypeReference<GLAccountBalanceResponse>() {})
+      .block()
+
+    return response
   }
 
   // GET /sub-accounts?reference={subRef}&accountReference={parentRef}
