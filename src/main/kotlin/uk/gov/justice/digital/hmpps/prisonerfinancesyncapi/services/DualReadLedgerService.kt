@@ -27,7 +27,7 @@ class DualReadLedgerService(
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
     val items = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
 
-    if (prisonNumber == testPrisonerId) {
+    if (shouldSyncToGeneralLedger && prisonNumber == testPrisonerId) {
       try {
         generalLedger.reconcilePrisoner(prisonNumber)
       } catch (e: Exception) {

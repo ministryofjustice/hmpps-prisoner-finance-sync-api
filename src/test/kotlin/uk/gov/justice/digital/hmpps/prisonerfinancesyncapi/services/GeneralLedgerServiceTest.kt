@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import com.microsoft.applicationinsights.TelemetryClient
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
@@ -51,16 +52,19 @@ class GeneralLedgerServiceTest {
   private lateinit var generalLedgerApiClient: GeneralLedgerApiClient
 
   @Mock
-  private lateinit var ledgerQueryService: LedgerQueryService
+  private lateinit var telemetryClient: TelemetryClient
 
-  @InjectMocks
-  private lateinit var generalLedgerService: GeneralLedgerService
+  @Mock
+  private lateinit var ledgerQueryService: LedgerQueryService
 
   @Spy
   private lateinit var timeConversionService: TimeConversionService
 
   @Spy
   private lateinit var accountMapping: LedgerAccountMappingService
+
+  @InjectMocks
+  private lateinit var generalLedgerService: GeneralLedgerService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 

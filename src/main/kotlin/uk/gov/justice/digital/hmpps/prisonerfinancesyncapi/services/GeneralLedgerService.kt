@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
@@ -24,11 +25,12 @@ class GeneralLedgerService(
   private val accountMapping: LedgerAccountMappingService,
   private val timeConversionService: TimeConversionService,
   private val ledgerQueryService: LedgerQueryService,
+  private val telemetryClient: TelemetryClient,
 ) : LedgerService,
   ReconciliationService {
 
   private companion object {
-    private val log = LoggerFactory.getLogger(this::class.java)
+    private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
   }
 
   private fun getOrCreateAccount(reference: String): GlAccountResponse {
@@ -149,7 +151,6 @@ class GeneralLedgerService(
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
     val subAccountsGL = getGLPrisonerBalances(prisonNumber)
 
-    val legacyBalances = mutableMapOf<String, Long>()
     val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
 
     for (accountCode in accountMapping.prisonerSubAccounts.keys) {
@@ -161,7 +162,7 @@ class GeneralLedgerService(
       val glAccount = subAccountsGL[accountCode]
       if (glAccount == null || legacyBalance != glAccount.amount) {
         val errorDetails = GeneralLedgerDiscrepancyDetails(
-          "Discrepancy found for prisoner $prisonNumber",
+          message = "Discrepancy found for prisoner $prisonNumber",
           prisonNumber,
           accountCode,
           legacyBalance,
@@ -171,6 +172,20 @@ class GeneralLedgerService(
           legacyBreakdown = legacyBalancesByEstablishment,
         )
         log.warn("{}", errorDetails)
+
+        telemetryClient.trackEvent(
+          "prisoner-finance-sync-reconciliation-discrepancy-with-general-ledger",
+          mapOf(
+            "message" to errorDetails.message,
+            "prisonerId" to errorDetails.prisonerId,
+            "legacyAggregatedBalance" to errorDetails.legacyAggregatedBalance.toString(),
+            "generalLedgerBalance" to errorDetails.generalLedgerBalance.toString(),
+            "discrepancy" to errorDetails.discrepancy.toString(),
+            "glBreakdown" to errorDetails.glBreakdown.toString(),
+            "legacyBreakdown" to errorDetails.legacyBreakdown.toString(),
+          ),
+          null,
+        )
       }
     }
 
