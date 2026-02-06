@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -12,7 +13,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
@@ -90,6 +93,39 @@ class DualReadLedgerServiceTest {
         it.contains("Failed to reconcile prisoner $prisonNumber to General Ledger")
       }
       assertThat(res).isEqualTo(PrisonerEstablishmentBalanceDetailsList(resultItem))
+    }
+  }
+
+  @Nested
+  @DisplayName("internalGeneralLedgerReconciliation")
+  inner class InternalPrisonerReconciliation {
+    @Test
+    fun `should only call internal ledger (feature flag ignored for GL Transactions)`() {
+      val prisonerNumber = "A1234AA"
+      val expectedReturn = mock<List<PrisonerEstablishmentBalanceDetails>>()
+
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonerNumber)).thenReturn(
+        expectedReturn,
+      )
+
+      val result = dualReadLedgerService.reconcilePrisoner(prisonerNumber)
+
+      assertThat(result).isEqualTo(PrisonerEstablishmentBalanceDetailsList(expectedReturn))
+      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonerNumber)
+      verify(generalLedger, never()).syncGeneralLedgerTransaction(any())
+    }
+
+    @Test
+    fun `should throw exception if internal ledger fails`() {
+      val prisonerNumber = "A1234AA"
+
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonerNumber))
+        .thenThrow(RuntimeException("Internal DB Error"))
+
+      assertThatThrownBy {
+        dualReadLedgerService.reconcilePrisoner(prisonerNumber)
+      }.isInstanceOf(RuntimeException::class.java)
+        .hasMessage("Internal DB Error")
     }
   }
 }

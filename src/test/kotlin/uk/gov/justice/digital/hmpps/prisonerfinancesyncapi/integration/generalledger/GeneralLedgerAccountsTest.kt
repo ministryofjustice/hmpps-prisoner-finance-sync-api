@@ -9,6 +9,8 @@ import com.github.tomakehurst.wiremock.client.WireMock.matching
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
@@ -24,13 +26,21 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.math.BigDecimal
-import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
 import kotlin.random.Random
@@ -47,6 +57,14 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
   @Autowired
   private lateinit var objectMapper: ObjectMapper
 
+  @Autowired lateinit var nomisSyncPayloadRepository: NomisSyncPayloadRepository
+
+  @Autowired lateinit var transactionRepository: TransactionRepository
+
+  @Autowired lateinit var transactionEntryRepository: TransactionEntryRepository
+
+  @Autowired lateinit var accountRepository: AccountRepository
+
   private val testPrisonerId = "A1234AA"
 
   @Autowired
@@ -56,6 +74,14 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
   fun setup() {
     generalLedgerApi.resetAll()
     hmppsAuth.stubGrantToken()
+  }
+
+  @AfterEach
+  fun tearDown() {
+    nomisSyncPayloadRepository.deleteAll()
+    transactionEntryRepository.deleteAll()
+    transactionRepository.deleteAll()
+    accountRepository.deleteAll()
   }
 
   @Nested
@@ -829,6 +855,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
   @DisplayName("reconciliationTests")
   inner class ReconciliationTests {
 
+    private fun captureOutputStream(): ByteArrayOutputStream {
+      val outputStream = ByteArrayOutputStream()
+      val printStream = PrintStream(outputStream)
+      System.setOut(printStream)
+      return outputStream
+    }
+
     fun createSubAccountResponse(parentAccountId: UUID, reference: String) = GlSubAccountResponse(
       id = UUID.randomUUID(),
       parentAccountId = parentAccountId,
@@ -839,14 +872,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
     @Test
     fun `should show balance discrepancy for a prisoner when general ledger and legacy GL amounts are different`() {
-      webTestClient = webTestClient.mutate().responseTimeout(Duration.ofHours(1)).build()
       // mock Internal Ledger
       val transactionId = Random.nextLong(10000, 99999)
       val timestamp = LocalDateTime.now()
 
       val request = SyncOffenderTransactionRequest(
         transactionId = transactionId,
-        requestId = UUID.fromString("82f6a7bf-bae2-44ed-8573-46c84c41dc3e"),
+        requestId = UUID.randomUUID(),
         caseloadId = "TES",
         transactionTimestamp = timestamp,
         createdAt = timestamp,
@@ -894,9 +926,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, subAccountResponses)
 
+      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+
       subAccountResponses.forEach { subAccount ->
-        generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 100)
+        subAccountReturnedResponses.add(generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 100))
       }
+
+      val outputStream = captureOutputStream()
 
       webTestClient
         .get()
@@ -914,8 +950,236 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
 
       subAccountResponses.forEach { subAccount ->
+        val expectedLog = GeneralLedgerDiscrepancyDetails(
+          message = "Discrepancy found for prisoner $testPrisonerId",
+          prisonerId = testPrisonerId,
+          accountType = subAccount.reference,
+          legacyAggregatedBalance = 1000L,
+          generalLedgerBalance = 100L,
+          discrepancy = 900L,
+          glBreakdown = subAccountReturnedResponses,
+          legacyBreakdown = listOf(
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2101,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2102,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2103,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+          ),
+        )
+
+        assertThat(outputStream.toString()).contains(expectedLog.toString())
+      }
+
+      subAccountResponses.forEach { subAccount ->
         generalLedgerApi.verify(1, getRequestedFor(urlPathMatching("/sub-accounts/${subAccount.id}/balance")))
       }
+    }
+
+    @Test
+    fun `should not show balance discrepancy for a prisoner when general ledger and legacy GL amounts match`() {
+      // mock Internal Ledger
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        requestId = UUID.randomUUID(),
+        caseloadId = "TES",
+        transactionTimestamp = timestamp,
+        createdAt = timestamp,
+        createdBy = "OMS_OWNER",
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 2607103,
+            offenderDisplayId = testPrisonerId,
+            offenderBookingId = 1227181,
+            subAccountType = "SPND",
+            postingType = "DR",
+            type = "OT",
+            description = "Sub-Account Transfer",
+            amount = 30.0,
+            reference = null,
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "DR", 30.0),
+              GeneralLedgerEntry(2, 2101, "CR", 10.0),
+              GeneralLedgerEntry(3, 2102, "CR", 10.0),
+              GeneralLedgerEntry(4, 2103, "CR", 10.0),
+            ),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isCreated
+
+      // mock GL
+      val prisonerAccId = UUID.randomUUID()
+
+      val subAccountResponses = accountMapping.prisonerSubAccounts.map { kv ->
+        createSubAccountResponse(prisonerAccId, kv.key)
+      }.toList()
+
+      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, subAccountResponses)
+
+      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+
+      subAccountResponses.forEach { subAccount ->
+        subAccountReturnedResponses.add(generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 1000))
+      }
+
+      val outputStream = captureOutputStream()
+
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+
+      generalLedgerApi.verify(
+        1,
+        getRequestedFor(urlPathMatching("/accounts.*"))
+          .withQueryParam("reference", equalTo(testPrisonerId)),
+      )
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+
+      assertThat(outputStream.toString()).doesNotContain("GeneralLedgerDiscrepancyDetails")
+
+      subAccountResponses.forEach { subAccount ->
+        generalLedgerApi.verify(1, getRequestedFor(urlPathMatching("/sub-accounts/${subAccount.id}/balance")))
+      }
+    }
+
+    @Test
+    fun `should show balance discrepancy for a prisoner when general ledger when does not return sub accounts`() {
+      // mock Internal Ledger
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        requestId = UUID.randomUUID(),
+        caseloadId = "TES",
+        transactionTimestamp = timestamp,
+        createdAt = timestamp,
+        createdBy = "OMS_OWNER",
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 2607103,
+            offenderDisplayId = testPrisonerId,
+            offenderBookingId = 1227181,
+            subAccountType = "SPND",
+            postingType = "DR",
+            type = "OT",
+            description = "Sub-Account Transfer",
+            amount = 30.0,
+            reference = null,
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "DR", 30.0),
+              GeneralLedgerEntry(2, 2101, "CR", 10.0),
+              GeneralLedgerEntry(3, 2102, "CR", 10.0),
+              GeneralLedgerEntry(4, 2103, "CR", 10.0),
+            ),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isCreated
+
+      // mock GL
+      val prisonerAccId = UUID.randomUUID()
+
+      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, emptyList())
+
+      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+
+      val outputStream = captureOutputStream()
+
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+
+      generalLedgerApi.verify(
+        1,
+        getRequestedFor(urlPathMatching("/accounts.*"))
+          .withQueryParam("reference", equalTo(testPrisonerId)),
+      )
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+
+      accountMapping.prisonerSubAccounts.keys.forEach { reference ->
+        val expectedLog = GeneralLedgerDiscrepancyDetails(
+          message = "Discrepancy found for prisoner $testPrisonerId",
+          prisonerId = testPrisonerId,
+          accountType = reference,
+          legacyAggregatedBalance = 1000L,
+          generalLedgerBalance = 0L,
+          discrepancy = 1000L,
+          glBreakdown = subAccountReturnedResponses,
+          legacyBreakdown = listOf(
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2101,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2102,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2103,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+          ),
+        )
+
+        assertThat(outputStream.toString()).contains(expectedLog.toString())
+      }
+
+      generalLedgerApi.verify(0, getRequestedFor(urlPathMatching("/sub-accounts/.*/balance")))
     }
   }
 }

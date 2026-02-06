@@ -253,7 +253,7 @@ class GeneralLedgerApiMockServer :
     stubFor(mapping)
   }
 
-  fun stubGetSubAccountBalance(accountId: UUID, amount: Long) {
+  fun stubGetSubAccountBalance(accountId: UUID, amount: Long): GlSubAccountBalanceResponse {
     val response = GlSubAccountBalanceResponse(
       subAccountId = accountId,
       balanceDateTime = LocalDateTime.now(),
@@ -269,5 +269,6 @@ class GeneralLedgerApiMockServer :
             .withBody(mapper.writeValueAsString(response)),
         ),
     )
+    return response
   }
 }
