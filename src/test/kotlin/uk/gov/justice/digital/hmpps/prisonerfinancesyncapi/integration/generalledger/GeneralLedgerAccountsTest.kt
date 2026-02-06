@@ -24,6 +24,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -820,6 +821,48 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), cashSubRef)
 
       generalLedgerApi.verifyTransactionPosted()
+    }
+  }
+
+  @Nested
+  @DisplayName("reconciliationTests")
+  inner class ReconciliationTests {
+
+    fun createSubAccountResponse(parentAccountId: UUID, reference: String) = GlSubAccountResponse(
+      id = UUID.randomUUID(),
+      parentAccountId = parentAccountId,
+      reference = reference,
+      createdAt = LocalDateTime.now(),
+      createdBy = "OMS_OWNER",
+    )
+
+    @Test
+    fun `should show balance discrepancy for a prisoner when general ledger and legacy GL amounts are different`() {
+      val prisonerAccId = UUID.randomUUID()
+
+      val subAccountResponses = accountMapping.prisonerSubAccounts.map { kv ->
+        createSubAccountResponse(prisonerAccId, kv.key)
+      }.toList()
+
+      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, subAccountResponses)
+
+      subAccountResponses.forEach { subAccount ->
+        generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 100)
+      }
+
+      webTestClient.get()
+        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+
+      generalLedgerApi.verify(1, getRequestedFor(urlPathMatching("/accounts?reference=$testPrisonerId")))
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+
+      subAccountResponses.forEach { subAccount ->
+        generalLedgerApi.verify(1, getRequestedFor(urlPathMatching("/sub-accounts/${subAccount.id}/balance")))
+      }
     }
   }
 }

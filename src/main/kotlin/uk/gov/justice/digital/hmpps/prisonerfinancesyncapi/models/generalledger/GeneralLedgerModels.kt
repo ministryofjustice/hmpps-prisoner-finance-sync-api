@@ -62,8 +62,8 @@ data class GlAccountResponse(
   val subAccounts: List<GlSubAccountResponse>? = emptyList(),
 )
 
-data class GlAccountBalanceResponse(
-  val accountId: UUID,
+data class GlSubAccountBalanceResponse(
+  val subAccountId: UUID,
   val balanceDateTime: LocalDateTime,
   val amount: Long,
 )
