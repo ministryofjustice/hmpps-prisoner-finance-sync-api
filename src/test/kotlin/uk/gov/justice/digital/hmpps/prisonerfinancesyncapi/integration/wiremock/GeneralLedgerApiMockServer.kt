@@ -255,7 +255,7 @@ class GeneralLedgerApiMockServer :
 
   fun stubGetSubAccountBalance(accountId: UUID, amount: Long) {
     val response = GlSubAccountBalanceResponse(
-      subAccountId = UUID.randomUUID(),
+      subAccountId = accountId,
       balanceDateTime = LocalDateTime.now(),
       amount = amount,
     )
