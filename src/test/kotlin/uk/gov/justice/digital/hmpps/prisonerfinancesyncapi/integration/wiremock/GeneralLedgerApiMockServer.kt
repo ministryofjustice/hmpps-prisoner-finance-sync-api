@@ -19,10 +19,10 @@ import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -68,9 +68,13 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  // GET /accounts?reference={ref} -> Returns List<Account>
-  fun stubGetAccount(reference: String, returnUuid: UUID = UUID.randomUUID(), subAccounts: List<GlSubAccountResponse> = emptyList()) {
-    val response = GlAccountResponse(
+  // GET /accounts?reference={ref} -> Returns List<AccountResponse>
+  fun stubGetAccount(
+    reference: String,
+    returnUuid: UUID = UUID.randomUUID(),
+    subAccounts: List<SubAccountResponse> = emptyList(),
+  ) {
+    val response = AccountResponse(
       id = returnUuid,
       reference = reference,
       createdAt = LocalDateTime.now(),
@@ -103,13 +107,14 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  // POST /accounts -> Returns Single Account
+  // POST /accounts -> Returns Single AccountResponse
   fun stubCreateAccount(reference: String, returnUuid: String = UUID.randomUUID().toString()) {
-    val response = GlAccountResponse(
+    val response = AccountResponse(
       id = UUID.fromString(returnUuid),
       reference = reference,
       createdAt = LocalDateTime.now(),
       createdBy = "MOCK_USER",
+      subAccounts = emptyList(),
     )
 
     stubFor(
@@ -135,9 +140,16 @@ class GeneralLedgerApiMockServer :
     parentReference: String,
     subAccountReference: String,
     parentAccountId: UUID = UUID.randomUUID(),
-    response: List<GlAccountResponse>? = null,
+    response: List<SubAccountResponse>? = null,
   ) {
-    val subAccount = GlSubAccountResponse(UUID.randomUUID(), parentAccountId, subAccountReference, LocalDateTime.now(), "MOCK_USER")
+    val subAccount = SubAccountResponse(
+      id = UUID.randomUUID(),
+      parentAccountId = parentAccountId,
+      reference = subAccountReference,
+      createdAt = LocalDateTime.now(),
+      createdBy = "MOCK_USER",
+    )
+
     stubFor(
       get(urlPathEqualTo("/sub-accounts"))
         .withQueryParam("reference", equalTo(subAccountReference))
@@ -171,9 +183,9 @@ class GeneralLedgerApiMockServer :
 
   // POST /accounts/{uuid}/sub-accounts -> Returns Single SubAccount
   fun stubCreateSubAccount(parentId: UUID, reference: String, returnUuid: String = UUID.randomUUID().toString()) {
-    val response = GlSubAccountResponse(
+    val response = SubAccountResponse(
       id = UUID.fromString(returnUuid),
-      parentAccountId = UUID.randomUUID(),
+      parentAccountId = parentId,
       reference = reference,
       createdAt = LocalDateTime.now(),
       createdBy = "MOCK_USER",
@@ -224,10 +236,15 @@ class GeneralLedgerApiMockServer :
     reference: String? = null,
     returnUUID: UUID = UUID.randomUUID(),
   ) {
-    val response = GlTransactionReceipt(
+    val response = TransactionResponse(
       id = returnUUID,
       reference = reference ?: "MOCK_TXN",
       amount = 1000,
+      createdBy = "MOCK_USER",
+      createdAt = LocalDateTime.now(),
+      description = "Mock Transaction Description",
+      timestamp = LocalDateTime.now(),
+      postings = emptyList(),
     )
 
     var mapping = post(urlEqualTo("/transactions"))
@@ -253,8 +270,8 @@ class GeneralLedgerApiMockServer :
     stubFor(mapping)
   }
 
-  fun stubGetSubAccountBalance(accountId: UUID, amount: Long): GlSubAccountBalanceResponse {
-    val response = GlSubAccountBalanceResponse(
+  fun stubGetSubAccountBalance(accountId: UUID, amount: Long): SubAccountBalanceResponse {
+    val response = SubAccountBalanceResponse(
       subAccountId = accountId,
       balanceDateTime = LocalDateTime.now(),
       amount = amount,

@@ -156,3 +156,29 @@ docker-compose -f docker-compose-localstack.yaml up -d
   }
   ```
 - Use the value of `access_token` as a Bearer Token to authenticate when calling the local API endpoints.
+
+## Generating API Clients & Models
+
+We use OpenAPI Generator to automatically generate the Kotlin client and data models for the General Ledger API.
+
+The configuration is in build.gradle.kts under apiSpecs. This creates two tasks:
+
+`writeGeneralledgerJson`: Downloads the latest API specification from the Dev environment to openapi-specs/generalledger.json.
+
+`buildGeneralledgerApiClient`: Generates the Kotlin data classes (Models) and WebClient interfaces (API) from the local JSON file.
+
+### How to Update
+If the General Ledger API changes:
+
+Download the latest spec:
+
+```sh
+./gradlew writeGeneralledgerJson
+```
+
+Verify & Regenerate: Check the diff in openapi-specs/generalledger.json and run a build to ensure the code compiles.
+
+```sh
+./gradlew clean build
+```
+Commit: Commit the updated .json file. Do not commit the generated code in build/.

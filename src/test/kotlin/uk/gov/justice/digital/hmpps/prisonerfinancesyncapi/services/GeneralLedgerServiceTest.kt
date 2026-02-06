@@ -25,13 +25,11 @@ import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingType
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
@@ -41,7 +39,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.Ledge
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.random.Random
 
@@ -58,9 +55,6 @@ class GeneralLedgerServiceTest {
   private lateinit var ledgerQueryService: LedgerQueryService
 
   @Spy
-  private lateinit var timeConversionService: TimeConversionService
-
-  @Spy
   private lateinit var accountMapping: LedgerAccountMappingService
 
   @InjectMocks
@@ -72,12 +66,13 @@ class GeneralLedgerServiceTest {
 
   private val offenderDisplayId = "A1234AA"
 
-  fun mockAccount(reference: String, accountUUID: UUID = UUID.randomUUID(), subAccounts: List<GlSubAccountResponse> = emptyList()): GlAccountResponse {
-    val accountResponse = GlAccountResponse(
+  // FIXED: Return real AccountResponse (Data classes cannot be mocked)
+  fun mockAccount(reference: String, accountUUID: UUID = UUID.randomUUID(), subAccounts: List<SubAccountResponse> = emptyList()): AccountResponse {
+    val accountResponse = AccountResponse(
       id = accountUUID,
       reference = reference,
-      createdAt = LocalDateTime.now(),
       createdBy = "OMS_OWNER",
+      createdAt = LocalDateTime.now(),
       subAccounts = subAccounts,
     )
     whenever(generalLedgerApiClient.findAccountByReference(reference))
@@ -86,12 +81,17 @@ class GeneralLedgerServiceTest {
     return accountResponse
   }
 
-  fun mockSubAccount(parentReference: String, subAccountReference: String, accountUUID: UUID = UUID.randomUUID()): GlSubAccountResponse {
-    val mockGLSubAccountResponse = mock<GlSubAccountResponse>()
+  // FIXED: Return real SubAccountResponse (Data classes cannot be mocked)
+  fun mockSubAccount(parentReference: String, subAccountReference: String, accountUUID: UUID = UUID.randomUUID()): SubAccountResponse {
+    val mockGLSubAccountResponse = SubAccountResponse(
+      id = accountUUID,
+      reference = subAccountReference,
+      parentAccountId = UUID.randomUUID(),
+      createdBy = "OMS_OWNER",
+      createdAt = LocalDateTime.now(),
+    )
     whenever(generalLedgerApiClient.findSubAccount(parentReference, subAccountReference))
       .thenReturn(mockGLSubAccountResponse)
-
-    whenever(mockGLSubAccountResponse.id).thenReturn(accountUUID)
 
     return mockGLSubAccountResponse
   }
@@ -99,10 +99,15 @@ class GeneralLedgerServiceTest {
   fun mockAccountNotFoundAndCreateAccount(reference: String, accountUUID: UUID = UUID.randomUUID()) {
     whenever(generalLedgerApiClient.findAccountByReference(reference)).thenReturn(null)
 
-    val mockGlAccountResponse = mock<GlAccountResponse>()
+    val mockGlAccountResponse = AccountResponse(
+      id = accountUUID,
+      reference = reference,
+      createdBy = "OMS_OWNER",
+      createdAt = LocalDateTime.now(),
+      subAccounts = emptyList(),
+    )
     whenever(generalLedgerApiClient.createAccount(reference))
       .thenReturn(mockGlAccountResponse)
-    whenever(mockGlAccountResponse.id).thenReturn(accountUUID)
   }
 
   fun mockSubAccountNotFoundAndCreateSubAccount(parentReference: String, parentReferenceUUId: UUID, subAccountReference: String) {
@@ -113,8 +118,14 @@ class GeneralLedgerServiceTest {
       ),
     ).thenReturn(null)
 
-    val mockPrisonSubAccountResponse = mock<GlSubAccountResponse>()
-    whenever(mockPrisonSubAccountResponse.id).thenReturn(UUID.randomUUID())
+    val mockPrisonSubAccountResponse = SubAccountResponse(
+      id = UUID.randomUUID(),
+      reference = subAccountReference,
+      parentAccountId = parentReferenceUUId,
+      createdBy = "OMS_OWNER",
+      createdAt = LocalDateTime.now(),
+    )
+
     whenever(
       generalLedgerApiClient.createSubAccount(
         parentReferenceUUId,
@@ -123,13 +134,13 @@ class GeneralLedgerServiceTest {
     ).thenReturn(mockPrisonSubAccountResponse)
   }
 
-  fun mockPostTransaction(request: SyncOffenderTransactionRequest, postingsGL: List<GlPostingRequest>, returnUUID: UUID = UUID.randomUUID()): GlTransactionRequest {
-    val requestGL = GlTransactionRequest(
-      request.offenderTransactions[0].reference!!,
-      request.offenderTransactions[0].description,
-      timeConversionService.toUtcInstant(request.transactionTimestamp),
-      request.offenderTransactions[0].amount.toPence(),
-      postingsGL,
+  fun mockPostTransaction(request: SyncOffenderTransactionRequest, postingsGL: List<CreatePostingRequest>, returnUUID: UUID = UUID.randomUUID()): CreateTransactionRequest {
+    val requestGL = CreateTransactionRequest(
+      reference = request.offenderTransactions[0].reference!!,
+      description = request.offenderTransactions[0].description,
+      timestamp = request.transactionTimestamp,
+      amount = request.offenderTransactions[0].amount.toPence(),
+      postings = postingsGL,
     )
 
     whenever(generalLedgerApiClient.postTransaction(eq(requestGL), any())).thenReturn(returnUUID)
@@ -158,16 +169,16 @@ class GeneralLedgerServiceTest {
     @Test
     fun `Should log reconciliation error when GL does NOT match internal Ledger`() {
       val parentUUID = UUID.randomUUID()
-      val subAccounts = mutableListOf<GlSubAccountResponse>()
+      val subAccounts = mutableListOf<SubAccountResponse>()
 
       for (account in prisonerAccounts) {
         subAccounts.add(
-          GlSubAccountResponse(
-            UUID.randomUUID(),
-            parentUUID,
-            account,
-            LocalDateTime.now(),
-            "TEST",
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = account,
+            parentAccountId = parentUUID,
+            createdBy = "TEST",
+            createdAt = LocalDateTime.now(),
           ),
         )
       }
@@ -175,7 +186,7 @@ class GeneralLedgerServiceTest {
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
       // GL accounts
-      val testGlBalance = GlSubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
       for (account in subAccounts) {
         whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
           .thenReturn(testGlBalance)
@@ -214,16 +225,16 @@ class GeneralLedgerServiceTest {
     @Test
     fun `Should not log reconciliation error when GL matches internal Ledger`() {
       val parentUUID = UUID.randomUUID()
-      val subAccounts = mutableListOf<GlSubAccountResponse>()
+      val subAccounts = mutableListOf<SubAccountResponse>()
 
       for (account in prisonerAccounts) {
         subAccounts.add(
-          GlSubAccountResponse(
-            UUID.randomUUID(),
-            parentUUID,
-            account,
-            LocalDateTime.now(),
-            "TEST",
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = account,
+            parentAccountId = parentUUID,
+            createdBy = "TEST",
+            createdAt = LocalDateTime.now(),
           ),
         )
       }
@@ -231,7 +242,7 @@ class GeneralLedgerServiceTest {
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
       // GL accounts
-      val testGlBalance = GlSubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
       for (account in subAccounts) {
         whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
           .thenReturn(testGlBalance)
@@ -314,16 +325,16 @@ class GeneralLedgerServiceTest {
     @Test
     fun `Should log error when prisoner sub balance account is not found`() {
       val parentUUID = UUID.randomUUID()
-      val subAccounts = mutableListOf<GlSubAccountResponse>()
+      val subAccounts = mutableListOf<SubAccountResponse>()
 
       for (account in prisonerAccounts) {
         val subAccount =
-          GlSubAccountResponse(
-            UUID.randomUUID(),
-            parentUUID,
-            account,
-            LocalDateTime.now(),
-            "TEST",
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = account,
+            parentAccountId = parentUUID,
+            createdBy = "TEST",
+            createdAt = LocalDateTime.now(),
           )
 
         subAccounts.add(subAccount)
@@ -348,16 +359,16 @@ class GeneralLedgerServiceTest {
     @Test
     fun `should get all Prisoner SUB accounts`() {
       val parentUUID = UUID.randomUUID()
-      val subAccounts = mutableListOf<GlSubAccountResponse>()
+      val subAccounts = mutableListOf<SubAccountResponse>()
 
       for (account in prisonerAccounts) {
         subAccounts.add(
-          GlSubAccountResponse(
-            UUID.randomUUID(),
-            parentUUID,
-            account,
-            LocalDateTime.now(),
-            "TEST",
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = account,
+            parentAccountId = parentUUID,
+            createdBy = "TEST",
+            createdAt = LocalDateTime.now(),
           ),
         )
       }
@@ -412,16 +423,16 @@ class GeneralLedgerServiceTest {
       val transactionRequestUUID = UUID.randomUUID()
       mockPostTransaction(
         request,
-        listOf<GlPostingRequest>(
-          GlPostingRequest(
-            subAccountPrisonUUID,
-            request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
+        listOf<CreatePostingRequest>(
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
-          GlPostingRequest(
-            subAccountPrisonerUUID,
-            request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonerUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
@@ -447,8 +458,15 @@ class GeneralLedgerServiceTest {
 
       whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId)).thenReturn(null)
 
+      val accountResponse = AccountResponse(
+        id = UUID.randomUUID(),
+        reference = request.caseloadId,
+        createdBy = "OMS_OWNER",
+        createdAt = LocalDateTime.now(),
+        subAccounts = emptyList(),
+      )
       whenever(generalLedgerApiClient.createAccount(request.caseloadId))
-        .thenReturn(mock<GlAccountResponse>())
+        .thenReturn(accountResponse)
 
       val subAccountPrisonUUID = UUID.randomUUID()
       val subAccountPrisonerUUID = UUID.randomUUID()
@@ -472,16 +490,16 @@ class GeneralLedgerServiceTest {
       val transactionRequestUUID = UUID.randomUUID()
       mockPostTransaction(
         request,
-        listOf<GlPostingRequest>(
-          GlPostingRequest(
-            subAccountPrisonUUID,
-            request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
+        listOf<CreatePostingRequest>(
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
-          GlPostingRequest(
-            subAccountPrisonerUUID,
-            request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonerUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
@@ -525,16 +543,16 @@ class GeneralLedgerServiceTest {
       val transactionRequestUUID = UUID.randomUUID()
       val mockTransaction = mockPostTransaction(
         request,
-        listOf<GlPostingRequest>(
-          GlPostingRequest(
-            subAccountPrisonUUID,
-            request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
+        listOf<CreatePostingRequest>(
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
-          GlPostingRequest(
-            subAccountPrisonerUUID,
-            request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonerUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
@@ -583,16 +601,16 @@ class GeneralLedgerServiceTest {
       val transactionRequestUUID = UUID.randomUUID()
       mockPostTransaction(
         request,
-        listOf<GlPostingRequest>(
-          GlPostingRequest(
-            subAccountPrisonUUID,
-            request.offenderTransactions[0].generalLedgerEntries[0].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
+        listOf<CreatePostingRequest>(
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
           ),
-          GlPostingRequest(
-            subAccountPrisonerUUID,
-            request.offenderTransactions[0].generalLedgerEntries[1].postingType.toGLPostingType(),
-            request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
+          CreatePostingRequest(
+            subAccountId = subAccountPrisonerUUID,
+            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
+            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
           ),
         ),
         transactionRequestUUID,
@@ -764,14 +782,14 @@ class GeneralLedgerServiceTest {
         subAccountUUIDPrisoner,
       )
 
-      val glTransactionRequest = GlTransactionRequest(
+      val glTransactionRequest = CreateTransactionRequest(
         reference = request.offenderTransactions[0].reference!!,
         description = request.offenderTransactions[0].description,
-        timestamp = request.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        timestamp = request.transactionTimestamp,
         amount = amount.toPence(),
         postings = listOf(
-          GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toPence()),
-          GlPostingRequest(subAccountUUIDPrisoner, PostingType.DR, amount.toPence()),
+          CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = subAccountUUIDPrisoner, type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
         ),
       )
       val expectedUUID = UUID.randomUUID()
@@ -876,25 +894,25 @@ class GeneralLedgerServiceTest {
         subAccountUUIDPrisoner2,
       )
 
-      val glTransactionRequestPrisoner1 = GlTransactionRequest(
+      val glTransactionRequestPrisoner1 = CreateTransactionRequest(
         reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
         description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
-        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp,
         amount = amount.toPence(),
         postings = listOf(
-          GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toPence()),
-          GlPostingRequest(subAccountUUIDPrisoner1, PostingType.DR, amount.toPence()),
+          CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = subAccountUUIDPrisoner1, type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
         ),
       )
 
-      val glTransactionRequestPrisoner2 = GlTransactionRequest(
+      val glTransactionRequestPrisoner2 = CreateTransactionRequest(
         reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
         description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
-        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp.toInstant(ZoneOffset.UTC),
+        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp,
         amount = amount.toPence(),
         postings = listOf(
-          GlPostingRequest(subAccountUUIDPrison, PostingType.CR, amount.toPence()),
-          GlPostingRequest(subAccountUUIDPrisoner2, PostingType.DR, amount.toPence()),
+          CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = subAccountUUIDPrisoner2, type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
         ),
       )
       whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner1), any())).thenReturn(UUID.randomUUID())

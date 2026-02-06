@@ -31,8 +31,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Nomi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
@@ -42,7 +42,7 @@ import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.math.BigDecimal
 import java.time.LocalDateTime
-import java.util.*
+import java.util.UUID
 import kotlin.random.Random
 
 @TestPropertySource(
@@ -459,12 +459,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.verify(
         getRequestedFor(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo("TES")),
+          .withQueryParam("reference", equalTo("TES")),
       )
 
       generalLedgerApi.verify(
         getRequestedFor(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonerId)),
       )
 
       generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts.*")))
@@ -475,7 +475,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     fun `should successfully sync to internal ledger when general ledger is down`() {
       generalLedgerApi.stubFor(
         get(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", com.github.tomakehurst.wiremock.client.WireMock.equalTo(testPrisonerId))
+          .withQueryParam("reference", equalTo(testPrisonerId))
           .willReturn(
             aResponse()
               .withStatus(500)
@@ -862,7 +862,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       return outputStream
     }
 
-    fun createSubAccountResponse(parentAccountId: UUID, reference: String) = GlSubAccountResponse(
+    fun createSubAccountResponse(parentAccountId: UUID, reference: String) = SubAccountResponse(
       id = UUID.randomUUID(),
       parentAccountId = parentAccountId,
       reference = reference,
@@ -926,7 +926,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, subAccountResponses)
 
-      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+      val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
       subAccountResponses.forEach { subAccount ->
         subAccountReturnedResponses.add(generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 100))
@@ -950,6 +950,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
 
       subAccountResponses.forEach { subAccount ->
+
         val expectedLog = GeneralLedgerDiscrepancyDetails(
           message = "Discrepancy found for prisoner $testPrisonerId",
           prisonerId = testPrisonerId,
@@ -1044,7 +1045,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, subAccountResponses)
 
-      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+      val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
       subAccountResponses.forEach { subAccount ->
         subAccountReturnedResponses.add(generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 1000))
@@ -1126,7 +1127,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, emptyList())
 
-      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+      val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
       val outputStream = captureOutputStream()
 
@@ -1232,7 +1233,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       // mock GL
       generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
 
-      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+      val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
       val outputStream = captureOutputStream()
 

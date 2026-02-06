@@ -1,0 +1,1314 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "HMPPS Prisoner Finance General Ledger Api",
+    "contact" : {
+      "name" : "HMPPS Digital Studio",
+      "email" : "feedback@digital.justice.gov.uk"
+    },
+    "version" : "2026-02-06.205.bb387b9"
+  },
+  "servers" : [ {
+    "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
+    "description" : "Development"
+  }, {
+    "url" : "https://prisoner-finance-general-ledger-api-preprod.hmpps.service.justice.gov.uk",
+    "description" : "Pre-Production"
+  }, {
+    "url" : "https://prisoner-finance-general-ledger-api.hmpps.service.justice.gov.uk",
+    "description" : "Production"
+  }, {
+    "url" : "http://localhost:8080",
+    "description" : "Local"
+  } ],
+  "security" : [ {
+    "bearer-jwt" : [ "read", "write" ]
+  } ],
+  "tags" : [ ],
+  "paths" : {
+    "/transactions" : {
+      "post" : {
+        "tags" : [ "Transaction Controller" ],
+        "summary" : "Create a new transaction",
+        "description" : "Creates a new transaction with associated postings.</br>\n<table border=\"1\" cellpadding=\"5\" cellspacing=\"0\"> <thead> <tr> <th>Postings</th> <th>Expected Response Time (ms)</th> </tr> </thead> <tbody> <tr> <td>2</td> <td>37</td> </tr> <tr> <td>1,000</td> <td>2,443</td> </tr> <tr> <td>2,000</td> <td>2,966</td> </tr> <tr> <td>3,000</td> <td>4,693</td> </tr> <tr> <td>4,000</td> <td>5,676</td> </tr> <tr> <td>8,000</td> <td>8,840</td> </tr> <tr> <td>16,000</td> <td>16,183</td> </tr> <tr> <td>32,000</td> <td>33,696</td> </tr> </tbody> </table>",
+        "operationId" : "postTransaction",
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "description" : "An Idempotency Key to ensure that transactions are not repeated",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTransactionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Idempotency Key already used. Returns the existing transaction.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          },
+          "201" : {
+            "description" : "Created a new transaction and its postings",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/sub-accounts/{subAccountId}/balance" : {
+      "get" : {
+        "tags" : [ "Sub Account Controller" ],
+        "summary" : "Get the balance of a sub-account",
+        "operationId" : "getSubAccountBalance",
+        "parameters" : [ {
+          "name" : "subAccountId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Returns the requested sub-account balance",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubAccountBalanceResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - Sub Account ID is not a valid UUID",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Resource not found - Sub account not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Sub Account Controller" ],
+        "summary" : "Create a statement balance",
+        "operationId" : "postStatementBalance",
+        "parameters" : [ {
+          "name" : "subAccountId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateStatementBalanceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Returns a created statement balance",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatementBalanceResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Resource not found - Sub account not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/accounts" : {
+      "get" : {
+        "tags" : [ "Account Controller" ],
+        "summary" : "Find accounts using query parameters",
+        "description" : "At least one query parameter is required for this endpoint.",
+        "operationId" : "getAccount",
+        "parameters" : [ {
+          "name" : "reference",
+          "in" : "query",
+          "description" : "Account reference",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retrieved the account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AccountResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - Invalid query parameters",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      },
+      "post" : {
+        "tags" : [ "Account Controller" ],
+        "summary" : "Create a new account",
+        "description" : "Creates a new account using a case insensitive account reference",
+        "operationId" : "createAccount",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created a new account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/accounts/{parentAccountId}/sub-accounts" : {
+      "post" : {
+        "tags" : [ "Sub Account Controller" ],
+        "summary" : "Create a new sub-account",
+        "description" : "Creates a new sub-account using a case insensitive account reference.  Sub-account references must be unique within an account.",
+        "operationId" : "createSubAccount",
+        "parameters" : [ {
+          "name" : "parentAccountId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateSubAccountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created a new sub-account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubAccountResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Resource not found - Parent account not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/transactions/{transactionUUID}" : {
+      "get" : {
+        "tags" : [ "Transaction Controller" ],
+        "summary" : "Get an transaction by UUID",
+        "operationId" : "getTransactionById",
+        "parameters" : [ {
+          "name" : "transactionUUID",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retrieved the transaction",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - Parameter is not a valid UUID",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Resource not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/sub-accounts" : {
+      "get" : {
+        "tags" : [ "Sub Account Controller" ],
+        "summary" : "Finds a sub-account",
+        "description" : "Finds a sub-account using a case insensitive account reference and sub-account reference. \n Account reference and sub-account reference are both required.",
+        "operationId" : "findSubAccounts",
+        "parameters" : [ {
+          "name" : "reference",
+          "in" : "query",
+          "description" : "Sub-account reference",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "accountReference",
+          "in" : "query",
+          "description" : "Account reference",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Returns the requested sub-account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SubAccountResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/sub-accounts/{subAccountId}" : {
+      "get" : {
+        "tags" : [ "Sub Account Controller" ],
+        "summary" : "Get Sub Account by ID",
+        "operationId" : "getSubAccountByID",
+        "parameters" : [ {
+          "name" : "subAccountId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Returns the requested sub-account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubAccountResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Resource not found - Sub account not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/hello" : {
+      "get" : {
+        "tags" : [ "Hello World Controller" ],
+        "summary" : "Hello World Endpoint",
+        "operationId" : "hello",
+        "responses" : {
+          "200" : {
+            "description" : "Hello World!",
+            "content" : {
+              "text/plain" : { }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/accounts/{accountUUID}" : {
+      "get" : {
+        "tags" : [ "Account Controller" ],
+        "summary" : "Get an account by UUID",
+        "operationId" : "getAccount_1",
+        "parameters" : [ {
+          "name" : "accountUUID",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retrieved the account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - Parameter is not a valid UUID",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Resource not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
+    "/accounts/{accountId}/balance" : {
+      "get" : {
+        "tags" : [ "Account Controller" ],
+        "summary" : "Get Account Balance",
+        "operationId" : "getAccountBalance",
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "prisonRef",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Retrieved the account balance",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountBalanceResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request - Invalid UUID for accountId",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "CreatePostingRequest" : {
+        "type" : "object",
+        "description" : "A posting within a CreateTransactionRequest",
+        "properties" : {
+          "subAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The ID of the sub-account associated with the posting"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "Enumeration of PostingType either CR or DR",
+            "enum" : [ "CR", "DR" ]
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The non-negative posting amount"
+          }
+        },
+        "required" : [ "amount", "subAccountId", "type" ]
+      },
+      "CreateTransactionRequest" : {
+        "type" : "object",
+        "description" : "A request to create a transaction within the general ledger",
+        "properties" : {
+          "reference" : {
+            "type" : "string",
+            "description" : "A reference for the transaction"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "A description for the transaction"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time of when the transaction was created"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The non-negative amount in pence of the transaction, this is the total of all money moved with postings in this transaction"
+          },
+          "postings" : {
+            "type" : "array",
+            "description" : "A collection of postings for the transaction, there must be at least 1 Credit (CR) and 1 Debit (DR) posting supplied.\n\nWe accept one to one postings (1DR to 1CR).\n\nWe accept one to many postings (1DR to many CR or 1CR to many DR).\n\nWe do not accept many to many postings (2 DR to 2CR).\n\nThe sum of all credit in the transaction must equal the sum of all debits in the transaction.\n",
+            "items" : {
+              "$ref" : "#/components/schemas/CreatePostingRequest"
+            },
+            "maxItems" : 2147483647,
+            "minItems" : 2
+          }
+        },
+        "required" : [ "amount", "description", "postings", "reference", "timestamp" ]
+      },
+      "PostingResponse" : {
+        "type" : "object",
+        "description" : "A posting within a transaction",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the posting"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The user who created the transaction"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time of when the posting was created"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "Enumeration of PostingType either CR or DR",
+            "enum" : [ "CR", "DR" ]
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The posting monetary amount in pence"
+          },
+          "subAccountID" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The ID of the sub-account associated with the posting"
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "id", "subAccountID", "type" ]
+      },
+      "TransactionResponse" : {
+        "type" : "object",
+        "description" : "A transaction within the general ledger",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the transaction"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The user who created the transaction"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time of when the transaction was created"
+          },
+          "reference" : {
+            "type" : "string",
+            "description" : "A reference for the transaction"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "A description for the transaction"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time of when the transaction is created"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The total transaction monetary amount in pence"
+          },
+          "postings" : {
+            "type" : "array",
+            "description" : "A collection of postings for the transaction",
+            "items" : {
+              "$ref" : "#/components/schemas/PostingResponse"
+            }
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "description", "id", "postings", "reference", "timestamp" ]
+      },
+      "ErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "userMessage" : {
+            "type" : "string"
+          },
+          "developerMessage" : {
+            "type" : "string"
+          },
+          "moreInfo" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status" ]
+      },
+      "CreateStatementBalanceRequest" : {
+        "type" : "object",
+        "description" : "A request to create a statement balance for a sub-account",
+        "properties" : {
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The balance in pence"
+          },
+          "balanceDateTime" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time of a statement balance as defined by SYNC (Note: This will override any existing balance prior to this date/time)"
+          }
+        },
+        "required" : [ "amount", "balanceDateTime" ]
+      },
+      "StatementBalanceResponse" : {
+        "type" : "object",
+        "description" : "The statement balance for a sub-account",
+        "properties" : {
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The created balance in pence"
+          },
+          "subAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The unique ID for the sub-account"
+          },
+          "balanceDateTime" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "A local date/time of when the statement balance was created"
+          }
+        },
+        "required" : [ "amount", "balanceDateTime", "subAccountId" ]
+      },
+      "CreateAccountRequest" : {
+        "type" : "object",
+        "description" : "A request to create an account",
+        "properties" : {
+          "accountReference" : {
+            "type" : "string",
+            "description" : "A unique reference to identify an account, example LEI or 123456"
+          }
+        },
+        "required" : [ "accountReference" ]
+      },
+      "AccountResponse" : {
+        "type" : "object",
+        "description" : "An account within the general ledger",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The unique ID for the account"
+          },
+          "reference" : {
+            "type" : "string",
+            "description" : "The unique reference for the account"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The principal users name when the account was created"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time of when the account was created"
+          },
+          "subAccounts" : {
+            "type" : "array",
+            "description" : "The collection of sub-accounts within the account",
+            "items" : {
+              "$ref" : "#/components/schemas/SubAccountResponse"
+            }
+          }
+        },
+        "required" : [ "createdAt", "createdBy", "id", "reference", "subAccounts" ]
+      },
+      "SubAccountResponse" : {
+        "type" : "object",
+        "description" : "A sub-account of an account",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The unique ID for the sub-account"
+          },
+          "reference" : {
+            "type" : "string",
+            "description" : "The reference of the sub-account this is unique within the parent account"
+          },
+          "parentAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The unique ID of the parent account"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The principal users name when the sub-account was created"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time when the sub-account was created"
+          }
+        },
+        "required" : [ "createdAt", "createdBy", "id", "parentAccountId", "reference" ]
+      },
+      "CreateSubAccountRequest" : {
+        "type" : "object",
+        "description" : "A request to create a sub-account within an account",
+        "properties" : {
+          "subAccountReference" : {
+            "type" : "string",
+            "description" : "A reference to identify the sub-account, this must be unique within the account"
+          }
+        },
+        "required" : [ "subAccountReference" ]
+      },
+      "SubAccountBalanceResponse" : {
+        "type" : "object",
+        "description" : "The balance of a sub-account",
+        "properties" : {
+          "subAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The unique ID for the sub-account"
+          },
+          "balanceDateTime" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time when requesting the sub-account balance"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The calculated sum of the latest statement balance and the sub-account balance for postings, made after the latest statement balance date/time."
+          }
+        },
+        "required" : [ "amount", "balanceDateTime", "subAccountId" ]
+      },
+      "AccountBalanceResponse" : {
+        "type" : "object",
+        "description" : "An account balance",
+        "properties" : {
+          "accountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The ID for the account"
+          },
+          "balanceDateTime" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The local date/time that the account balance was calculated"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The balance of all sub-accounts within the account in pence"
+          }
+        },
+        "required" : [ "accountId", "amount", "balanceDateTime" ]
+      }
+    },
+    "securitySchemes" : {
+      "bearer-jwt" : {
+        "type" : "http",
+        "description" : "A HMPPS Auth access token with the `ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW` role.",
+        "name" : "Authorization",
+        "in" : "header",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  }
+}

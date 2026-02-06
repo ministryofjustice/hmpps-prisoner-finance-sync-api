@@ -9,6 +9,6 @@ data class GeneralLedgerDiscrepancyDetails(
   val legacyAggregatedBalance: Long,
   val generalLedgerBalance: Long,
   val discrepancy: Long,
-  val glBreakdown: List<GlSubAccountBalanceResponse>,
+  val glBreakdown: List<SubAccountBalanceResponse>,
   val legacyBreakdown: List<PrisonerEstablishmentBalanceDetails>,
 )
