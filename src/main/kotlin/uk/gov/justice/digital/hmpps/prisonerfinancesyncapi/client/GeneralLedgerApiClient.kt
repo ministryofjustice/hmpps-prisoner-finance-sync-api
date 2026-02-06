@@ -5,9 +5,9 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
@@ -39,19 +39,14 @@ class GeneralLedgerApiClient(
   }
 
   // GET /accounts/{accountId}/balance?reference={reference}
-  fun findAccountBalanceByAccountId(accountId: UUID, prisonRef: String? = null): GlAccountBalanceResponse? {
+  fun findSubAccountBalanceByAccountId(accountId: UUID): GlSubAccountBalanceResponse? {
     val response = webClient.get()
       .uri { uriBuilder ->
-        uriBuilder.path("/accounts/$accountId/balance")
-          .apply {
-            if (prisonRef != null) {
-              queryParam("prisonRef", prisonRef)
-            }
-          }
+        uriBuilder.path("/sub-accounts/$accountId/balance")
           .build()
       }
       .retrieve()
-      .bodyToMono(object : ParameterizedTypeReference<GlAccountBalanceResponse>() {})
+      .bodyToMono(object : ParameterizedTypeReference<GlSubAccountBalanceResponse>() {})
       .block()
 
     return response

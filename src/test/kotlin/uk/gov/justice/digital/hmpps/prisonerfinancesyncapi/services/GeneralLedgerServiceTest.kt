@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
+import com.microsoft.applicationinsights.TelemetryClient
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingType
@@ -37,6 +39,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGener
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -49,16 +52,19 @@ class GeneralLedgerServiceTest {
   private lateinit var generalLedgerApiClient: GeneralLedgerApiClient
 
   @Mock
-  private lateinit var ledgerQueryService: LedgerQueryService
+  private lateinit var telemetryClient: TelemetryClient
 
-  @InjectMocks
-  private lateinit var generalLedgerService: GeneralLedgerService
+  @Mock
+  private lateinit var ledgerQueryService: LedgerQueryService
 
   @Spy
   private lateinit var timeConversionService: TimeConversionService
 
   @Spy
   private lateinit var accountMapping: LedgerAccountMappingService
+
+  @InjectMocks
+  private lateinit var generalLedgerService: GeneralLedgerService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 
@@ -150,6 +156,119 @@ class GeneralLedgerServiceTest {
     val prisonerAccounts = listOf("CASH", "SAVINGS", "SPENDS")
 
     @Test
+    fun `Should log reconciliation error when GL does NOT match internal Ledger`() {
+      val parentUUID = UUID.randomUUID()
+      val subAccounts = mutableListOf<GlSubAccountResponse>()
+
+      for (account in prisonerAccounts) {
+        subAccounts.add(
+          GlSubAccountResponse(
+            UUID.randomUUID(),
+            parentUUID,
+            account,
+            LocalDateTime.now(),
+            "TEST",
+          ),
+        )
+      }
+
+      mockAccount(offenderDisplayId, parentUUID, subAccounts)
+
+      // GL accounts
+      val testGlBalance = GlSubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      for (account in subAccounts) {
+        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
+          .thenReturn(testGlBalance)
+      }
+
+      // InternalLedger
+      val internalLedgerBalances = listOf(
+        PrisonerEstablishmentBalanceDetails("LEI", 2101, BigDecimal("4"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2101, BigDecimal("4"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2102, BigDecimal("7"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2103, BigDecimal("2"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2103, BigDecimal("4"), BigDecimal.ZERO),
+      )
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(internalLedgerBalances)
+
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2101, internalLedgerBalances)).thenReturn(8)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2102, internalLedgerBalances)).thenReturn(7)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2103, internalLedgerBalances)).thenReturn(6)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs).filteredOn { it.contains("Discrepancy found for prisoner") }.hasSize(3)
+
+      for (accountCode in accountMapping.prisonerSubAccounts.values) {
+        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, internalLedgerBalances)
+      }
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+
+      for (account in subAccounts) {
+        verify(generalLedgerApiClient).findSubAccountBalanceByAccountId(account.id)
+      }
+    }
+
+    @Test
+    fun `Should not log reconciliation error when GL matches internal Ledger`() {
+      val parentUUID = UUID.randomUUID()
+      val subAccounts = mutableListOf<GlSubAccountResponse>()
+
+      for (account in prisonerAccounts) {
+        subAccounts.add(
+          GlSubAccountResponse(
+            UUID.randomUUID(),
+            parentUUID,
+            account,
+            LocalDateTime.now(),
+            "TEST",
+          ),
+        )
+      }
+
+      mockAccount(offenderDisplayId, parentUUID, subAccounts)
+
+      // GL accounts
+      val testGlBalance = GlSubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      for (account in subAccounts) {
+        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
+          .thenReturn(testGlBalance)
+      }
+
+      // InternalLedger
+      val internalLedgerBalances = listOf(
+        PrisonerEstablishmentBalanceDetails("LEI", 2101, BigDecimal("4"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2101, BigDecimal("1"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2102, BigDecimal("5"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("LEI", 2103, BigDecimal("1"), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2103, BigDecimal("4"), BigDecimal.ZERO),
+      )
+      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(internalLedgerBalances)
+
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2101, internalLedgerBalances)).thenReturn(5)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2102, internalLedgerBalances)).thenReturn(5)
+      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2103, internalLedgerBalances)).thenReturn(5)
+
+      generalLedgerService.reconcilePrisoner(prisonNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      assertThat(logs).isEmpty()
+
+      for (accountCode in accountMapping.prisonerSubAccounts.values) {
+        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, internalLedgerBalances)
+      }
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+
+      for (account in subAccounts) {
+        verify(generalLedgerApiClient).findSubAccountBalanceByAccountId(account.id)
+      }
+    }
+
+    @Test
     fun `should calculate legacy balances when called`() {
       val mockList = mock<List<PrisonerEstablishmentBalanceDetails>>()
       whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(mockList)
@@ -208,7 +327,7 @@ class GeneralLedgerServiceTest {
           )
 
         subAccounts.add(subAccount)
-        whenever(generalLedgerApiClient.findAccountBalanceByAccountId(subAccount.id))
+        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(subAccount.id))
           .thenReturn(null)
       }
 
@@ -222,7 +341,7 @@ class GeneralLedgerServiceTest {
 
       for (account in subAccounts) {
         assertThat(logs).contains("No balance found for account ${account.id} but it was in the parent subaccounts list")
-        verify(generalLedgerApiClient).findAccountBalanceByAccountId(account.id)
+        verify(generalLedgerApiClient).findSubAccountBalanceByAccountId(account.id)
       }
     }
 
@@ -246,7 +365,7 @@ class GeneralLedgerServiceTest {
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
       for (account in subAccounts) {
-        whenever(generalLedgerApiClient.findAccountBalanceByAccountId(account.id)).thenReturn(mock())
+        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id)).thenReturn(mock())
       }
 
       generalLedgerService.reconcilePrisoner(prisonNumber)
@@ -254,7 +373,7 @@ class GeneralLedgerServiceTest {
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
 
       for (account in subAccounts) {
-        verify(generalLedgerApiClient).findAccountBalanceByAccountId(account.id)
+        verify(generalLedgerApiClient).findSubAccountBalanceByAccountId(account.id)
       }
     }
   }

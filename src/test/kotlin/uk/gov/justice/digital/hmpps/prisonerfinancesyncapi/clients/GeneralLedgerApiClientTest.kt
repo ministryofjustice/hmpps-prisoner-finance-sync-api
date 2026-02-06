@@ -25,9 +25,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import org.springframework.web.util.UriBuilder
 import reactor.core.publisher.Mono
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
@@ -162,11 +162,11 @@ class GeneralLedgerApiClientTest {
     @Test
     fun `should return balance when found`() {
       val accountId = UUID.randomUUID()
-      val expectedResponse = GlAccountBalanceResponse(accountId, LocalDateTime.now(), 1000)
+      val expectedResponse = GlSubAccountBalanceResponse(accountId, LocalDateTime.now(), 1000)
 
       mockWebClientGetChain(expectedResponse)
 
-      val result = apiClient.findAccountBalanceByAccountId(accountId)
+      val result = apiClient.findSubAccountBalanceByAccountId(accountId)
 
       assertThat(result).isEqualTo(expectedResponse)
     }
@@ -177,7 +177,7 @@ class GeneralLedgerApiClientTest {
       whenever(webClient.get()).thenReturn(requestHeadersUriSpec)
       whenever(requestHeadersUriSpec.uri(any<Function<UriBuilder, URI>>())).thenReturn(requestHeadersSpec)
       whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
-      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<GlAccountBalanceResponse>>()))
+      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<GlSubAccountBalanceResponse>>()))
         .thenThrow(
           WebClientResponseException.create(
             HttpStatus.NOT_FOUND.value(),
@@ -188,15 +188,15 @@ class GeneralLedgerApiClientTest {
           ),
         )
 
-      assertThatThrownBy { apiClient.findAccountBalanceByAccountId(accountId) }
+      assertThatThrownBy { apiClient.findSubAccountBalanceByAccountId(accountId) }
         .isInstanceOf(WebClientResponseException.NotFound::class.java)
     }
 
-    private fun mockWebClientGetChain(response: GlAccountBalanceResponse) {
+    private fun mockWebClientGetChain(response: GlSubAccountBalanceResponse) {
       whenever(webClient.get()).thenReturn(requestHeadersUriSpec)
       whenever(requestHeadersUriSpec.uri(any<Function<UriBuilder, URI>>())).thenReturn(requestHeadersSpec)
       whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
-      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<GlAccountBalanceResponse>>()))
+      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<GlSubAccountBalanceResponse>>()))
         .thenReturn(Mono.just(response))
     }
   }
