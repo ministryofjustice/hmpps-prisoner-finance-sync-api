@@ -1181,5 +1181,111 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.verify(0, getRequestedFor(urlPathMatching("/sub-accounts/.*/balance")))
     }
+
+    @Test
+    fun `should show balance discrepancy for a prisoner when general ledger when does not return parent account`() {
+      // mock Internal Ledger
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        requestId = UUID.randomUUID(),
+        caseloadId = "TES",
+        transactionTimestamp = timestamp,
+        createdAt = timestamp,
+        createdBy = "OMS_OWNER",
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 2607103,
+            offenderDisplayId = testPrisonerId,
+            offenderBookingId = 1227181,
+            subAccountType = "SPND",
+            postingType = "DR",
+            type = "OT",
+            description = "Sub-Account Transfer",
+            amount = 30.0,
+            reference = null,
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "DR", 30.0),
+              GeneralLedgerEntry(2, 2101, "CR", 10.0),
+              GeneralLedgerEntry(3, 2102, "CR", 10.0),
+              GeneralLedgerEntry(4, 2103, "CR", 10.0),
+            ),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isCreated
+
+      // mock GL
+      generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
+
+      val subAccountReturnedResponses = mutableListOf<GlSubAccountBalanceResponse>()
+
+      val outputStream = captureOutputStream()
+
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+
+      generalLedgerApi.verify(
+        1,
+        getRequestedFor(urlPathMatching("/accounts.*"))
+          .withQueryParam("reference", equalTo(testPrisonerId)),
+      )
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+
+      accountMapping.prisonerSubAccounts.keys.forEach { reference ->
+        val expectedLog = GeneralLedgerDiscrepancyDetails(
+          message = "Discrepancy found for prisoner $testPrisonerId",
+          prisonerId = testPrisonerId,
+          accountType = reference,
+          legacyAggregatedBalance = 1000L,
+          generalLedgerBalance = 0L,
+          discrepancy = 1000L,
+          glBreakdown = subAccountReturnedResponses,
+          legacyBreakdown = listOf(
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2101,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2102,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2103,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+          ),
+        )
+
+        assertThat(outputStream.toString()).contains(expectedLog.toString())
+      }
+
+      generalLedgerApi.verify(0, getRequestedFor(urlPathMatching("/sub-accounts/.*/balance")))
+    }
   }
 }
