@@ -189,6 +189,6 @@ class GeneralLedgerService(
       }
     }
 
-    return PrisonerEstablishmentBalanceDetailsList(emptyList())
+    return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
   }
 }

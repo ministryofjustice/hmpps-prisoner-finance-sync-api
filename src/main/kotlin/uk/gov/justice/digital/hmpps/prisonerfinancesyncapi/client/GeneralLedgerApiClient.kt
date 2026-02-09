@@ -38,7 +38,7 @@ class GeneralLedgerApiClient(
     return responseList?.firstOrNull()
   }
 
-  // GET /accounts/{accountId}/balance?reference={reference}
+  // GET /sub-accounts/{accountId}/balance
   fun findSubAccountBalanceByAccountId(accountId: UUID): GlSubAccountBalanceResponse? {
     val response = webClient.get()
       .uri { uriBuilder ->
