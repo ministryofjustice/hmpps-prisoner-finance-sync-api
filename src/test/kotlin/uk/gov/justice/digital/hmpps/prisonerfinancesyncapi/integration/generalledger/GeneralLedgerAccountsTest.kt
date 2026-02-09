@@ -1147,7 +1147,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       accountMapping.prisonerSubAccounts.keys.forEach { reference ->
         val expectedLog = GeneralLedgerDiscrepancyDetails(
-          message = "Discrepancy found for prisoner $testPrisonerId",
+          message = "Gl account not found for prisoner $testPrisonerId",
           prisonerId = testPrisonerId,
           accountType = reference,
           legacyAggregatedBalance = 1000L,
@@ -1253,7 +1253,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       accountMapping.prisonerSubAccounts.keys.forEach { reference ->
         val expectedLog = GeneralLedgerDiscrepancyDetails(
-          message = "Discrepancy found for prisoner $testPrisonerId",
+          message = "Gl account not found for prisoner $testPrisonerId",
           prisonerId = testPrisonerId,
           accountType = reference,
           legacyAggregatedBalance = 1000L,

@@ -161,8 +161,11 @@ class GeneralLedgerService(
 
       val glAccount = subAccountsGL[accountCode]
       if (glAccount == null || legacyBalance != glAccount.amount) {
+        var message = "Discrepancy found for prisoner $prisonNumber"
+        if (glAccount == null) message = "Gl account not found for prisoner $prisonNumber"
+
         val errorDetails = GeneralLedgerDiscrepancyDetails(
-          message = "Discrepancy found for prisoner $prisonNumber",
+          message = message,
           prisonNumber,
           accountCode,
           legacyBalance,
