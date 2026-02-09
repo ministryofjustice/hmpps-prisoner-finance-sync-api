@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
 import java.time.LocalDateTime
@@ -68,13 +69,13 @@ class GeneralLedgerApiMockServer :
   }
 
   // GET /accounts?reference={ref} -> Returns List<Account>
-  fun stubGetAccount(reference: String, returnUuid: UUID = UUID.randomUUID()) {
+  fun stubGetAccount(reference: String, returnUuid: UUID = UUID.randomUUID(), subAccounts: List<GlSubAccountResponse> = emptyList()) {
     val response = GlAccountResponse(
       id = returnUuid,
       reference = reference,
       createdAt = LocalDateTime.now(),
       createdBy = "MOCK_USER",
-      subAccounts = emptyList(),
+      subAccounts = subAccounts,
     )
 
     stubFor(
@@ -250,5 +251,24 @@ class GeneralLedgerApiMockServer :
     }
 
     stubFor(mapping)
+  }
+
+  fun stubGetSubAccountBalance(accountId: UUID, amount: Long): GlSubAccountBalanceResponse {
+    val response = GlSubAccountBalanceResponse(
+      subAccountId = accountId,
+      balanceDateTime = LocalDateTime.now(),
+      amount = amount,
+    )
+
+    stubFor(
+      get(urlPathEqualTo("/sub-accounts/$accountId/balance"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(mapper.writeValueAsString(response)),
+        ),
+    )
+    return response
   }
 }

@@ -27,6 +27,7 @@ import reactor.core.publisher.Mono
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
@@ -153,6 +154,50 @@ class GeneralLedgerApiClientTest {
       whenever(requestBodyUriSpec.bodyValue(any<GlSubAccountRequest>())).thenReturn(requestHeadersSpec)
       whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
       whenever(responseSpec.bodyToMono(GlSubAccountResponse::class.java)).thenReturn(Mono.just(response))
+    }
+  }
+
+  @Nested
+  inner class FindAccountBalanceByAccountID {
+    @Test
+    fun `should return balance when found`() {
+      val accountId = UUID.randomUUID()
+      val expectedResponse = GlSubAccountBalanceResponse(accountId, LocalDateTime.now(), 1000)
+
+      mockWebClientGetChain(expectedResponse)
+
+      val result = apiClient.findSubAccountBalanceByAccountId(accountId)
+
+      assertThat(result).isEqualTo(expectedResponse)
+    }
+
+    @Test
+    fun `should throw exception when account does not exist`() {
+      val accountId = UUID.randomUUID()
+      whenever(webClient.get()).thenReturn(requestHeadersUriSpec)
+      whenever(requestHeadersUriSpec.uri(any<Function<UriBuilder, URI>>())).thenReturn(requestHeadersSpec)
+      whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<GlSubAccountBalanceResponse>>()))
+        .thenThrow(
+          WebClientResponseException.create(
+            HttpStatus.NOT_FOUND.value(),
+            "Not Found",
+            HttpHeaders.EMPTY,
+            ByteArray(0),
+            null,
+          ),
+        )
+
+      assertThatThrownBy { apiClient.findSubAccountBalanceByAccountId(accountId) }
+        .isInstanceOf(WebClientResponseException.NotFound::class.java)
+    }
+
+    private fun mockWebClientGetChain(response: GlSubAccountBalanceResponse) {
+      whenever(webClient.get()).thenReturn(requestHeadersUriSpec)
+      whenever(requestHeadersUriSpec.uri(any<Function<UriBuilder, URI>>())).thenReturn(requestHeadersSpec)
+      whenever(requestHeadersSpec.retrieve()).thenReturn(responseSpec)
+      whenever(responseSpec.bodyToMono(any<ParameterizedTypeReference<GlSubAccountBalanceResponse>>()))
+        .thenReturn(Mono.just(response))
     }
   }
 

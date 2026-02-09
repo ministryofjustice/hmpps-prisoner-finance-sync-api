@@ -6,12 +6,11 @@ class LedgerAccountMappingService {
 
   data class PrisonAccountDetails(val code: Int, val txType: String)
 
-  fun mapPrisonerSubAccount(nomisAccountCode: Int): String = when (nomisAccountCode) {
-    2101 -> "CASH"
-    2102 -> "SPENDS"
-    2103 -> "SAVINGS"
-    else -> throw IllegalArgumentException("Unknown NOMIS Prisoner Account Code: $nomisAccountCode")
-  }
+  val prisonerSubAccounts = mapOf("CASH" to 2101, "SPENDS" to 2102, "SAVINGS" to 2103)
+  val reversedPrisonerSubAccounts = prisonerSubAccounts.entries.associateBy({ it.value }, { it.key })
+
+  fun mapPrisonerSubAccount(nomisAccountCode: Int): String = reversedPrisonerSubAccounts[nomisAccountCode]
+    ?: throw IllegalArgumentException("Unknown NOMIS Prisoner Account Code: $nomisAccountCode")
 
   fun mapPrisonSubAccount(nomisAccountCode: Int, transactionType: String): String = "$nomisAccountCode:$transactionType"
 
@@ -28,12 +27,7 @@ class LedgerAccountMappingService {
     return PrisonAccountDetails(code, splitReference[1].trim())
   }
 
-  fun mapSubAccountPrisonerReferenceToNOMIS(referenceGLCode: String): Int = when (referenceGLCode) {
-    "CASH" -> 2101
-    "SPENDS" -> 2102
-    "SAVINGS" -> 2103
-    else -> throw IllegalArgumentException("Unknown GL Prisoner reference Code: $referenceGLCode")
-  }
+  fun mapSubAccountPrisonerReferenceToNOMIS(referenceGLCode: String): Int = prisonerSubAccounts[referenceGLCode] ?: throw IllegalArgumentException("Unknown GL Prisoner reference Code: $referenceGLCode")
 
   fun isValidPrisonerAccountCode(prisonerAccountCode: Int): Boolean {
     try {

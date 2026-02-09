@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionReceipt
@@ -35,6 +36,20 @@ class GeneralLedgerApiClient(
       .block()
 
     return responseList?.firstOrNull()
+  }
+
+  // GET /sub-accounts/{accountId}/balance
+  fun findSubAccountBalanceByAccountId(accountId: UUID): GlSubAccountBalanceResponse? {
+    val response = webClient.get()
+      .uri { uriBuilder ->
+        uriBuilder.path("/sub-accounts/$accountId/balance")
+          .build()
+      }
+      .retrieve()
+      .bodyToMono(object : ParameterizedTypeReference<GlSubAccountBalanceResponse>() {})
+      .block()
+
+    return response
   }
 
   // GET /sub-accounts?reference={subRef}&accountReference={parentRef}

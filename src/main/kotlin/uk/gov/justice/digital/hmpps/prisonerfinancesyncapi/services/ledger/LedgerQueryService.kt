@@ -14,6 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.TransactionDet
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
+import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.LocalDate
 import java.util.UUID
@@ -218,4 +219,9 @@ open class LedgerQueryService(
   }
 
   private fun findPrisonerAccount(prisonNumber: String, accountCode: Int): Account? = accountRepository.findByPrisonNumberAndAccountCode(prisonNumber, accountCode)
+
+  fun aggregatedLegacyBalanceForAccountCode(accountCode: Int, balances: List<PrisonerEstablishmentBalanceDetails>) = balances
+    .filter { it.accountCode == accountCode }
+    .fold(BigDecimal.ZERO) { acc, balance -> acc + balance.totalBalance }
+    .movePointRight(2).toLong()
 }
