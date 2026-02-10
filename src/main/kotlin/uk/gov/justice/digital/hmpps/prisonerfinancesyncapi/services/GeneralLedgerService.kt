@@ -4,13 +4,12 @@ import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlPostingRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlSubAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GlTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.toGLPostingType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -23,7 +22,6 @@ import kotlin.math.abs
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
-  private val timeConversionService: TimeConversionService,
   private val ledgerQueryService: LedgerQueryService,
   private val telemetryClient: TelemetryClient,
 ) : LedgerService,
@@ -33,7 +31,7 @@ class GeneralLedgerService(
     private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
   }
 
-  private fun getOrCreateAccount(reference: String): GlAccountResponse {
+  private fun getOrCreateAccount(reference: String): AccountResponse {
     var account = generalLedgerApiClient.findAccountByReference(reference)
 
     if (account != null) {
@@ -47,7 +45,7 @@ class GeneralLedgerService(
     return account
   }
 
-  private fun getOrCreateSubAccount(parentAccount: String, parentAccountId: UUID, reference: String): GlSubAccountResponse {
+  private fun getOrCreateSubAccount(parentAccount: String, parentAccountId: UUID, reference: String): SubAccountResponse {
     var subAccount = generalLedgerApiClient.findSubAccount(parentAccount, reference)
     if (subAccount != null) {
       log.info("General Ledger sub-account found for '$reference' (UUID: ${subAccount.id})")
@@ -64,7 +62,7 @@ class GeneralLedgerService(
     val prisonAccount = getOrCreateAccount(request.caseloadId)
     val transactionGLUUIDs = mutableListOf<UUID>()
 
-    val prisonerAccounts = mutableMapOf<String, GlAccountResponse>()
+    val prisonerAccounts = mutableMapOf<String, AccountResponse>()
 
     request.offenderTransactions.forEach { transaction ->
       val offenderId = transaction.offenderDisplayId
@@ -72,7 +70,7 @@ class GeneralLedgerService(
         getOrCreateAccount(offenderId)
       }
 
-      val glEntries = mutableListOf<GlPostingRequest>()
+      val glEntries = mutableListOf<CreatePostingRequest>()
 
       transaction.generalLedgerEntries.forEach { entry ->
 
@@ -92,18 +90,18 @@ class GeneralLedgerService(
 
         val subAccount = getOrCreateSubAccount(parentAccountString, parentAccount.id, accountReference)
         glEntries.add(
-          GlPostingRequest(
-            subAccount.id,
-            type = entry.postingType.toGLPostingType(),
+          CreatePostingRequest(
+            subAccountId = subAccount.id,
+            type = CreatePostingRequest.Type.valueOf(entry.postingType),
             amount = entry.amount.toPence(),
           ),
         )
       }
 
-      val glTransactionRequest = GlTransactionRequest(
-        transaction.reference ?: "",
+      val glTransactionRequest = CreateTransactionRequest(
+        reference = transaction.reference ?: "",
         description = transaction.description,
-        timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
+        timestamp = request.transactionTimestamp,
         amount = transaction.amount.toPence(),
         postings = glEntries,
       )
@@ -122,7 +120,7 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
-  private fun getGLPrisonerBalances(prisonNumber: String): Map<String, GlSubAccountBalanceResponse> {
+  private fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceResponse> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
 
     if (parentAccount == null) {
@@ -130,12 +128,12 @@ class GeneralLedgerService(
       return emptyMap()
     }
 
-    if (parentAccount.subAccounts.isNullOrEmpty()) {
+    if (parentAccount.subAccounts.isEmpty()) {
       log.error("No sub accounts found for prisoner $prisonNumber")
       return emptyMap()
     }
 
-    val subAccounts = mutableMapOf<String, GlSubAccountBalanceResponse>()
+    val subAccounts = mutableMapOf<String, SubAccountBalanceResponse>()
     for (account in parentAccount.subAccounts) {
       val subAccountBalance = generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id)
       if (subAccountBalance == null) {
@@ -166,10 +164,10 @@ class GeneralLedgerService(
 
         val errorDetails = GeneralLedgerDiscrepancyDetails(
           message = message,
-          prisonNumber,
-          accountCode,
-          legacyBalance,
-          glAccount?.amount ?: 0,
+          prisonerId = prisonNumber,
+          accountType = accountCode,
+          legacyAggregatedBalance = legacyBalance,
+          generalLedgerBalance = glAccount?.amount ?: 0,
           discrepancy = abs(legacyBalance - (glAccount?.amount ?: 0)),
           glBreakdown = subAccountsGL.values.toList(),
           legacyBreakdown = legacyBalancesByEstablishment,

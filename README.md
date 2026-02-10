@@ -34,19 +34,19 @@ Enable pre-commit hooks for formatting and linting code with the following comma
 
 The `Dockerfile` relies on the application being built first. Steps to build the docker image:
 1. Build the jar files
-```
+```bash
 ./gradlew clean assemble
 ```
 2. Copy the jar files to the base directory so that the docker build can find them
-```
+```bash
 cp build/libs/*.jar .
 ```
 3. Build the docker image with required arguments
-```
+```bash
 docker build --build-arg GIT_REF=21345 --build-arg GIT_BRANCH=bob --build-arg BUILD_NUMBER=$(date '+%Y-%m-%d') .
 ```
 4. Run the docker image, setting the auth url so that it starts up
-```
+```bash
 docker run -e HMPPS_AUTH_URL="https://sign-in-dev.hmpps.service.justice.gov.uk/auth" <sha from step 3>
 ```
 
@@ -156,3 +156,29 @@ docker-compose -f docker-compose-localstack.yaml up -d
   }
   ```
 - Use the value of `access_token` as a Bearer Token to authenticate when calling the local API endpoints.
+
+## Generating API Clients & Models
+
+We use OpenAPI Generator to automatically generate the Kotlin client and data models for the General Ledger API.
+
+The configuration is in build.gradle.kts under apiSpecs. This creates two tasks:
+
+`writeGeneralledgerJson`: Downloads the latest API specification from the Dev environment to openapi-specs/generalledger.json.
+
+`buildGeneralledgerApiClient`: Generates the Kotlin data classes (Models) and WebClient interfaces (API) from the local JSON file.
+
+### How to Update
+If the General Ledger API changes:
+
+Download the latest spec:
+
+```sh
+./gradlew writeGeneralledgerJson
+```
+
+Verify & Regenerate: Check the diff in openapi-specs/generalledger.json and run a build to ensure the code compiles.
+
+```sh
+./gradlew clean build
+```
+Commit: Commit the updated .json file. Do not commit the generated code in build/.

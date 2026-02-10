@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import java.util.UUID
@@ -35,6 +36,8 @@ class DualWriteLedgerService(
       if (offenderDisplayId == testPrisonerId) {
         try {
           generalLedger.syncOffenderTransaction(request)
+        } catch (e: WebClientResponseException) {
+          log.error("Failed to sync Offender Transaction ${request.transactionId} to General Ledger. HTTP ${e.statusCode} - Body: ${e.responseBodyAsString}, ${e.request}", e)
         } catch (e: Exception) {
           log.error("Failed to sync Offender Transaction ${request.transactionId} to General Ledger", e)
         }

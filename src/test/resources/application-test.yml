@@ -35,6 +35,8 @@ hmpps:
 
 springdoc:
   packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi
+  packages-to-exclude:
+     - uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients
 
 feature:
   general-ledger-api:
