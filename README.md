@@ -34,19 +34,19 @@ Enable pre-commit hooks for formatting and linting code with the following comma
 
 The `Dockerfile` relies on the application being built first. Steps to build the docker image:
 1. Build the jar files
-```
+```bash
 ./gradlew clean assemble
 ```
 2. Copy the jar files to the base directory so that the docker build can find them
-```
+```bash
 cp build/libs/*.jar .
 ```
 3. Build the docker image with required arguments
-```
+```bash
 docker build --build-arg GIT_REF=21345 --build-arg GIT_BRANCH=bob --build-arg BUILD_NUMBER=$(date '+%Y-%m-%d') .
 ```
 4. Run the docker image, setting the auth url so that it starts up
-```
+```bash
 docker run -e HMPPS_AUTH_URL="https://sign-in-dev.hmpps.service.justice.gov.uk/auth" <sha from step 3>
 ```
 
