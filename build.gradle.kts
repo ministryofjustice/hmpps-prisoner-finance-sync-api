@@ -22,7 +22,7 @@ dependencies {
   implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:6.0.1")
   implementation("com.google.code.gson:gson:2.13.2")
 
-  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
 
   implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.0.2")
   implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -140,16 +140,6 @@ apiSpecs.forEach { (name, url) ->
       val dir = file(outputDir.get())
       if (dir.exists()) {
         dir.deleteRecursively()
-      }
-    }
-
-    doLast {
-      val infrastructureDir = layout.buildDirectory.dir("generated/openapi/src/main/kotlin/org/openapitools/client/infrastructure").get().asFile
-      val apiClientFile = infrastructureDir.resolve("ApiClient.kt")
-      if (apiClientFile.exists()) {
-        val content = apiClientFile.readText()
-        val updatedContent = content.replace("reified T: Any?", "reified T: Any")
-        apiClientFile.writeText(updatedContent)
       }
     }
   }
@@ -297,12 +287,4 @@ tasks.register<JacocoReport>("combineJacocoReports") {
 
 tasks.named("check") {
   dependsOn("unitTest", "integrationTest", "combineJacocoReports")
-}
-
-configurations.all {
-  resolutionStrategy.eachDependency {
-    if (requested.group == "org.springdoc") {
-      useVersion("2.8.5")
-    }
-  }
 }
