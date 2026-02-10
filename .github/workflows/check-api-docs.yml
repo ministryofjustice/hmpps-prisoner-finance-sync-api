@@ -1,0 +1,72 @@
+name: Check API docs are up to date
+
+on:
+  push:
+  schedule:
+    - cron: "10 7 * * 1-5" # Every weekday at 07:10 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-api-docs:
+    runs-on: [self-hosted, Linux, X64, hmpps-github-actions-runner]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Generate and Check API Specs
+        id: check-api
+        run: |
+          # Download the latest spec
+          ./gradlew writeGeneralledgerJson
+          
+          # Regenerate the client (to ensure it compiles)
+          ./gradlew buildGeneralledgerApiClient
+          
+          # Check for changes in the openapi-specs folder
+          if [[ -n $(git status --porcelain openapi-specs/generalledger.json) ]]; then
+            echo "differences=true" >> $GITHUB_OUTPUT
+            echo "::notice::API Specification has changed!"
+          else
+            echo "differences=false" >> $GITHUB_OUTPUT
+            echo "::notice::No changes detected."
+          fi
+
+      - name: Create Pull Request
+        if: steps.check-api.outputs.differences == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: update general ledger openapi spec"
+          branch: chore/api-docs-generalledger
+          delete-branch: true
+          title: "Update General Ledger OpenAPI Spec"
+          body: |
+            ### OpenAPI Update
+            The upstream General Ledger API specification has changed.
+            
+            **Changes:**
+            - Updated `openapi-specs/generalledger.json`
+            
+            *The Kotlin client code will be regenerated automatically during the next build.*
+          labels: |
+            openapi
+            automated-pr
+
+      - name: Delete Pull Request
+        if: steps.check-api.outputs.differences == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "No changes detected. Closing any existing open API update PRs..."
+          gh pr close chore/api-docs-generalledger --delete-branch || true
