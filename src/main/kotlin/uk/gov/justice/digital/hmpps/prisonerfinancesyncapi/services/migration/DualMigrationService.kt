@@ -1,3 +1,4 @@
+package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration
 
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
@@ -6,12 +7,11 @@ import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.MigrationService
 
 @Primary
 @Service
 class DualMigrationService(
-  @Qualifier("legacyMigrationService") private val migrationService: MigrationService,
+  @Qualifier("legacyMigrationService") private val legacyMigrationService: MigrationService,
   @Qualifier("generalLedgerMigrationService") private val generalLedgerMigrationService: MigrationService,
   @Value("\${feature.general-ledger-api.enabled:false}") private val shouldSyncToGeneralLedger: Boolean,
   @Value("\${feature.general-ledger-api.test-prisoner-id:DISABLED}") private val testPrisonerId: String,
@@ -26,7 +26,7 @@ class DualMigrationService(
   }
 
   override fun migratePrisonerBalances(prisonNumber: String, request: PrisonerBalancesSyncRequest) {
-    migrationService.migratePrisonerBalances(prisonNumber, request)
+    legacyMigrationService.migratePrisonerBalances(prisonNumber, request)
 
     if (shouldSyncToGeneralLedger && prisonNumber == testPrisonerId) {
       try {
@@ -38,7 +38,7 @@ class DualMigrationService(
   }
 
   override fun migrateGeneralLedgerBalances(prisonId: String, request: GeneralLedgerBalancesSyncRequest) {
-    migrationService.migrateGeneralLedgerBalances(prisonId, request)
+    legacyMigrationService.migrateGeneralLedgerBalances(prisonId, request)
     if (shouldSyncToGeneralLedger && prisonId == testPrisonerId) {
       try {
         generalLedgerMigrationService.migrateGeneralLedgerBalances(prisonId, request)

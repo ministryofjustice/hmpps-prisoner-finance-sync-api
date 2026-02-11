@@ -1,6 +1,5 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import DualMigrationService
 import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
@@ -23,6 +22,7 @@ import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.DualMigrationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.MigrationService
 
 @ExtendWith(MockitoExtension::class)
@@ -133,18 +133,22 @@ class DualMigrationServiceTest {
   inner class GeneralLedgerMigration {
 
     @Test
-    fun `should throw exception if general ledger migration fails`() {
-      dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, false, matchingPrisonerId)
-
+    fun `should log error when migrateGeneralLedgerBalances throws exception in general ledger migration`() {
       val mockGeneralLedgerBalancesSyncRequest = mock<GeneralLedgerBalancesSyncRequest>()
 
-      whenever(internalMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest))
+      doNothing().whenever(internalMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+
+      whenever(generalLedgerMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest))
         .thenThrow(RuntimeException("Internal DB Error"))
 
-      assertThatThrownBy {
-        dualMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
-      }.isInstanceOf(RuntimeException::class.java)
-        .hasMessage("Internal DB Error")
+      val result = dualMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs).anyMatch {
+        it.contains("Failed to migrate general ledger balances for prisoner $matchingPrisonerId to General Ledger")
+      }
+
+      assertThat(result).isEqualTo(Unit)
 
       verify(internalMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
     }
@@ -163,7 +167,20 @@ class DualMigrationServiceTest {
     }
 
     @Test
-    fun `should suppress exception from general ledger migration and log an error when flag is enabled and id matches`() {
+    fun `should call migrateGeneralLedgerBalances for both internal migration and general ledger migration services when feature flag is enabled and prisoner ID matches`() {
+      val mockGeneralLedgerBalancesSyncRequest = mock<GeneralLedgerBalancesSyncRequest>()
+
+      doNothing().whenever(internalMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+
+      val result = dualMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+
+      assertThat(result).isEqualTo(Unit)
+      verify(internalMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+      verify(generalLedgerMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+    }
+
+    @Test
+    fun `should log error when migratePrisonerBalances throws exception in general ledger migration`() {
       dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, true, matchingPrisonerId)
 
       val mockPrisonerBalancesSyncRequest = mock<PrisonerBalancesSyncRequest>()
