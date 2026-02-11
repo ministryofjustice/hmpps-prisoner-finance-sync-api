@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.DualReadLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.MigrationService
 
 @Primary
@@ -19,7 +18,7 @@ class DualMigrationService(
 ) : MigrationService {
 
   private companion object {
-    private val log = LoggerFactory.getLogger(DualReadLedgerService::class.java)
+    private val log = LoggerFactory.getLogger(DualMigrationService::class.java)
   }
 
   init {
@@ -30,14 +29,22 @@ class DualMigrationService(
     migrationService.migratePrisonerBalances(prisonNumber, request)
 
     if (shouldSyncToGeneralLedger && prisonNumber == testPrisonerId) {
-      generalLedgerMigrationService.migratePrisonerBalances(prisonNumber, request)
+      try {
+        generalLedgerMigrationService.migratePrisonerBalances(prisonNumber, request)
+      } catch (e: Exception) {
+        log.error("Failed to migrate prisoner balances for prisoner $prisonNumber to General Ledger", e)
+      }
     }
   }
 
   override fun migrateGeneralLedgerBalances(prisonId: String, request: GeneralLedgerBalancesSyncRequest) {
     migrationService.migrateGeneralLedgerBalances(prisonId, request)
     if (shouldSyncToGeneralLedger && prisonId == testPrisonerId) {
-      generalLedgerMigrationService.migrateGeneralLedgerBalances(prisonId, request)
+      try {
+        generalLedgerMigrationService.migrateGeneralLedgerBalances(prisonId, request)
+      } catch (e: Exception) {
+        log.error("Failed to migrate general ledger balances for prisoner $prisonId to General Ledger", e)
+      }
     }
   }
 }

@@ -21,8 +21,8 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.MigrationService
 
 @ExtendWith(MockitoExtension::class)
@@ -40,7 +40,7 @@ class DualMigrationServiceTest {
 
   private val matchingPrisonerId = "A1234AA"
 
-  private val logger = LoggerFactory.getLogger(DualWriteLedgerService::class.java) as Logger
+  private val logger = LoggerFactory.getLogger(DualMigrationService::class.java) as Logger
 
   @BeforeEach
   fun setup() {
@@ -68,7 +68,7 @@ class DualMigrationServiceTest {
   inner class LegacyMigration {
 
     @Test
-    fun `should only call the internal ledger when feature flag is disabled`() {
+    fun `should only call the internal migration service when feature flag is disabled`() {
       dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, false, matchingPrisonerId)
 
       val mockPrisonerBalancesSyncRequest = mock<PrisonerBalancesSyncRequest>()
@@ -82,7 +82,7 @@ class DualMigrationServiceTest {
     }
 
     @Test
-    fun `should skip general ledger when feature flag is enabled but prisoner id does not match`() {
+    fun `should skip general ledger migration when feature flag is enabled but prisoner id does not match`() {
       dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, true, "NONE_MATCH_ID")
 
       val mockPrisonerBalancesSyncRequest = mock<PrisonerBalancesSyncRequest>()
@@ -112,73 +112,76 @@ class DualMigrationServiceTest {
 
       verify(internalMigrationService).migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
     }
+
+    @Test
+    fun `should only call internal migration service (feature flag ignored for GL balance migration)`() {
+      dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, false, matchingPrisonerId)
+
+      val mockGeneralLedgerBalancesSyncRequest = mock<GeneralLedgerBalancesSyncRequest>()
+
+      doNothing().whenever(internalMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+
+      val result = dualMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+
+      assertThat(result).isEqualTo(Unit)
+      verify(internalMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
+    }
   }
 
   @Nested
   @DisplayName("usingGeneralLedgerMigration")
   inner class GeneralLedgerMigration {
-    /*@Test
-    fun `should only call internal ledger (feature flag ignored for GL Transactions)`() {
-      val request = mock<SyncGeneralLedgerTransactionRequest>()
-      val expectedUuid = UUID.randomUUID()
-
-      whenever(internalLedger.syncGeneralLedgerTransaction(request)).thenReturn(expectedUuid)
-
-      val result = dualWriteService.syncGeneralLedgerTransaction(request)
-
-      assertThat(result).isEqualTo(expectedUuid)
-      verify(internalLedger).syncGeneralLedgerTransaction(request)
-      verify(generalLedger, never()).syncGeneralLedgerTransaction(any())
-    }*/
 
     @Test
-    fun `should throw exception if internal ledger fails`() {
-      val request = mock<SyncGeneralLedgerTransactionRequest>()
+    fun `should throw exception if general ledger migration fails`() {
+      dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, false, matchingPrisonerId)
 
-      // whenever(internalLedger.syncGeneralLedgerTransaction(request)).thenThrow(RuntimeException("Internal DB Error"))
+      val mockGeneralLedgerBalancesSyncRequest = mock<GeneralLedgerBalancesSyncRequest>()
 
-      /*assertThatThrownBy {
-        dualWriteService.syncGeneralLedgerTransaction(request)
+      whenever(internalMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest))
+        .thenThrow(RuntimeException("Internal DB Error"))
+
+      assertThatThrownBy {
+        dualMigrationService.migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
       }.isInstanceOf(RuntimeException::class.java)
-        .hasMessage("Internal DB Error")*/
+        .hasMessage("Internal DB Error")
+
+      verify(internalMigrationService).migrateGeneralLedgerBalances(matchingPrisonerId, mockGeneralLedgerBalancesSyncRequest)
     }
 
     @Test
-    fun `should call both ledgers when feature flag is enabled and prisoner ID matches`() {
-      /*val request = createRequest(matchingPrisonerId)
-      val expectedUuid = UUID.randomUUID()
+    fun `should call both internal migration and general ledger migration when feature flag is enabled and prisoner ID matches`() {
+      val mockPrisonerBalancesSyncRequest = mock<PrisonerBalancesSyncRequest>()
 
-      whenever(internalLedger.syncOffenderTransaction(request)).thenReturn(expectedUuid)
+      doNothing().whenever(internalMigrationService).migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
 
-      val result = dualWriteService.syncOffenderTransaction(request)
+      val result = dualMigrationService.migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
 
-      assertThat(result).isEqualTo(expectedUuid)
-
-      val inOrder = inOrder(internalLedger, generalLedger)
-      inOrder.verify(internalLedger).syncOffenderTransaction(request)
-      inOrder.verify(generalLedger).syncOffenderTransaction(request)*/
+      assertThat(result).isEqualTo(Unit)
+      verify(internalMigrationService).migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
+      verify(generalLedgerMigrationService).migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
     }
 
-    /*@Test
-    fun `should suppress exception from general ledger and log an error when flag is enabled and id matches`() {
-      val request = createRequest(matchingPrisonerId)
-      val expectedUuid = UUID.randomUUID()
-      val transactionId = 12345L
+    @Test
+    fun `should suppress exception from general ledger migration and log an error when flag is enabled and id matches`() {
+      dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, true, matchingPrisonerId)
 
-      whenever(internalLedger.syncOffenderTransaction(request)).thenReturn(expectedUuid)
-      whenever(generalLedger.syncOffenderTransaction(request)).thenThrow(RuntimeException("API Down"))
+      val mockPrisonerBalancesSyncRequest = mock<PrisonerBalancesSyncRequest>()
 
-      val result = dualWriteService.syncOffenderTransaction(request)
+      whenever(generalLedgerMigrationService.migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest))
+        .thenThrow(RuntimeException("API Down"))
 
-      assertThat(result).isEqualTo(expectedUuid)
+      val result = dualMigrationService.migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
 
-      verify(internalLedger).syncOffenderTransaction(request)
-      verify(generalLedger).syncOffenderTransaction(request)
+      assertThat(result).isEqualTo(Unit)
+
+      verify(internalMigrationService).migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
+      verify(generalLedgerMigrationService).migratePrisonerBalances(matchingPrisonerId, mockPrisonerBalancesSyncRequest)
 
       val logs = listAppender.list.map { it.formattedMessage }
       assertThat(logs).anyMatch {
-        it.contains("Failed to sync Offender Transaction $transactionId to General Ledger")
+        it.contains("Failed to migrate prisoner balances for prisoner $matchingPrisonerId to General Ledger")
       }
-    }*/
+    }
   }
 }
