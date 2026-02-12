@@ -20,10 +20,10 @@ class GeneralLedgerSwitchManager(
 
   fun <T> forwardToGeneralLedgerIfEnabled(
     logErrorMessage: String,
-    prisonId: String,
+    prisonNumber: String,
     block: () -> T,
   ): T? {
-    if (shouldSyncToGeneralLedger && prisonId == testPrisonerId) {
+    if (shouldSyncToGeneralLedger && prisonNumber == testPrisonerId) {
       try {
         return block()
       } catch (e: WebClientResponseException) {
