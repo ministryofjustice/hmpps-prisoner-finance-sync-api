@@ -1,10 +1,11 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.AuditCursor
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.CursorPage
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.toDetail
@@ -17,14 +18,47 @@ class AuditHistoryService(
   private val timeConversionService: TimeConversionService,
 ) {
 
-  fun getMatchingPayloads(prisonId: String?, legacyTransactionId: Long?, startDate: LocalDate?, endDate: LocalDate?, page: Int, size: Int): Page<NomisSyncPayloadSummary> {
-    val pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"))
+  fun getMatchingPayloads(
+    prisonId: String?,
+    legacyTransactionId: Long?,
+    startDate: LocalDate?,
+    endDate: LocalDate?,
+    cursorString: String?,
+    size: Int,
+  ): CursorPage<NomisSyncPayloadSummary> {
+    val cursor = AuditCursor.parse(cursorString)
 
-    val startOfStartDate = startDate?.let { timeConversionService.toUtcStartOfDay(startDate) }
-    val endOfEndDate = endDate?.let { timeConversionService.toUtcStartOfDay(endDate.plusDays(1)) }
+    val normalizedPrisonId = prisonId?.takeIf { it.isNotBlank() && it != "null" }
+    val startInstant = startDate?.let(timeConversionService::toUtcStartOfDay)
+    val endInstant = endDate?.plusDays(1)?.let(timeConversionService::toUtcStartOfDay)
 
-    return nomisSyncPayloadRepository.findMatchingPayloads(prisonId, legacyTransactionId, startOfStartDate, endOfEndDate, pageable)
+    val items = nomisSyncPayloadRepository.findMatchingPayloads(
+      prisonId = normalizedPrisonId,
+      legacyTransactionId = legacyTransactionId,
+      startDate = startInstant,
+      endDate = endInstant,
+      cursorTimestamp = cursor?.timestamp,
+      cursorId = cursor?.id,
+      pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "timestamp", "id")),
+    )
+
+    val totalElements = nomisSyncPayloadRepository.countMatchingPayloads(
+      normalizedPrisonId,
+      legacyTransactionId,
+      startInstant,
+      endInstant,
+    )
+
+    return toCursorPage(items, totalElements, size)
   }
 
   fun getPayloadBodyByRequestId(requestId: UUID): NomisSyncPayloadDetail? = nomisSyncPayloadRepository.findByRequestId(requestId)?.toDetail()
+
+  private fun toCursorPage(items: List<NomisSyncPayloadSummary>, total: Long, size: Int): CursorPage<NomisSyncPayloadSummary> {
+    val hasNext = items.size > size
+    val content = if (hasNext) items.take(size) else items
+    val nextCursor = content.lastOrNull()?.takeIf { hasNext }?.let { AuditCursor(it.timestamp, it.id).toString() }
+
+    return CursorPage(content, nextCursor, total, size)
+  }
 }
