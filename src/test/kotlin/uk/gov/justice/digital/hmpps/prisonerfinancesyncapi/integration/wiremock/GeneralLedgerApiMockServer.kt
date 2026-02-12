@@ -68,6 +68,29 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  // POST /sub-accounts/{subAccountId}/balance
+  fun stubPostSubAccountBalance(subAccountID: UUID, amount: Long, balanceDateTime: LocalDateTime) {
+    stubFor(
+      post(urlPathEqualTo("/sub-accounts/$subAccountID/balance"))
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(amount.toString())))
+        .withRequestBody(matchingJsonPath("$.balanceDateTime", equalTo(balanceDateTime.toString())))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(
+              """
+                        {
+                          "amount": $amount,
+                          "subAccountId": "$subAccountID",
+                          "balanceDateTime": "$balanceDateTime"
+                        }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   // GET /accounts?reference={ref} -> Returns List<AccountResponse>
   fun stubGetAccount(
     reference: String,
