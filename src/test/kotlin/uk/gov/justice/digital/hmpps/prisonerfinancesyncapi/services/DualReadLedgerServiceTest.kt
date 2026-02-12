@@ -1,27 +1,21 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import ch.qos.logback.classic.Logger
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.DisplayName
-import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
+import org.mockito.Mockito.mock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
-import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class DualReadLedgerServiceTest {
@@ -32,100 +26,37 @@ class DualReadLedgerServiceTest {
   @Mock
   private lateinit var ledgerQueryService: LedgerQueryService
 
-  private lateinit var listAppender: ListAppender<ILoggingEvent>
+  @Mock
+  private lateinit var generalLedgerSwitchManager: GeneralLedgerSwitchManager
 
   private lateinit var dualReadLedgerService: DualReadLedgerService
 
-  private val matchingPrisonerId = "A1234AA"
-
-  private val logger = LoggerFactory.getLogger(DualReadLedgerService::class.java) as Logger
-
   @BeforeEach
   fun setup() {
-    dualReadLedgerService = DualReadLedgerService(generalLedger, ledgerQueryService, true, matchingPrisonerId)
-    listAppender = ListAppender<ILoggingEvent>().apply { start() }
-    logger.addAppender(listAppender)
+    dualReadLedgerService = DualReadLedgerService(generalLedger, ledgerQueryService, generalLedgerSwitchManager)
   }
 
-  @AfterEach
-  fun tearDown() {
-    logger.detachAppender(listAppender)
-  }
+  val prisonNumber = "A1234AB"
 
   @Test
-  fun `should log configuration on startup`() {
-    dualReadLedgerService = DualReadLedgerService(generalLedger, ledgerQueryService, true, matchingPrisonerId)
-    val logs = listAppender.list.map { it.formattedMessage }
-    assertThat(logs).anyMatch {
-      it.contains("General Ledger Dual Read Service initialized. Enabled: true. Test Prisoner ID: A1234AA")
-    }
-  }
+  fun `should call both internalLedger and General Ledger when reconciling prisoner`() {
+    val lambdaCaptor = argumentCaptor<() -> UUID>()
+    val expectedResult = mock<List<PrisonerEstablishmentBalanceDetails>>()
+    whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(expectedResult)
 
-  @Nested
-  @DisplayName("prisonerReconciliation")
-  inner class PrisonerReconciliation {
-    val prisonNumber = "A1234AA"
+    val res = dualReadLedgerService.reconcilePrisoner(prisonNumber)
 
-    @Test
-    fun `should call both internal ledger and GL when reconciling a prisoner`() {
-      dualReadLedgerService.reconcilePrisoner(prisonNumber)
+    verify(generalLedgerSwitchManager).forwardToGeneralLedgerIfEnabled(
+      eq("Failed to reconcile prisoner $prisonNumber to General Ledger"),
+      eq(prisonNumber),
+      lambdaCaptor.capture(),
+    )
 
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
-      verify(generalLedger).reconcilePrisoner(prisonNumber)
-    }
+    verifyNoInteractions(generalLedger)
+    lambdaCaptor.firstValue.invoke() // Switch service is a mock. Lambda requires a manual trigger to check what's called
+    verify(generalLedger).reconcilePrisoner(prisonNumber)
 
-    @Test
-    fun `should handle exception when it's thrown by GL when reconciling a prisoner and log error`() {
-      val expectedException = RuntimeException("Expected Exception")
-      whenever(generalLedger.reconcilePrisoner(prisonNumber)).thenThrow(expectedException)
-
-      val resultItem = listOf(mock<PrisonerEstablishmentBalanceDetails>())
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber))
-        .thenReturn(resultItem)
-
-      val res = dualReadLedgerService.reconcilePrisoner(prisonNumber)
-
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
-      verify(generalLedger).reconcilePrisoner(prisonNumber)
-
-      val logs = listAppender.list.map { it.formattedMessage }
-      assertThat(logs).anyMatch {
-        it.contains("Failed to reconcile prisoner $prisonNumber to General Ledger")
-      }
-      assertThat(res).isEqualTo(PrisonerEstablishmentBalanceDetailsList(resultItem))
-    }
-  }
-
-  @Nested
-  @DisplayName("internalGeneralLedgerReconciliation")
-  inner class InternalPrisonerReconciliation {
-    @Test
-    fun `should only call internal ledger (feature flag ignored for GL Transactions)`() {
-      val prisonerNumber = "A1234AA"
-      val expectedReturn = mock<List<PrisonerEstablishmentBalanceDetails>>()
-
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonerNumber)).thenReturn(
-        expectedReturn,
-      )
-
-      val result = dualReadLedgerService.reconcilePrisoner(prisonerNumber)
-
-      assertThat(result).isEqualTo(PrisonerEstablishmentBalanceDetailsList(expectedReturn))
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonerNumber)
-      verify(generalLedger, never()).syncGeneralLedgerTransaction(any())
-    }
-
-    @Test
-    fun `should throw exception if internal ledger fails`() {
-      val prisonerNumber = "A1234AA"
-
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonerNumber))
-        .thenThrow(RuntimeException("Internal DB Error"))
-
-      assertThatThrownBy {
-        dualReadLedgerService.reconcilePrisoner(prisonerNumber)
-      }.isInstanceOf(RuntimeException::class.java)
-        .hasMessage("Internal DB Error")
-    }
+    verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
+    assertThat(res).isEqualTo(PrisonerEstablishmentBalanceDetailsList(expectedResult))
   }
 }
