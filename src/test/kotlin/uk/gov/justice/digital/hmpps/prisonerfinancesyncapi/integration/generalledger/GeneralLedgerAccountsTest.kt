@@ -41,6 +41,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccoun
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
@@ -866,7 +867,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       id = UUID.randomUUID(),
       parentAccountId = parentAccountId,
       reference = reference,
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       createdBy = "OMS_OWNER",
     )
 

@@ -38,6 +38,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
@@ -57,6 +58,9 @@ class GeneralLedgerServiceTest {
   @Spy
   private lateinit var accountMapping: LedgerAccountMappingService
 
+  @Spy
+  private val timeConversionService = TimeConversionService()
+
   @InjectMocks
   private lateinit var generalLedgerService: GeneralLedgerService
 
@@ -72,7 +76,7 @@ class GeneralLedgerServiceTest {
       id = accountUUID,
       reference = reference,
       createdBy = "OMS_OWNER",
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       subAccounts = subAccounts,
     )
     whenever(generalLedgerApiClient.findAccountByReference(reference))
@@ -88,7 +92,7 @@ class GeneralLedgerServiceTest {
       reference = subAccountReference,
       parentAccountId = UUID.randomUUID(),
       createdBy = "OMS_OWNER",
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
     )
     whenever(generalLedgerApiClient.findSubAccount(parentReference, subAccountReference))
       .thenReturn(mockGLSubAccountResponse)
@@ -103,7 +107,7 @@ class GeneralLedgerServiceTest {
       id = accountUUID,
       reference = reference,
       createdBy = "OMS_OWNER",
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       subAccounts = emptyList(),
     )
     whenever(generalLedgerApiClient.createAccount(reference))
@@ -123,7 +127,7 @@ class GeneralLedgerServiceTest {
       reference = subAccountReference,
       parentAccountId = parentReferenceUUId,
       createdBy = "OMS_OWNER",
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
     )
 
     whenever(
@@ -138,7 +142,7 @@ class GeneralLedgerServiceTest {
     val requestGL = CreateTransactionRequest(
       reference = request.offenderTransactions[0].reference!!,
       description = request.offenderTransactions[0].description,
-      timestamp = request.transactionTimestamp,
+      timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
       amount = request.offenderTransactions[0].amount.toPence(),
       postings = postingsGL,
     )
@@ -178,7 +182,7 @@ class GeneralLedgerServiceTest {
             reference = account,
             parentAccountId = parentUUID,
             createdBy = "TEST",
-            createdAt = LocalDateTime.now(),
+            createdAt = Instant.now(),
           ),
         )
       }
@@ -186,7 +190,7 @@ class GeneralLedgerServiceTest {
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
       // GL accounts
-      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 5)
       for (account in subAccounts) {
         whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
           .thenReturn(testGlBalance)
@@ -234,7 +238,7 @@ class GeneralLedgerServiceTest {
             reference = account,
             parentAccountId = parentUUID,
             createdBy = "TEST",
-            createdAt = LocalDateTime.now(),
+            createdAt = Instant.now(),
           ),
         )
       }
@@ -242,7 +246,7 @@ class GeneralLedgerServiceTest {
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
       // GL accounts
-      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), LocalDateTime.now(), 5)
+      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 5)
       for (account in subAccounts) {
         whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
           .thenReturn(testGlBalance)
@@ -334,7 +338,7 @@ class GeneralLedgerServiceTest {
             reference = account,
             parentAccountId = parentUUID,
             createdBy = "TEST",
-            createdAt = LocalDateTime.now(),
+            createdAt = Instant.now(),
           )
 
         subAccounts.add(subAccount)
@@ -368,7 +372,7 @@ class GeneralLedgerServiceTest {
             reference = account,
             parentAccountId = parentUUID,
             createdBy = "TEST",
-            createdAt = LocalDateTime.now(),
+            createdAt = Instant.now(),
           ),
         )
       }
@@ -462,7 +466,7 @@ class GeneralLedgerServiceTest {
         id = UUID.randomUUID(),
         reference = request.caseloadId,
         createdBy = "OMS_OWNER",
-        createdAt = LocalDateTime.now(),
+        createdAt = Instant.now(),
         subAccounts = emptyList(),
       )
       whenever(generalLedgerApiClient.createAccount(request.caseloadId))
@@ -785,7 +789,7 @@ class GeneralLedgerServiceTest {
       val glTransactionRequest = CreateTransactionRequest(
         reference = request.offenderTransactions[0].reference!!,
         description = request.offenderTransactions[0].description,
-        timestamp = request.transactionTimestamp,
+        timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = amount.toPence(),
         postings = listOf(
           CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
@@ -897,7 +901,7 @@ class GeneralLedgerServiceTest {
       val glTransactionRequestPrisoner1 = CreateTransactionRequest(
         reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
         description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
-        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp,
+        timestamp = timeConversionService.toUtcInstant(requestTransactionWithMultiplePrisoners.transactionTimestamp),
         amount = amount.toPence(),
         postings = listOf(
           CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
@@ -908,7 +912,7 @@ class GeneralLedgerServiceTest {
       val glTransactionRequestPrisoner2 = CreateTransactionRequest(
         reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
         description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
-        timestamp = requestTransactionWithMultiplePrisoners.transactionTimestamp,
+        timestamp = timeConversionService.toUtcInstant(requestTransactionWithMultiplePrisoners.transactionTimestamp),
         amount = amount.toPence(),
         postings = listOf(
           CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
