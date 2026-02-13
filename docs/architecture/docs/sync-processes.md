@@ -179,10 +179,11 @@ sequenceDiagram
             PF.sync ->> PF.newGL: POST /accounts (Create parent account)
             PF.newGL -->> PF.sync: Return Parent UUID
         end
-            loop For Debtor & Creditor
-
-            PF.newGL -->>- PF.sync: Return Parent UUID + Sub-Accounts[]
-
+        
+        PF.newGL -->>- PF.sync: Return Parent UUID + Sub-Accounts[]
+        
+        loop For Debtor & Creditor
+ 
             note over PF.sync: Use cached sub-accounts for this offender
 
             loop generalLedgerEntries
@@ -201,6 +202,7 @@ sequenceDiagram
             PF.newGL -->> PF.sync: 201 Created (Transaction Receipt)
             PF.newGL -->>- PF.sync: 500 Error
         end
+
     end
 
     PF.sync -->>- NOMIS.sync: Success response (Transaction UUIDs.first)
