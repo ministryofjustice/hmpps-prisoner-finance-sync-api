@@ -27,13 +27,13 @@ class DualReadLedgerServiceTest {
   private lateinit var ledgerQueryService: LedgerQueryService
 
   @Mock
-  private lateinit var generalLedgerSwitchManager: GeneralLedgerSwitchManager
+  private lateinit var generalLedgerForwarder: GeneralLedgerForwarder
 
   private lateinit var dualReadLedgerService: DualReadLedgerService
 
   @BeforeEach
   fun setup() {
-    dualReadLedgerService = DualReadLedgerService(generalLedger, ledgerQueryService, generalLedgerSwitchManager)
+    dualReadLedgerService = DualReadLedgerService(generalLedger, ledgerQueryService, generalLedgerForwarder)
   }
 
   val prisonNumber = "A1234AB"
@@ -46,7 +46,7 @@ class DualReadLedgerServiceTest {
 
     val res = dualReadLedgerService.reconcilePrisoner(prisonNumber)
 
-    verify(generalLedgerSwitchManager).forwardToGeneralLedgerIfEnabled(
+    verify(generalLedgerForwarder).executeIfEnabled(
       eq("Failed to reconcile prisoner $prisonNumber to General Ledger"),
       eq(prisonNumber),
       lambdaCaptor.capture(),

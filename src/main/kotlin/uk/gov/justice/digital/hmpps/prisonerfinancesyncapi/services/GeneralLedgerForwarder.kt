@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
 
 @Service
-class GeneralLedgerSwitchManager(
+class GeneralLedgerForwarder(
   @Value("\${feature.general-ledger-api.enabled:false}") private val shouldSyncToGeneralLedger: Boolean,
   @Value("\${feature.general-ledger-api.test-prisoner-id:DISABLED}") private val testPrisonerId: String,
 ) {
@@ -18,7 +18,7 @@ class GeneralLedgerSwitchManager(
     log.info("GeneralLedgerSwitchManager initialized. Enabled: $shouldSyncToGeneralLedger. Test Prisoner ID: $testPrisonerId")
   }
 
-  fun <T> forwardToGeneralLedgerIfEnabled(
+  fun <T> executeIfEnabled(
     logErrorMessage: String,
     prisonNumber: String,
     block: () -> T,

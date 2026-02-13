@@ -129,10 +129,18 @@ class GeneralLedgerMigrationServiceTest {
         PrisonerAccountPointInTimeBalance(
           "MDI",
           2101,
-          BigDecimal("20"),
+          BigDecimal("0"),
           BigDecimal.ZERO,
           1,
           LocalDateTime.now(),
+        ),
+        PrisonerAccountPointInTimeBalance(
+          "KMI",
+          2101,
+          BigDecimal("20"),
+          BigDecimal.ZERO,
+          1,
+          LocalDateTime.now() - Duration.ofDays(5),
         ),
         PrisonerAccountPointInTimeBalance(
           "MDI",

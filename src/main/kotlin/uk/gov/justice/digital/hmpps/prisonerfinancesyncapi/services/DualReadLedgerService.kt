@@ -11,13 +11,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.Ledge
 class DualReadLedgerService(
   @Qualifier("generalLedgerService") private val generalLedger: GeneralLedgerService,
   private val ledgerQueryService: LedgerQueryService,
-  private val generalLedgerSwitchManager: GeneralLedgerSwitchManager,
+  private val generalLedgerForwarder: GeneralLedgerForwarder,
 ) : ReconciliationService {
 
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
     val items = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
 
-    generalLedgerSwitchManager.forwardToGeneralLedgerIfEnabled<Unit>(
+    generalLedgerForwarder.executeIfEnabled<Unit>(
       "Failed to reconcile prisoner $prisonNumber to General Ledger",
       prisonNumber,
       { generalLedger.reconcilePrisoner(prisonNumber) },

@@ -28,7 +28,7 @@ class DualWriteLedgerServiceTest {
   private lateinit var generalLedger: LedgerService
 
   @Mock
-  private lateinit var generalLedgerSwitchManager: GeneralLedgerSwitchManager
+  private lateinit var generalLedgerForwarder: GeneralLedgerForwarder
 
   private lateinit var dualWriteService: DualWriteLedgerService
 
@@ -38,7 +38,7 @@ class DualWriteLedgerServiceTest {
     dualWriteService = DualWriteLedgerService(
       internalLedger,
       generalLedger,
-      generalLedgerSwitchManager,
+      generalLedgerForwarder,
     )
   }
 
@@ -78,7 +78,7 @@ class DualWriteLedgerServiceTest {
 
     val res = dualWriteService.syncOffenderTransaction(request)
 
-    verify(generalLedgerSwitchManager).forwardToGeneralLedgerIfEnabled(
+    verify(generalLedgerForwarder).executeIfEnabled(
       eq("Failed to sync Offender Transaction ${request.transactionId} to General Ledger"),
       eq(request.offenderTransactions.first().offenderDisplayId),
       lambdaCaptor.capture(),

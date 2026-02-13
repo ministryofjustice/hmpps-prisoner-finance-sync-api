@@ -18,21 +18,21 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.reactive.function.client.WebClientResponseException
 
 @ExtendWith(MockitoExtension::class)
-class GeneralLedgerSwitchManagerTest {
+class GeneralLedgerForwarderTest {
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
 
-  private lateinit var generalLedgerSwitchManager: GeneralLedgerSwitchManager
+  private lateinit var generalLedgerForwarder: GeneralLedgerForwarder
 
   private val matchingPrisonerId = "A1234AA"
 
-  private val logger = LoggerFactory.getLogger(GeneralLedgerSwitchManager::class.java) as Logger
+  private val logger = LoggerFactory.getLogger(GeneralLedgerForwarder::class.java) as Logger
 
   @BeforeEach
   fun setup() {
     listAppender = ListAppender<ILoggingEvent>().apply { start() }
     logger.addAppender(listAppender)
-    generalLedgerSwitchManager = GeneralLedgerSwitchManager(true, matchingPrisonerId)
+    generalLedgerForwarder = GeneralLedgerForwarder(true, matchingPrisonerId)
   }
 
   @AfterEach
@@ -51,7 +51,7 @@ class GeneralLedgerSwitchManagerTest {
 
   @Test
   fun `should call GL and return something when flags are enabled and prisoner matches`() {
-    val result = generalLedgerSwitchManager.forwardToGeneralLedgerIfEnabled(
+    val result = generalLedgerForwarder.executeIfEnabled(
       "Test",
       matchingPrisonerId,
       { true },
@@ -62,7 +62,7 @@ class GeneralLedgerSwitchManagerTest {
 
   @Test
   fun `should handle and log exception when it's thrown by GL when reconciling a prisoner`() {
-    val result: String? = generalLedgerSwitchManager.forwardToGeneralLedgerIfEnabled(
+    val result: String? = generalLedgerForwarder.executeIfEnabled(
       "Error in GL",
       matchingPrisonerId,
       {
@@ -86,7 +86,7 @@ class GeneralLedgerSwitchManagerTest {
       on { request } doReturn null
     }
 
-    val result: String? = generalLedgerSwitchManager.forwardToGeneralLedgerIfEnabled(
+    val result: String? = generalLedgerForwarder.executeIfEnabled(
       "Error in GL",
       matchingPrisonerId,
       {
@@ -104,11 +104,11 @@ class GeneralLedgerSwitchManagerTest {
 
   @Test
   fun `should not call GL when flag is disabled`() {
-    generalLedgerSwitchManager = GeneralLedgerSwitchManager(false, matchingPrisonerId)
+    generalLedgerForwarder = GeneralLedgerForwarder(false, matchingPrisonerId)
 
     val funCall = mock<() -> Boolean>()
 
-    val result: Boolean? = generalLedgerSwitchManager.forwardToGeneralLedgerIfEnabled(
+    val result: Boolean? = generalLedgerForwarder.executeIfEnabled(
       "Error in GL",
       matchingPrisonerId,
       funCall,
@@ -120,11 +120,11 @@ class GeneralLedgerSwitchManagerTest {
 
   @Test
   fun `should not call GL when prisonerId doesn't match`() {
-    generalLedgerSwitchManager = GeneralLedgerSwitchManager(true, "UNKNOWN_ID")
+    generalLedgerForwarder = GeneralLedgerForwarder(true, "UNKNOWN_ID")
 
     val funCall = mock<() -> Boolean>()
 
-    val result: Boolean? = generalLedgerSwitchManager.forwardToGeneralLedgerIfEnabled(
+    val result: Boolean? = generalLedgerForwarder.executeIfEnabled(
       "Error in GL",
       matchingPrisonerId,
       funCall,

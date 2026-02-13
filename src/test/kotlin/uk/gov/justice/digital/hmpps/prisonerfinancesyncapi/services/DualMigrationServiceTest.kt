@@ -29,7 +29,7 @@ class DualMigrationServiceTest {
   private lateinit var generalLedgerMigrationService: MigrationService
 
   @Mock
-  private lateinit var generalLedgerSwitchManager: GeneralLedgerSwitchManager
+  private lateinit var generalLedgerForwarder: GeneralLedgerForwarder
 
   private lateinit var dualMigrationService: DualMigrationService
 
@@ -37,7 +37,7 @@ class DualMigrationServiceTest {
 
   @BeforeEach
   fun setup() {
-    dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, generalLedgerSwitchManager)
+    dualMigrationService = DualMigrationService(internalMigrationService, generalLedgerMigrationService, generalLedgerForwarder)
   }
 
   @Test
@@ -49,7 +49,7 @@ class DualMigrationServiceTest {
 
     val res = dualMigrationService.migratePrisonerBalances(prisonNumber, req)
 
-    verify(generalLedgerSwitchManager).forwardToGeneralLedgerIfEnabled(
+    verify(generalLedgerForwarder).executeIfEnabled(
       eq("Failed to migrate prisoner balances for prisoner $prisonNumber to General Ledger"),
       eq(prisonNumber),
       lambdaCaptor.capture(),
@@ -75,7 +75,7 @@ class DualMigrationServiceTest {
 
     val res = dualMigrationService.migrateGeneralLedgerBalances(prisonId, req)
 
-    verify(generalLedgerSwitchManager).forwardToGeneralLedgerIfEnabled(
+    verify(generalLedgerForwarder).executeIfEnabled(
       eq("Failed to migrate general ledger balances for prisoner $prisonId to General Ledger"),
       eq(prisonId),
       lambdaCaptor.capture(),
