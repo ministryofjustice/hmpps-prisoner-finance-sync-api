@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -47,11 +48,11 @@ class SyncOffenderAddHoldTest : IntegrationTestBase() {
           postingType = "CR",
           type = "POST",
           description = "Money Through Post",
-          amount = initialCreditAmount.toDouble(),
+          amount = initialCreditAmount,
           reference = "GRAN",
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = prisonBankGLAccountCode, postingType = "DR", amount = initialCreditAmount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = prisonCashGLAccountCode, postingType = "CR", amount = initialCreditAmount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = prisonBankGLAccountCode, postingType = "DR", amount = initialCreditAmount),
+            GeneralLedgerEntry(entrySequence = 2, code = prisonCashGLAccountCode, postingType = "CR", amount = initialCreditAmount),
           ),
         ),
       ),
@@ -78,8 +79,8 @@ class SyncOffenderAddHoldTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(initialCreditAmount.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(BigDecimal.ZERO.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(initialCreditAmount)
+      .jsonPath("$.holdBalance").isEqualTo(BigDecimal.ZERO)
 
     val addHoldRequest = SyncOffenderTransactionRequest(
       transactionId = Random.nextLong(),
@@ -97,11 +98,11 @@ class SyncOffenderAddHoldTest : IntegrationTestBase() {
           postingType = "DR",
           type = "HOA",
           description = "HOLD",
-          amount = holdAmount.toDouble(),
+          amount = holdAmount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = prisonCashGLAccountCode, postingType = "DR", amount = holdAmount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = holdGLAccountCode, postingType = "CR", amount = holdAmount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = prisonCashGLAccountCode, postingType = "DR", amount = holdAmount),
+            GeneralLedgerEntry(entrySequence = 2, code = holdGLAccountCode, postingType = "CR", amount = holdAmount),
           ),
         ),
       ),
@@ -131,8 +132,8 @@ class SyncOffenderAddHoldTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedOffenderTotalBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(expectedOffenderHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedOffenderTotalBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(expectedOffenderHoldBalance)
 
     val expectedGLCashBalance = initialCreditAmount.subtract(holdAmount)
     webTestClient
@@ -142,7 +143,7 @@ class SyncOffenderAddHoldTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedGLCashBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedGLCashBalance)
 
     webTestClient
       .get()
@@ -151,6 +152,6 @@ class SyncOffenderAddHoldTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(holdAmount.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(holdAmount)
   }
 }

@@ -9,6 +9,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -24,7 +25,7 @@ class SyncOffenderTransactionWithNoGeneralLedgerEntries : IntegrationTestBase() 
 
     val cashAccountCode: Int = 2101
     val spendsAccountCode: Int = 2102
-    val txnAmount = 10.00
+    val txnAmount = BigDecimal("10.00")
 
     val offenderId: Long = 2605754L
     val offenderBookingId: Long = 1223356L

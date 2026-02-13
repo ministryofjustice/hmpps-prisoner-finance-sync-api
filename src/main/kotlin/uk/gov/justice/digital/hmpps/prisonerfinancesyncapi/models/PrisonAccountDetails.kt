@@ -1,6 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models
 
 import io.swagger.v3.oas.annotations.media.Schema
+import tools.jackson.databind.annotation.JsonSerialize
+import tools.jackson.databind.ser.std.ToStringSerializer
 import java.math.BigDecimal
 
 @Schema(description = "Summary of a prison general ledger account")
@@ -38,5 +40,6 @@ data class PrisonAccountDetails(
     description = "The current monetary balance of the prison general ledger account. This value can be positive or negative.",
     example = "1234.56",
   )
+  @JsonSerialize(using = ToStringSerializer::class)
   override var balance: BigDecimal = BigDecimal.ZERO,
 ) : AccountDetails

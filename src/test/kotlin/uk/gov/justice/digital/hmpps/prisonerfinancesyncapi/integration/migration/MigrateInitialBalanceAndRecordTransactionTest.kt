@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -55,7 +56,7 @@ class MigrateInitialBalanceAndRecordTransactionTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(initialEarningsBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(initialEarningsBalance)
 
     webTestClient
       .get()
@@ -64,7 +65,7 @@ class MigrateInitialBalanceAndRecordTransactionTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(initialSpendsBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(initialSpendsBalance)
 
     val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
     val transactionAmount = BigDecimal("1.25")
@@ -85,11 +86,11 @@ class MigrateInitialBalanceAndRecordTransactionTest : IntegrationTestBase() {
           postingType = "CR",
           type = "A_EARN",
           description = "Offender Payroll From:01/06/2025 To:01/06/2025",
-          amount = transactionAmount.toDouble(),
+          amount = transactionAmount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = earningsAccountCode, postingType = "DR", amount = transactionAmount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = spendsAccountCode, postingType = "CR", amount = transactionAmount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = earningsAccountCode, postingType = "DR", amount = transactionAmount),
+            GeneralLedgerEntry(entrySequence = 2, code = spendsAccountCode, postingType = "CR", amount = transactionAmount),
           ),
         ),
       ),
@@ -121,7 +122,7 @@ class MigrateInitialBalanceAndRecordTransactionTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedFinalBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedFinalBalance)
 
     webTestClient
       .get()
@@ -130,6 +131,6 @@ class MigrateInitialBalanceAndRecordTransactionTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(transactionAmount.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(transactionAmount)
   }
 }

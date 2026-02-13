@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
@@ -86,8 +87,8 @@ class MigratePrisonerWithHoldRemovalTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(initialCashBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(initialCashHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(initialCashBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(initialCashHoldBalance)
 
     val removeHoldRequest = SyncOffenderTransactionRequest(
       transactionId = Random.nextLong(),
@@ -105,11 +106,11 @@ class MigratePrisonerWithHoldRemovalTest : IntegrationTestBase() {
           postingType = "CR",
           type = "HOR",
           description = "HOLD RELEASE",
-          amount = removalAmount.toDouble(),
+          amount = removalAmount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = holdsGLAccountCode, postingType = "DR", amount = removalAmount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = privateCashAccountCode, postingType = "CR", amount = removalAmount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = holdsGLAccountCode, postingType = "DR", amount = removalAmount),
+            GeneralLedgerEntry(entrySequence = 2, code = privateCashAccountCode, postingType = "CR", amount = removalAmount),
           ),
         ),
       ),
@@ -139,7 +140,7 @@ class MigratePrisonerWithHoldRemovalTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedFinalAvailableBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(expectedFinalHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedFinalAvailableBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(expectedFinalHoldBalance)
   }
 }
