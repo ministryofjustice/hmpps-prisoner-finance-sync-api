@@ -27,7 +27,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
@@ -56,7 +56,7 @@ class GeneralLedgerApiClientTest {
         id = UUID.randomUUID(),
         parentAccountId = UUID.randomUUID(),
         reference = subRef,
-        createdAt = LocalDateTime.now(),
+        createdAt = Instant.now(),
         createdBy = "user",
       )
 
@@ -97,7 +97,7 @@ class GeneralLedgerApiClientTest {
         id = UUID.randomUUID(),
         parentAccountId = parentId,
         reference = subRef,
-        createdAt = LocalDateTime.now(),
+        createdAt = Instant.now(),
         createdBy = "user",
       )
 
@@ -141,7 +141,7 @@ class GeneralLedgerApiClientTest {
       val accountId = UUID.randomUUID()
       val expectedResponse = SubAccountBalanceResponse(
         subAccountId = accountId,
-        balanceDateTime = LocalDateTime.now(),
+        balanceDateTime = Instant.now(),
         amount = 1000L,
       )
 
@@ -184,7 +184,7 @@ class GeneralLedgerApiClientTest {
       val expectedResponse = AccountResponse(
         id = UUID.randomUUID(),
         reference = ref,
-        createdAt = LocalDateTime.now(),
+        createdAt = Instant.now(),
         createdBy = "user",
         subAccounts = emptyList(),
       )
@@ -222,7 +222,7 @@ class GeneralLedgerApiClientTest {
       val expectedResponse = AccountResponse(
         id = UUID.randomUUID(),
         reference = ref,
-        createdAt = LocalDateTime.now(),
+        createdAt = Instant.now(),
         createdBy = "user",
         subAccounts = emptyList(),
       )
@@ -266,7 +266,7 @@ class GeneralLedgerApiClientTest {
       val request = CreateTransactionRequest(
         reference = "REF",
         description = "Desc",
-        timestamp = LocalDateTime.now(),
+        timestamp = Instant.now(),
         amount = 100L,
         postings = emptyList(),
       )
@@ -276,9 +276,9 @@ class GeneralLedgerApiClientTest {
         reference = "REF",
         amount = 100L,
         createdBy = "user",
-        createdAt = LocalDateTime.now(),
+        createdAt = Instant.now(),
         description = "Desc",
-        timestamp = LocalDateTime.now(),
+        timestamp = Instant.now(),
         postings = emptyList(),
       )
 
@@ -297,7 +297,7 @@ class GeneralLedgerApiClientTest {
       val request = CreateTransactionRequest(
         reference = "REF",
         description = "Desc",
-        timestamp = LocalDateTime.now(),
+        timestamp = Instant.now(),
         amount = 100L,
         postings = emptyList(),
       )

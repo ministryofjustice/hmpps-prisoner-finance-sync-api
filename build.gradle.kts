@@ -114,13 +114,13 @@ apiSpecs.forEach { (name, url) ->
 
     typeMappings.set(
       mapOf(
-        "OffsetDateTime" to "java.time.LocalDateTime",
-        "DateTime" to "java.time.LocalDateTime",
+        "OffsetDateTime" to "java.time.Instant",
+        "DateTime" to "java.time.Instant",
       ),
     )
     importMappings.set(
       mapOf(
-        "java.time.LocalDateTime" to "java.time.LocalDateTime",
+        "java.time.LocalDateTime" to "java.time.Instant",
       ),
     )
 

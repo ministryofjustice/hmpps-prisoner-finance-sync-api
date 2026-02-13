@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-02-06.205.bb387b9"
+    "version" : "2026-02-13.217.94c155f"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1009,7 +1009,7 @@
           "timestamp" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time of when the transaction was created"
+            "description" : "The date/time of when the transaction was created in UTC/Instant format"
           },
           "amount" : {
             "type" : "integer",
@@ -1044,7 +1044,7 @@
           "createdAt" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time of when the posting was created"
+            "description" : "The date/time of when the posting was created in UTC/Instant format"
           },
           "type" : {
             "type" : "string",
@@ -1080,7 +1080,7 @@
           "createdAt" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time of when the transaction was created"
+            "description" : "The date/time of when the transaction record was created in the ledger in UTC/Instant format"
           },
           "reference" : {
             "type" : "string",
@@ -1093,7 +1093,7 @@
           "timestamp" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time of when the transaction is created"
+            "description" : "The time of when the transaction is created in UTC/Instant format"
           },
           "amount" : {
             "type" : "integer",
@@ -1144,7 +1144,7 @@
           "balanceDateTime" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time of a statement balance as defined by SYNC (Note: This will override any existing balance prior to this date/time)"
+            "description" : "The date/time of a statement balance in UTC/Instant format as defined by SYNC (Note: This will override any existing balance prior to this date/time)"
           }
         },
         "required" : [ "amount", "balanceDateTime" ]
@@ -1166,7 +1166,7 @@
           "balanceDateTime" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "A local date/time of when the statement balance was created"
+            "description" : "A date/time of when the statement balance was created in UTC/Instant format"
           }
         },
         "required" : [ "amount", "balanceDateTime", "subAccountId" ]
@@ -1202,7 +1202,7 @@
           "createdAt" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time of when the account was created"
+            "description" : "The date/time of when the account was created in UTC/Instant format"
           },
           "subAccounts" : {
             "type" : "array",
@@ -1239,7 +1239,7 @@
           "createdAt" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time when the sub-account was created"
+            "description" : "The date/time when the sub-account was created in UTC/Instant format"
           }
         },
         "required" : [ "createdAt", "createdBy", "id", "parentAccountId", "reference" ]
@@ -1267,7 +1267,7 @@
           "balanceDateTime" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time when requesting the sub-account balance"
+            "description" : "The date/time when requesting the sub-account balance in UTC/Instant format"
           },
           "amount" : {
             "type" : "integer",
@@ -1289,7 +1289,7 @@
           "balanceDateTime" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time that the account balance was calculated"
+            "description" : "The date/time that the account balance was calculated in UTC/Instant format"
           },
           "amount" : {
             "type" : "integer",

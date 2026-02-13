@@ -24,6 +24,7 @@ class GeneralLedgerService(
   private val accountMapping: LedgerAccountMappingService,
   private val ledgerQueryService: LedgerQueryService,
   private val telemetryClient: TelemetryClient,
+  private val timeConversionService: TimeConversionService,
 ) : LedgerService,
   ReconciliationService {
 
@@ -101,7 +102,7 @@ class GeneralLedgerService(
       val glTransactionRequest = CreateTransactionRequest(
         reference = transaction.reference ?: "",
         description = transaction.description,
-        timestamp = request.transactionTimestamp,
+        timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = transaction.amount.toPence(),
         postings = glEntries,
       )

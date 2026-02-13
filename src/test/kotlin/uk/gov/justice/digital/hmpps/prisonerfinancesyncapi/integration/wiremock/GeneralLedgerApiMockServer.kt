@@ -23,7 +23,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 
 class GeneralLedgerApiExtension :
@@ -77,7 +77,7 @@ class GeneralLedgerApiMockServer :
     val response = AccountResponse(
       id = returnUuid,
       reference = reference,
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       createdBy = "MOCK_USER",
       subAccounts = subAccounts,
     )
@@ -112,7 +112,7 @@ class GeneralLedgerApiMockServer :
     val response = AccountResponse(
       id = UUID.fromString(returnUuid),
       reference = reference,
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       createdBy = "MOCK_USER",
       subAccounts = emptyList(),
     )
@@ -146,7 +146,7 @@ class GeneralLedgerApiMockServer :
       id = UUID.randomUUID(),
       parentAccountId = parentAccountId,
       reference = subAccountReference,
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       createdBy = "MOCK_USER",
     )
 
@@ -187,7 +187,7 @@ class GeneralLedgerApiMockServer :
       id = UUID.fromString(returnUuid),
       parentAccountId = parentId,
       reference = reference,
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       createdBy = "MOCK_USER",
     )
 
@@ -241,9 +241,9 @@ class GeneralLedgerApiMockServer :
       reference = reference ?: "MOCK_TXN",
       amount = 1000,
       createdBy = "MOCK_USER",
-      createdAt = LocalDateTime.now(),
+      createdAt = Instant.now(),
       description = "Mock Transaction Description",
-      timestamp = LocalDateTime.now(),
+      timestamp = Instant.now(),
       postings = emptyList(),
     )
 
@@ -273,7 +273,7 @@ class GeneralLedgerApiMockServer :
   fun stubGetSubAccountBalance(accountId: UUID, amount: Long): SubAccountBalanceResponse {
     val response = SubAccountBalanceResponse(
       subAccountId = accountId,
-      balanceDateTime = LocalDateTime.now(),
+      balanceDateTime = Instant.now(),
       amount = amount,
     )
 
