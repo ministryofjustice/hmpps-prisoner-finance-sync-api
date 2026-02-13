@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-02-06.205.bb387b9"
+    "version" : "2026-02-11.215.bec2e89"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1080,7 +1080,7 @@
           "createdAt" : {
             "type" : "string",
             "format" : "date-time",
-            "description" : "The local date/time of when the transaction was created"
+            "description" : "The local date/time of when the transaction record was created in the ledger"
           },
           "reference" : {
             "type" : "string",
