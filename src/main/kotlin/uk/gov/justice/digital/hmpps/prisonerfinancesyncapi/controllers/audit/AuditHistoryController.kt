@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.constraints.Pattern
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.data.domain.Page
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -22,6 +21,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_AUDIT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISON_ID
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.CursorPage
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
@@ -74,18 +74,23 @@ class AuditHistoryController(
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO}')")
   fun getMatchingPayloads(
     @RequestParam(required = false)
-    @Pattern(
-      regexp = VALIDATION_REGEX_PRISON_ID,
-      message = VALIDATION_MESSAGE_PRISON_ID,
-    ) prisonId: String?,
+    @Pattern(regexp = VALIDATION_REGEX_PRISON_ID, message = VALIDATION_MESSAGE_PRISON_ID)
+    prisonId: String?,
     @RequestParam(required = false)
     legacyTransactionId: Long?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate?,
-    @RequestParam(defaultValue = "0") page: Int,
+    @RequestParam(required = false) cursor: String?,
     @RequestParam(defaultValue = "20") size: Int,
-  ): ResponseEntity<Page<NomisSyncPayloadSummary>> {
-    val items = auditHistoryService.getMatchingPayloads(prisonId, legacyTransactionId, startDate, endDate, page, size)
+  ): ResponseEntity<CursorPage<NomisSyncPayloadSummary>> {
+    val items = auditHistoryService.getMatchingPayloads(
+      prisonId,
+      legacyTransactionId,
+      startDate,
+      endDate,
+      cursor,
+      size,
+    )
     return ResponseEntity.ok(items)
   }
 

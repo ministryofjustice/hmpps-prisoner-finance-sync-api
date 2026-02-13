@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 interface NomisSyncPayloadSummary {
+  val id: Long
   val legacyTransactionId: Long?
   val synchronizedTransactionId: UUID
   val caseloadId: String?
