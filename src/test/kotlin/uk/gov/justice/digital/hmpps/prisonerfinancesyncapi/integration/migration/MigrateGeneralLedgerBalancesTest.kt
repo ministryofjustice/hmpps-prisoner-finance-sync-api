@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.MIGRATION_CLEARING_ACCOUNT
@@ -61,7 +62,7 @@ class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(balance1.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(balance1)
       .jsonPath("$.code").isEqualTo(accountCode1)
       .jsonPath("$.name").isEqualTo("Receivable For Earnings")
 
@@ -72,7 +73,7 @@ class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(balance2.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(balance2)
       .jsonPath("$.code").isEqualTo(accountCode2)
       .jsonPath("$.name").isEqualTo("Canteen Payable")
 
@@ -135,18 +136,9 @@ class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
       .expectStatus().isOk
       .expectBody()
       .jsonPath("$.items[?(@.accountCode == ${MIGRATION_CLEARING_ACCOUNT})]").isEmpty
-      .jsonPath("$.items[?(@.accountCode == 1505)].balance").value<List<Double>> { balances ->
-        assertThat(balances).containsExactly(BigDecimal("10587.23").toDouble())
-      }
-      .jsonPath("$.items[?(@.accountCode == 2505)].balance").value<List<Double>> { balances ->
-        assertThat(balances).containsExactly(BigDecimal("1554565.40").toDouble())
-      }
-      .jsonPath("$.items[?(@.accountCode == 1103)].balance").value<List<Double>> { balances ->
-        assertThat(balances).containsExactly(BigDecimal("-906347.40").toDouble())
-      }
-      .jsonPath("$.items[?(@.accountCode == 2100)].balance").value<List<Double>> { balances ->
-        assertThat(balances.size).isEqualTo(1)
-        assertThat(balances[0]).isCloseTo(0.0, within(0.0001))
-      }
+      .jsonPath("$.items[?(@.accountCode == 1505)].balance").isMoneyEqual(BigDecimal("10587.23"))
+      .jsonPath("$.items[?(@.accountCode == 2505)].balance").isMoneyEqual(BigDecimal("1554565.40"))
+      .jsonPath("$.items[?(@.accountCode == 1103)].balance").isMoneyEqual(BigDecimal("-906347.40"))
+      .jsonPath("$.items[?(@.accountCode == 2100)].balance").isMoneyEqual(BigDecimal("0.00"))
   }
 }

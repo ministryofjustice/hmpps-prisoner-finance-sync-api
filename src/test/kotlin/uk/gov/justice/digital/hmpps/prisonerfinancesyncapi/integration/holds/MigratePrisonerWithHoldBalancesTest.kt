@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -64,8 +65,8 @@ class MigratePrisonerWithHoldBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(initialAvailableBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(initialHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(initialAvailableBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(initialHoldBalance)
 
     val addHoldRequest = SyncOffenderTransactionRequest(
       transactionId = Random.nextLong(),
@@ -83,20 +84,20 @@ class MigratePrisonerWithHoldBalancesTest : IntegrationTestBase() {
           postingType = "DR",
           type = "HOA",
           description = "HOLD",
-          amount = newHoldAmount.toDouble(),
+          amount = newHoldAmount,
           reference = null,
           generalLedgerEntries = listOf(
             GeneralLedgerEntry(
               entrySequence = 1,
               code = privateCashAccountCode,
               postingType = "DR",
-              amount = newHoldAmount.toDouble(),
+              amount = newHoldAmount,
             ),
             GeneralLedgerEntry(
               entrySequence = 2,
               code = holdsGLAccountCode,
               postingType = "CR",
-              amount = newHoldAmount.toDouble(),
+              amount = newHoldAmount,
             ),
           ),
         ),
@@ -127,7 +128,7 @@ class MigratePrisonerWithHoldBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedFinalAvailableBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(expectedFinalHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedFinalAvailableBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(expectedFinalHoldBalance)
   }
 }

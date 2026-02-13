@@ -21,7 +21,7 @@ class ToPenceExtensionTest {
     "1.15,115",
     "100000.00,10000000",
   )
-  fun `should cast Double to GL Long`(inputVal: Double, expected: Long) {
+  fun `should cast Decimal to GL Long`(inputVal: BigDecimal, expected: Long) {
     assertThat(inputVal.toPence()).isEqualTo(expected)
   }
 

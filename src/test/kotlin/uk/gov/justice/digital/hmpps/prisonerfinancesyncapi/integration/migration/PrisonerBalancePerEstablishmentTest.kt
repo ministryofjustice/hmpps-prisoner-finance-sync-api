@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -144,12 +145,12 @@ class PrisonerBalancePerEstablishmentTest : IntegrationTestBase() {
       .expectStatus().isOk
       .expectBody()
       .jsonPath("$.items.length()").isEqualTo(3)
-      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $spendsAccountCode)].totalBalance").isEqualTo(expectedSpendsABalance.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $spendsAccountCode)].holdBalance").isEqualTo(expectedSpendsAHold.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonB' && @.accountCode == $spendsAccountCode)].totalBalance").isEqualTo(expectedSpendsBBalance.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonB' && @.accountCode == $spendsAccountCode)].holdBalance").isEqualTo(0)
-      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $savingsAccountCode)].totalBalance").isEqualTo(expectedSavingsABalance.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $savingsAccountCode)].holdBalance").isEqualTo(expectedSavingsAHold.toDouble())
+      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $spendsAccountCode)].totalBalance").isMoneyEqual(expectedSpendsABalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $spendsAccountCode)].holdBalance").isMoneyEqual(expectedSpendsAHold)
+      .jsonPath("$.items[?(@.prisonId == '$prisonB' && @.accountCode == $spendsAccountCode)].totalBalance").isMoneyEqual(expectedSpendsBBalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonB' && @.accountCode == $spendsAccountCode)].holdBalance").isMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $savingsAccountCode)].totalBalance").isMoneyEqual(expectedSavingsABalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonA' && @.accountCode == $savingsAccountCode)].holdBalance").isMoneyEqual(expectedSavingsAHold)
   }
 
   private fun postSyncTransaction(syncRequest: SyncOffenderTransactionRequest) {
@@ -186,14 +187,14 @@ class PrisonerBalancePerEstablishmentTest : IntegrationTestBase() {
       entrySequence = 1,
       code = offenderAccountCode,
       postingType = offenderPostingType,
-      amount = amount.toDouble(),
+      amount = amount,
     )
 
     val glEntry = GeneralLedgerEntry(
       entrySequence = 2,
       code = glCode,
       postingType = glPostingType,
-      amount = amount.toDouble(),
+      amount = amount,
     )
 
     return SyncOffenderTransactionRequest(
@@ -212,7 +213,7 @@ class PrisonerBalancePerEstablishmentTest : IntegrationTestBase() {
           postingType = offenderPostingType,
           type = transactionType,
           description = "Test Transaction for Balance Check",
-          amount = amount.toDouble(),
+          amount = amount,
           reference = "REF-$transactionId",
           generalLedgerEntries = listOf(offenderEntry, glEntry),
         ),

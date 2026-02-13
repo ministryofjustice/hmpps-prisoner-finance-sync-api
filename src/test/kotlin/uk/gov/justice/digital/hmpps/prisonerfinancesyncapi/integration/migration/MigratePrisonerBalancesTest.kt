@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import java.math.BigDecimal
@@ -53,10 +54,10 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(cashBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(cashBalance)
       .jsonPath("$.code").isEqualTo(cashAccountCode)
       .jsonPath("$.name").isEqualTo("Cash")
-      .jsonPath("$.holdBalance").isEqualTo(BigDecimal.ZERO.toDouble())
+      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
 
     webTestClient
       .get()
@@ -65,10 +66,10 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(spendsBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(spendsBalance)
       .jsonPath("$.code").isEqualTo(spendsAccountCode)
       .jsonPath("$.name").isEqualTo("Spends")
-      .jsonPath("$.holdBalance").isEqualTo(BigDecimal.ZERO.toDouble())
+      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
 
     webTestClient
       .get()
@@ -77,10 +78,10 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(savingsBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(savingsBalance)
       .jsonPath("$.code").isEqualTo(savingsAccountCode)
       .jsonPath("$.name").isEqualTo("Savings")
-      .jsonPath("$.holdBalance").isEqualTo(BigDecimal.ZERO.toDouble())
+      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
 
     webTestClient
       .get()
@@ -90,12 +91,12 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
       .expectStatus().isOk
       .expectBody()
       .jsonPath("$.items.length()").isEqualTo(3)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].totalBalance").isEqualTo(cashBalance.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].holdBalance").isEqualTo(0)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].totalBalance").isEqualTo(spendsBalance.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].holdBalance").isEqualTo(0)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].totalBalance").isEqualTo(savingsBalance.toDouble())
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].holdBalance").isEqualTo(0)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].totalBalance").isMoneyEqual(cashBalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].holdBalance").isMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].totalBalance").isMoneyEqual(spendsBalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].holdBalance").isMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].totalBalance").isMoneyEqual(savingsBalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].holdBalance").isMoneyEqual(BigDecimal.ZERO)
 
     webTestClient
       .get()
@@ -104,7 +105,7 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(0)
+      .jsonPath("$.balance").isMoneyEqual(BigDecimal.ZERO)
       .jsonPath("$.name").isEqualTo("Spends")
 
     webTestClient
@@ -114,7 +115,7 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(0)
+      .jsonPath("$.balance").isMoneyEqual(BigDecimal.ZERO)
       .jsonPath("$.name").isEqualTo("Savings")
   }
 }

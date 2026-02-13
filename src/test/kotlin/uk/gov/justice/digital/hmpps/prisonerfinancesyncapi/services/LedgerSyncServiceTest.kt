@@ -176,9 +176,9 @@ class LedgerSyncServiceTest {
     postingType = "DR",
     type = "CANT",
     description = "Canteen Spend",
-    amount = 10.0,
+    amount = BigDecimal("10.0"),
     reference = "REF",
-    generalLedgerEntries = listOf(GeneralLedgerEntry(1, 1234, "DR", 10.0)),
+    generalLedgerEntries = listOf(GeneralLedgerEntry(1, 1234, "DR", BigDecimal("10.0"))),
   )
 
   private fun createOffenderRequest(transactions: List<OffenderTransaction>) = SyncOffenderTransactionRequest(

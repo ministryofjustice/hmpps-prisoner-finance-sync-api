@@ -168,8 +168,8 @@ class SyncGeneralLedgerTransactionBalanceIntegrationTest : IntegrationTestBase()
       caseloadId = prisonId,
       transactionType = "GJ",
       generalLedgerEntries = listOf(
-        GeneralLedgerEntry(entrySequence = 1, code = debitAccountCode, postingType = debitPostingType, amount = transactionAmount.toDouble()),
-        GeneralLedgerEntry(entrySequence = 2, code = creditAccountCode, postingType = creditPostingType, amount = transactionAmount.toDouble()),
+        GeneralLedgerEntry(entrySequence = 1, code = debitAccountCode, postingType = debitPostingType, amount = transactionAmount),
+        GeneralLedgerEntry(entrySequence = 2, code = creditAccountCode, postingType = creditPostingType, amount = transactionAmount),
       ),
 
       transactionTimestamp = transactionTimestamp,

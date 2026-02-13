@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -98,8 +99,8 @@ class StaggeredMigrationBalanceAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedAggregatedBalanceV2.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(0)
+      .jsonPath("$.balance").isMoneyEqual(expectedAggregatedBalanceV2)
+      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
   }
 
   private fun postSyncTransaction(syncRequest: SyncOffenderTransactionRequest) {
@@ -136,14 +137,14 @@ class StaggeredMigrationBalanceAggregationTest : IntegrationTestBase() {
       entrySequence = 1,
       code = offenderAccountCode,
       postingType = offenderPostingType,
-      amount = amount.toDouble(),
+      amount = amount,
     )
 
     val glEntry = GeneralLedgerEntry(
       entrySequence = 2,
       code = glCode,
       postingType = glPostingType,
-      amount = amount.toDouble(),
+      amount = amount,
     )
 
     return SyncOffenderTransactionRequest(
@@ -162,7 +163,7 @@ class StaggeredMigrationBalanceAggregationTest : IntegrationTestBase() {
           postingType = offenderPostingType,
           type = transactionType,
           description = if (transactionType == "HOA") "HOLD ALLOC" else "Test Transaction for Aggregation",
-          amount = amount.toDouble(),
+          amount = amount,
           reference = "REF-$transactionId",
           generalLedgerEntries = listOf(offenderEntry, glEntry),
         ),

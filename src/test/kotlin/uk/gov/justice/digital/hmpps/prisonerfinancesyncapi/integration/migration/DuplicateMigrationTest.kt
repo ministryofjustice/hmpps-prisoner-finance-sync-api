@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -95,8 +96,8 @@ class DuplicateMigrationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedFinalBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(expectedFinalHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedFinalBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(expectedFinalHoldBalance)
   }
 
   private fun postSyncTransaction(syncRequest: SyncOffenderTransactionRequest) {
@@ -133,14 +134,14 @@ class DuplicateMigrationTest : IntegrationTestBase() {
       entrySequence = 1,
       code = offenderAccountCode,
       postingType = offenderPostingType,
-      amount = amount.toDouble(),
+      amount = amount,
     )
 
     val glEntry = GeneralLedgerEntry(
       entrySequence = 2,
       code = glCode,
       postingType = glPostingType,
-      amount = amount.toDouble(),
+      amount = amount,
     )
 
     return SyncOffenderTransactionRequest(
@@ -159,7 +160,7 @@ class DuplicateMigrationTest : IntegrationTestBase() {
           postingType = offenderPostingType,
           type = transactionType,
           description = "Test Transaction for Balance Check",
-          amount = amount.toDouble(),
+          amount = amount,
           reference = "REF-$transactionId",
           generalLedgerEntries = listOf(offenderEntry, glEntry),
         ),

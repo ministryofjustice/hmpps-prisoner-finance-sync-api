@@ -9,6 +9,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
@@ -181,11 +182,11 @@ class SyncOffenderTransactionBalanceIntegrationTest : IntegrationTestBase() {
         postingType = "CR",
         type = "A_EARN",
         description = "Offender Payroll From:01/06/2025 To:01/06/2025",
-        amount = 2.95,
+        amount = BigDecimal("2.95"),
         reference = null,
         generalLedgerEntries = listOf(
-          GeneralLedgerEntry(entrySequence = 1, code = 1501, postingType = "DR", amount = 2.95),
-          GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 2.95),
+          GeneralLedgerEntry(entrySequence = 1, code = 1501, postingType = "DR", amount = BigDecimal("2.95")),
+          GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("2.95")),
         ),
       ),
     ),
@@ -214,11 +215,11 @@ class SyncOffenderTransactionBalanceIntegrationTest : IntegrationTestBase() {
         postingType = "DR",
         type = "CANT",
         description = "Canteen Spend",
-        amount = 1.40,
+        amount = BigDecimal("1.40"),
         reference = null,
         generalLedgerEntries = listOf(
-          GeneralLedgerEntry(entrySequence = 1, code = 2102, postingType = "DR", amount = 1.40),
-          GeneralLedgerEntry(entrySequence = 2, code = 2501, postingType = "CR", amount = 1.40),
+          GeneralLedgerEntry(entrySequence = 1, code = 2102, postingType = "DR", amount = BigDecimal("1.40")),
+          GeneralLedgerEntry(entrySequence = 2, code = 2501, postingType = "CR", amount = BigDecimal("1.40")),
         ),
       ),
       OffenderTransaction(
@@ -230,11 +231,11 @@ class SyncOffenderTransactionBalanceIntegrationTest : IntegrationTestBase() {
         postingType = "DR",
         type = "CANT",
         description = "Canteen Spend",
-        amount = 2.20,
+        amount = BigDecimal("2.20"),
         reference = null,
         generalLedgerEntries = listOf(
-          GeneralLedgerEntry(entrySequence = 1, code = 2102, postingType = "DR", amount = 2.20),
-          GeneralLedgerEntry(entrySequence = 2, code = 2501, postingType = "CR", amount = 2.20),
+          GeneralLedgerEntry(entrySequence = 1, code = 2102, postingType = "DR", amount = BigDecimal("2.20")),
+          GeneralLedgerEntry(entrySequence = 2, code = 2501, postingType = "CR", amount = BigDecimal("2.20")),
         ),
       ),
     ),

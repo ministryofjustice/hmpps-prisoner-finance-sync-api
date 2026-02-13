@@ -657,14 +657,15 @@ class GeneralLedgerServiceTest {
       whenever(offenderTx.offenderDisplayId).thenReturn(offenderDisplayId)
       whenever(offenderTx.description).thenReturn("description text")
       whenever(offenderTx.reference).thenReturn("reference text")
+      whenever(offenderTx.amount).thenReturn(BigDecimal("10.00"))
 
       if (glEntries.isNotEmpty()) {
         whenever(offenderTx.generalLedgerEntries).thenReturn(glEntries)
       } else {
         whenever(offenderTx.generalLedgerEntries).thenReturn(
           listOf(
-            GeneralLedgerEntry(1, 1501, "CR", 10.00),
-            GeneralLedgerEntry(2, 2101, "DR", 10.00),
+            GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+            GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
           ),
         )
       }
@@ -726,7 +727,7 @@ class GeneralLedgerServiceTest {
       val transactionId = Random.nextLong(10000, 99999)
       val timestamp = LocalDateTime.now()
       val prisonId = "LEI"
-      val amount = 5.00
+      val amount = BigDecimal("5.00")
 
       val prisonerAccountCode = 2102
       val prisonAccountCode = 1502
@@ -809,7 +810,7 @@ class GeneralLedgerServiceTest {
       val transactionId = Random.nextLong(10000, 99999)
       val timestamp = LocalDateTime.now()
       val prisonId = "LEI"
-      val amount = 5.00
+      val amount = BigDecimal("5.00")
 
       val prisoner1DisplayId = "A1234AA"
       val prisoner2DisplayId = "B4321ZZ"
@@ -949,7 +950,7 @@ class GeneralLedgerServiceTest {
           postingType = "DR",
           type = transactionType,
           description = "Test Transaction",
-          amount = 10.00,
+          amount = BigDecimal("10.00"),
           reference = "REF",
           generalLedgerEntries = transactionEntries,
         )
@@ -973,8 +974,8 @@ class GeneralLedgerServiceTest {
         prisonCode,
         "TEST",
         listOf(
-          GeneralLedgerEntry(1, 2102, "DR", 10.00),
-          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+          GeneralLedgerEntry(1, 2102, "DR", BigDecimal("10.00")),
+          GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
         ),
       )
       mockAccount(prisonerDisplayId)
@@ -1016,8 +1017,8 @@ class GeneralLedgerServiceTest {
         prisonCode,
         transactionType,
         listOf(
-          GeneralLedgerEntry(1, prisonSubAccount, "DR", 10.00),
-          GeneralLedgerEntry(2, prisonerSubAccount, "CR", 10.00),
+          GeneralLedgerEntry(1, prisonSubAccount, "DR", BigDecimal("10.00")),
+          GeneralLedgerEntry(2, prisonerSubAccount, "CR", BigDecimal("10.00")),
         ),
       )
 
@@ -1056,8 +1057,8 @@ class GeneralLedgerServiceTest {
         prisonCode,
         transactionType,
         listOf(
-          GeneralLedgerEntry(1, prisonSubAccount, "DR", 10.00),
-          GeneralLedgerEntry(2, prisonerSubAccount, "CR", 10.00),
+          GeneralLedgerEntry(1, prisonSubAccount, "DR", BigDecimal("10.00")),
+          GeneralLedgerEntry(2, prisonerSubAccount, "CR", BigDecimal("10.00")),
         ),
       )
 
@@ -1105,8 +1106,8 @@ class GeneralLedgerServiceTest {
         prisonCode,
         "TEST",
         listOf(
-          GeneralLedgerEntry(1, 2102, "DR", 10.00),
-          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+          GeneralLedgerEntry(1, 2102, "DR", BigDecimal("10.00")),
+          GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
         ),
       )
 
@@ -1146,8 +1147,8 @@ class GeneralLedgerServiceTest {
         prisonCode,
         transactionType,
         listOf(
-          GeneralLedgerEntry(1, 1502, "DR", 10.00),
-          GeneralLedgerEntry(2, 2101, "CR", 10.00),
+          GeneralLedgerEntry(1, 1502, "DR", BigDecimal("10.00")),
+          GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
         ),
       )
 

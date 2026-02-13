@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -52,11 +53,11 @@ class PrisonerGeneralLedgerAccountsAggregationTest : IntegrationTestBase() {
           postingType = "CR",
           type = "A_EARN",
           description = "Offender Payroll",
-          amount = transactionAmount1.toDouble(),
+          amount = transactionAmount1,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = nonPrisonerGLAccountCode, postingType = "DR", amount = transactionAmount1.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = offenderAccountCode, postingType = "CR", amount = transactionAmount1.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = nonPrisonerGLAccountCode, postingType = "DR", amount = transactionAmount1),
+            GeneralLedgerEntry(entrySequence = 2, code = offenderAccountCode, postingType = "CR", amount = transactionAmount1),
           ),
         ),
       ),
@@ -92,11 +93,11 @@ class PrisonerGeneralLedgerAccountsAggregationTest : IntegrationTestBase() {
           postingType = "CR",
           type = "A_EARN",
           description = "Offender Payroll",
-          amount = transactionAmount2.toDouble(),
+          amount = transactionAmount2,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = nonPrisonerGLAccountCode, postingType = "DR", amount = transactionAmount2.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = offenderAccountCode, postingType = "CR", amount = transactionAmount2.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = nonPrisonerGLAccountCode, postingType = "DR", amount = transactionAmount2),
+            GeneralLedgerEntry(entrySequence = 2, code = offenderAccountCode, postingType = "CR", amount = transactionAmount2),
           ),
         ),
       ),
@@ -123,7 +124,7 @@ class PrisonerGeneralLedgerAccountsAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(transactionAmount1.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(transactionAmount1)
 
     webTestClient
       .get()
@@ -132,7 +133,7 @@ class PrisonerGeneralLedgerAccountsAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(transactionAmount2.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(transactionAmount2)
 
     webTestClient
       .get()
@@ -141,6 +142,6 @@ class PrisonerGeneralLedgerAccountsAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(totalExpectedBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(totalExpectedBalance)
   }
 }

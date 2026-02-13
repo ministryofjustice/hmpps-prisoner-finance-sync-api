@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -48,11 +49,11 @@ class SummaryOfPaymentsAndReceiptsReportTest : IntegrationTestBase() {
           postingType = "CR",
           type = "A_EARN",
           description = "Offender Payroll From:22/09/2025 To:22/09/2025",
-          amount = receipt1Amount.toDouble(),
+          amount = receipt1Amount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = prisonBankGLAccountCode, postingType = "DR", amount = receipt1Amount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = spendingGLAccountCode, postingType = "CR", amount = receipt1Amount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = prisonBankGLAccountCode, postingType = "DR", amount = receipt1Amount),
+            GeneralLedgerEntry(entrySequence = 2, code = spendingGLAccountCode, postingType = "CR", amount = receipt1Amount),
           ),
         ),
       ),
@@ -80,11 +81,11 @@ class SummaryOfPaymentsAndReceiptsReportTest : IntegrationTestBase() {
           postingType = "CR",
           type = "A_EARN",
           description = "Offender Payroll From:22/09/2025 To:22/09/2025",
-          amount = receipt2Amount.toDouble(),
+          amount = receipt2Amount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = prisonBankGLAccountCode, postingType = "DR", amount = receipt2Amount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = spendingGLAccountCode, postingType = "CR", amount = receipt2Amount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = prisonBankGLAccountCode, postingType = "DR", amount = receipt2Amount),
+            GeneralLedgerEntry(entrySequence = 2, code = spendingGLAccountCode, postingType = "CR", amount = receipt2Amount),
           ),
         ),
       ),
@@ -112,11 +113,11 @@ class SummaryOfPaymentsAndReceiptsReportTest : IntegrationTestBase() {
           postingType = "DR",
           type = "PHONE",
           description = "Phone Credit",
-          amount = payment1Amount.toDouble(),
+          amount = payment1Amount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = spendingGLAccountCode, postingType = "DR", amount = payment1Amount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = telephoneGLAccountCode, postingType = "CR", amount = payment1Amount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = spendingGLAccountCode, postingType = "DR", amount = payment1Amount),
+            GeneralLedgerEntry(entrySequence = 2, code = telephoneGLAccountCode, postingType = "CR", amount = payment1Amount),
           ),
         ),
       ),
@@ -144,11 +145,11 @@ class SummaryOfPaymentsAndReceiptsReportTest : IntegrationTestBase() {
           postingType = "DR",
           type = "PHONE",
           description = "Phone Credit",
-          amount = payment2Amount.toDouble(),
+          amount = payment2Amount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = spendingGLAccountCode, postingType = "DR", amount = payment2Amount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = telephoneGLAccountCode, postingType = "CR", amount = payment2Amount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = spendingGLAccountCode, postingType = "DR", amount = payment2Amount),
+            GeneralLedgerEntry(entrySequence = 2, code = telephoneGLAccountCode, postingType = "CR", amount = payment2Amount),
           ),
         ),
       ),
@@ -206,13 +207,13 @@ class SummaryOfPaymentsAndReceiptsReportTest : IntegrationTestBase() {
       .jsonPath("$.postings.length()").isEqualTo(2)
       .jsonPath("$.postings[0].description").isEqualTo("Phone Credit")
       .jsonPath("$.postings[0].transactionUsage").isEqualTo("Payments")
-      .jsonPath("$.postings[0].credits").isEqualTo(BigDecimal.ZERO.toDouble())
-      .jsonPath("$.postings[0].debits").isEqualTo(totalPayments.toDouble())
-      .jsonPath("$.postings[0].total").isEqualTo(totalPayments.toDouble())
+      .jsonPath("$.postings[0].credits").isMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.postings[0].debits").isMoneyEqual(totalPayments)
+      .jsonPath("$.postings[0].total").isMoneyEqual(totalPayments)
       .jsonPath("$.postings[1].description").isEqualTo("Offender Payroll")
       .jsonPath("$.postings[1].transactionUsage").isEqualTo("Receipts")
-      .jsonPath("$.postings[1].credits").isEqualTo(totalReceipts.toDouble())
-      .jsonPath("$.postings[1].debits").isEqualTo(BigDecimal.ZERO.toDouble())
-      .jsonPath("$.postings[1].total").isEqualTo(totalReceipts.toDouble())
+      .jsonPath("$.postings[1].credits").isMoneyEqual(totalReceipts)
+      .jsonPath("$.postings[1].debits").isMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.postings[1].total").isMoneyEqual(totalReceipts)
   }
 }

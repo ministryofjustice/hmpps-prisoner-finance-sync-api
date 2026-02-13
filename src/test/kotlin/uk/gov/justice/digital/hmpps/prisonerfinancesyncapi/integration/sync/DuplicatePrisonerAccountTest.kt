@@ -8,6 +8,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
@@ -20,21 +21,21 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
   fun `should not create duplicate prisoner accounts in race-condition`() {
     val testOffenderId = 123L
     val testOffenderDisplayId = UUID.randomUUID().toString().substring(0, 8).uppercase()
-    val transferAmount = 324.00
+    val transferAmount = BigDecimal("324.00")
 
     val transferReq1 = createSyncOffenderTransactionRequest(
       caseloadId = "MDI",
       offenderTransactions = listOf(
         createTestOffenderTransaction(
           type = "TOR",
-          amount = 0.00,
+          amount = BigDecimal("0.00"),
           offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "REG",
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 0.00),
-            GeneralLedgerEntry(entrySequence = 2, code = 1101, postingType = "CR", amount = 0.00),
+            GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("0.00")),
+            GeneralLedgerEntry(entrySequence = 2, code = 1101, postingType = "CR", amount = BigDecimal("0.00")),
           ),
         ),
         createTestOffenderTransaction(
@@ -51,14 +52,14 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         ),
         createTestOffenderTransaction(
           type = "TOR",
-          amount = 0.00,
+          amount = BigDecimal("0.00"),
           offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SAV",
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 5, code = 2103, postingType = "DR", amount = 0.00),
-            GeneralLedgerEntry(entrySequence = 6, code = 1101, postingType = "CR", amount = 0.00),
+            GeneralLedgerEntry(entrySequence = 5, code = 2103, postingType = "DR", amount = BigDecimal("0.00")),
+            GeneralLedgerEntry(entrySequence = 6, code = 1101, postingType = "CR", amount = BigDecimal("0.00")),
           ),
         ),
       ),
@@ -69,14 +70,14 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
       offenderTransactions = listOf(
         createTestOffenderTransaction(
           type = "TIR",
-          amount = 0.00,
+          amount = BigDecimal("0.00"),
           offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "CR",
           subaccountType = "REG",
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = 0.00),
-            GeneralLedgerEntry(entrySequence = 2, code = 2101, postingType = "CR", amount = 0.00),
+            GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = BigDecimal("0.00")),
+            GeneralLedgerEntry(entrySequence = 2, code = 2101, postingType = "CR", amount = BigDecimal("0.00")),
           ),
         ),
         createTestOffenderTransaction(
@@ -93,14 +94,14 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         ),
         createTestOffenderTransaction(
           type = "TOR",
-          amount = 0.00,
+          amount = BigDecimal("0.00"),
           offenderDisplayId = testOffenderDisplayId,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SAV",
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 5, code = 1101, postingType = "DR", amount = 0.00),
-            GeneralLedgerEntry(entrySequence = 6, code = 2103, postingType = "CR", amount = 0.00),
+            GeneralLedgerEntry(entrySequence = 5, code = 1101, postingType = "DR", amount = BigDecimal("0.00")),
+            GeneralLedgerEntry(entrySequence = 6, code = 2103, postingType = "CR", amount = BigDecimal("0.00")),
           ),
         ),
       ),
@@ -173,11 +174,11 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
     subaccountType: String = "REG",
     postingType: String = "DR",
     offenderDisplayId: String = "AA001AA",
-    amount: Double = 162.00,
+    amount: BigDecimal = BigDecimal("162.00"),
     offenderId: Long = 1015388L,
     generalLedgerEntries: List<GeneralLedgerEntry> = listOf(
-      GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 162.00),
-      GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 162.00),
+      GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+      GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
     ),
   ): OffenderTransaction = OffenderTransaction(
     entrySequence = 1,

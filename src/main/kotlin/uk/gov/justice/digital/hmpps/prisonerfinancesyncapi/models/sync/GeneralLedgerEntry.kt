@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync
 
 import io.swagger.v3.oas.annotations.media.Schema
+import java.math.BigDecimal
 
 @Schema(description = "Represents a general ledger entry.")
 data class GeneralLedgerEntry(
@@ -14,5 +15,5 @@ data class GeneralLedgerEntry(
   val postingType: String,
 
   @field:Schema(description = "The monetary amount of the general ledger entry.", example = "162.00", required = true)
-  val amount: Double,
+  val amount: BigDecimal,
 )
