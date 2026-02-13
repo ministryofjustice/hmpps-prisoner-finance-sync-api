@@ -1,6 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models
 
 import io.swagger.v3.oas.annotations.media.Schema
+import tools.jackson.databind.annotation.JsonDeserialize
+import tools.jackson.databind.deser.jdk.NumberDeserializers
 import java.math.BigDecimal
 
 @Schema(description = "Summary of a prisoner sub account")
@@ -24,11 +26,13 @@ data class PrisonerSubAccountDetails(
     description = "The current monetary balance of the sub account. This value can be positive or negative.",
     example = "1234.56",
   )
+  @JsonDeserialize(using = NumberDeserializers.BigDecimalDeserializer::class)
   override var balance: BigDecimal = BigDecimal.ZERO,
 
   @field:Schema(
     description = "The total amount on hold for this sub account",
     example = "10.00",
   )
+  @JsonDeserialize(using = NumberDeserializers.BigDecimalDeserializer::class)
   var holdBalance: BigDecimal = BigDecimal.ZERO,
 ) : AccountDetails

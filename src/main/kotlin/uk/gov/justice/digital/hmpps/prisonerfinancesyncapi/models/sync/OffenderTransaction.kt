@@ -1,6 +1,9 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync
 
 import io.swagger.v3.oas.annotations.media.Schema
+import tools.jackson.databind.annotation.JsonSerialize
+import tools.jackson.databind.ser.std.ToStringSerializer
+import java.math.BigDecimal
 
 @Schema(description = "Represents a single offender transaction entry, including related general ledger entries.")
 data class OffenderTransaction(
@@ -29,7 +32,8 @@ data class OffenderTransaction(
   val description: String,
 
   @field:Schema(description = "The monetary amount of the transaction entry.", example = "162.00", required = true)
-  val amount: Double,
+  @JsonSerialize(using = ToStringSerializer::class)
+  val amount: BigDecimal,
 
   @field:Schema(description = "An optional reference number for the transaction.", example = "", nullable = true)
   val reference: String?,

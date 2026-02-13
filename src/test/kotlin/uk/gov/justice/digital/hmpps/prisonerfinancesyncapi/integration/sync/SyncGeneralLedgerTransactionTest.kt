@@ -9,6 +9,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -125,8 +126,8 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
     lastModifiedBy = null,
     lastModifiedByDisplayName = null,
     generalLedgerEntries = listOf(
-      GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = 50.00),
-      GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = 50.00),
+      GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = BigDecimal("50.00")),
+      GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = BigDecimal("50.00")),
     ),
   )
 }

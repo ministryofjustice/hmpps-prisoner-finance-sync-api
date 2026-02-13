@@ -7,6 +7,7 @@ import software.amazon.awssdk.services.sns.model.MessageAttributeValue
 import software.amazon.awssdk.services.sns.model.PublishRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.SqsIntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.AdditionalInformation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -176,20 +177,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].totalBalance")
-      .value<List<Double>> { balances ->
-        val total = balances.sum()
-        if (BigDecimal.valueOf(total).compareTo(expectedAmount) != 0) {
-          throw AssertionError("Expected Total $expectedAmount but got $total. Accounts found: $balances")
-        }
-      }
-      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].holdBalance")
-      .value<List<Double>> { balances ->
-        val totalHold = balances.sum()
-        if (BigDecimal.valueOf(totalHold).compareTo(expectedHold) != 0) {
-          throw AssertionError("Expected Hold $expectedHold but got $totalHold. Accounts found: $balances")
-        }
-      }
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].totalBalance").isSumMoneyEqual(expectedAmount)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].holdBalance").isSumMoneyEqual(expectedHold)
   }
 
   private fun migrateBalance(
@@ -250,8 +239,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
     val transactionId = Random.nextLong(10000, 99999)
     val requestId = UUID.randomUUID()
 
-    val glEntry = GeneralLedgerEntry(1, glCode, glPostingType, amount.toDouble())
-    val offenderEntry = GeneralLedgerEntry(2, offenderAccountCode, offenderPostingType, amount.toDouble())
+    val glEntry = GeneralLedgerEntry(1, glCode, glPostingType, amount)
+    val offenderEntry = GeneralLedgerEntry(2, offenderAccountCode, offenderPostingType, amount)
 
     return SyncOffenderTransactionRequest(
       transactionId = transactionId,
@@ -269,7 +258,7 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
           postingType = offenderPostingType,
           type = transactionType,
           description = "Offender Payroll",
-          amount = amount.toDouble(),
+          amount = amount,
           reference = "REF-$transactionId",
           generalLedgerEntries = listOf(offenderEntry, glEntry),
         ),

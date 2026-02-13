@@ -17,6 +17,10 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
 
+  jackson:
+    deserialization:
+      use-big-decimal-for-floats: true
+
 hmpps-auth:
   url: "http://localhost:8090/auth"
 

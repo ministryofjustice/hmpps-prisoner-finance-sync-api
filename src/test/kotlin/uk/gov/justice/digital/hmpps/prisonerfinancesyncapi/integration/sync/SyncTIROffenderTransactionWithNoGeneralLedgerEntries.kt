@@ -1,13 +1,14 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
+import tools.jackson.databind.ObjectMapper
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -25,9 +26,9 @@ class SyncTIROffenderTransactionWithNoGeneralLedgerEntries : IntegrationTestBase
     val spendsAccountCode = 2102
     val savAccountCode = 2103
 
-    val regAmount = 50.00
-    val savAmount = 0.00
-    val spndAmount = 5.00
+    val regAmount = BigDecimal("50.00")
+    val savAmount = BigDecimal("0.00")
+    val spndAmount = BigDecimal("5.00")
 
     val offenderId: Long = 2613549L
     val offenderBookingId: Long = 1231110L

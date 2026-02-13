@@ -97,11 +97,11 @@ class RequestCaptureServiceTest {
           postingType = "DR",
           type = "OT",
           description = "Sub-Account Transfer",
-          amount = 162.00,
+          amount = BigDecimal("162.00"),
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 162.00),
-            GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 162.00),
+            GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+            GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
           ),
         ),
       ),
@@ -121,8 +121,8 @@ class RequestCaptureServiceTest {
       lastModifiedBy = null,
       lastModifiedByDisplayName = null,
       generalLedgerEntries = listOf(
-        GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = 50.00),
-        GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = 50.00),
+        GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = BigDecimal("50.00")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = BigDecimal("50.00")),
       ),
     )
     dummyGeneralLedgerBalancesSyncRequest = GeneralLedgerBalancesSyncRequest(

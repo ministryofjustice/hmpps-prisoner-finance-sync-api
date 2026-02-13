@@ -10,6 +10,9 @@ spring:
 #  It is ignored for LocalDateTime, and therefore unnecessary for most projects
 #  jackson:
 #    date-format: "yyyy-MM-dd HH:mm:ss"
+  jackson:
+    deserialization:
+      use-big-decimal-for-floats: true
 
   datasource:
     url: 'jdbc:postgresql://${DB_SERVER}/${DB_NAME}?sslmode=prefer'

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
@@ -92,7 +93,7 @@ class InitialBalanceAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(initialPrisonerBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(initialPrisonerBalance)
 
     val offenderTransactionRequest = SyncOffenderTransactionRequest(
       transactionId = Random.Default.nextLong(),
@@ -110,20 +111,20 @@ class InitialBalanceAggregationTest : IntegrationTestBase() {
           postingType = "CR",
           type = "A_EARN",
           description = "Offender Payroll",
-          amount = transactionAmount.toDouble(),
+          amount = transactionAmount,
           reference = null,
           generalLedgerEntries = listOf(
             GeneralLedgerEntry(
               entrySequence = 1,
               code = prisonBankGLAccountCode,
               postingType = "DR",
-              amount = transactionAmount.toDouble(),
+              amount = transactionAmount,
             ),
             GeneralLedgerEntry(
               entrySequence = 2,
               code = offenderSpendsAccountCode,
               postingType = "CR",
-              amount = transactionAmount.toDouble(),
+              amount = transactionAmount,
             ),
           ),
         ),
@@ -153,7 +154,7 @@ class InitialBalanceAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedGLBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedGLBalance)
 
     val expectedPrisonerBalance = initialPrisonerBalance.add(transactionAmount)
     webTestClient
@@ -163,6 +164,6 @@ class InitialBalanceAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedPrisonerBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedPrisonerBalance)
   }
 }
