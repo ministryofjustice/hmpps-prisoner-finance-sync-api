@@ -69,7 +69,7 @@ class GeneralLedgerApiMockServer :
   }
 
   // POST /sub-accounts/{subAccountId}/balance
-  fun stubPostSubAccountBalance(subAccountID: UUID, amount: Long, balanceDateTime: LocalDateTime) {
+  fun stubPostSubAccountBalance(subAccountID: UUID, amount: Long, balanceDateTime: Instant) {
     stubFor(
       post(urlPathEqualTo("/sub-accounts/$subAccountID/balance"))
         .withRequestBody(matchingJsonPath("$.amount", equalTo(amount.toString())))

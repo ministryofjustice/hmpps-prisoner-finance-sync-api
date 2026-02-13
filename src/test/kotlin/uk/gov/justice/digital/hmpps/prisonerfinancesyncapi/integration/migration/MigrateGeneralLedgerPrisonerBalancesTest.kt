@@ -26,9 +26,11 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -57,6 +59,8 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
 
   @Autowired lateinit var accountRepository: AccountRepository
 
+  @Autowired lateinit var timeConversionService: TimeConversionService
+
   @BeforeEach
   fun setup() {
     generalLedgerApi.resetAll()
@@ -76,7 +80,7 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
     subAccountRef,
     parentUUID,
     "Test",
-    LocalDateTime.now(),
+    Instant.now(),
   )
 
   @Test
@@ -133,7 +137,7 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
           .sumOf { it.balance }.toPence(),
         req.accountBalances
           .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .maxOf { it.asOfTimestamp },
+          .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
       )
     }
 
@@ -209,7 +213,7 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
           .sumOf { it.balance }.toPence(),
         req.accountBalances
           .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .maxOf { it.asOfTimestamp },
+          .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
       )
     }
 

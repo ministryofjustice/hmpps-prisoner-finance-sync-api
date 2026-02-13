@@ -6,14 +6,16 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
-import java.time.LocalDateTime
+import java.time.Instant
 
 @Service("generalLedgerMigrationService")
 class GeneralLedgerMigrationService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
+  private val timeConversionService: TimeConversionService,
 ) : MigrationService {
 
   override fun migrateGeneralLedgerBalances(
@@ -28,7 +30,7 @@ class GeneralLedgerMigrationService(
     request: PrisonerBalancesSyncRequest,
   ) {
     val balanceByAccount = mutableMapOf<String, BigDecimal>()
-    val timestampByAccount = mutableMapOf<String, LocalDateTime>()
+    val timestampByAccount = mutableMapOf<String, Instant>()
 
     request.accountBalances.forEach { balanceData ->
 
@@ -38,10 +40,11 @@ class GeneralLedgerMigrationService(
         balanceByAccount.getOrDefault(accountRef, BigDecimal.ZERO) + balanceData.balance
         )
 
+      val asOfTimestamp = timeConversionService.toUtcInstant(balanceData.asOfTimestamp)
       timestampByAccount[accountRef] = (
         maxOf(
-          timestampByAccount.getOrDefault(accountRef, balanceData.asOfTimestamp),
-          balanceData.asOfTimestamp,
+          timestampByAccount.getOrDefault(accountRef, asOfTimestamp),
+          asOfTimestamp,
         )
         )
     }

@@ -16,9 +16,11 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -32,6 +34,9 @@ class GeneralLedgerMigrationServiceTest {
   @Spy
   private lateinit var accountMapping: LedgerAccountMappingService
 
+  @Spy
+  private val timeConversionService = TimeConversionService()
+
   @InjectMocks
   private lateinit var generalLedgerMigrationService: GeneralLedgerMigrationService
 
@@ -40,14 +45,14 @@ class GeneralLedgerMigrationServiceTest {
     subAccountRef,
     parentUUID,
     "Test",
-    LocalDateTime.now(),
+    Instant.now(),
   )
 
   fun createParentAccountResponse(prisonerRef: String, accountId: UUID = UUID.randomUUID(), subAccounts: List<SubAccountResponse> = emptyList()) = AccountResponse(
     accountId,
     prisonerRef,
     "Test",
-    LocalDateTime.now(),
+    Instant.now(),
     subAccounts,
   )
 
@@ -108,7 +113,7 @@ class GeneralLedgerMigrationServiceTest {
           .sumOf { it.balance }.toPence(),
         req.accountBalances
           .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .maxOf { it.asOfTimestamp },
+          .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
       )
       verify(generalLedgerApiClient).migrateSubAccountBalance(subAccount.id, request)
     }
@@ -188,7 +193,7 @@ class GeneralLedgerMigrationServiceTest {
           .sumOf { it.balance }.toPence(),
         req.accountBalances
           .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .maxOf { it.asOfTimestamp },
+          .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
       )
       verify(generalLedgerApiClient).migrateSubAccountBalance(subAccount.id, request)
     }
