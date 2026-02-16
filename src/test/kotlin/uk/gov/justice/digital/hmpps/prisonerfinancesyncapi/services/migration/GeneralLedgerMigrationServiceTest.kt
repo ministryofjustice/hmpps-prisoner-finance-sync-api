@@ -154,73 +154,6 @@ class GeneralLedgerMigrationServiceTest {
   }
 
   @Test
-  fun `should log Migration Error Message when GL return a null response`() {
-    val req = PrisonerBalancesSyncRequest(
-      listOf(
-        PrisonerAccountPointInTimeBalance(
-          "TES",
-          2101,
-          BigDecimal("10"),
-          BigDecimal.ZERO,
-          1,
-          LocalDateTime.now() - Duration.ofDays(1),
-        ),
-        PrisonerAccountPointInTimeBalance(
-          "MDI",
-          2101,
-          BigDecimal("20"),
-          BigDecimal.ZERO,
-          1,
-          LocalDateTime.now(),
-        ),
-        PrisonerAccountPointInTimeBalance(
-          "MDI",
-          2102,
-          BigDecimal("33"),
-          BigDecimal.ZERO,
-          1,
-          LocalDateTime.now() - Duration.ofDays(3),
-        ),
-      ),
-    )
-
-    val parentAccountid = UUID.randomUUID()
-
-    val subAccounts = mutableMapOf<Int, SubAccountResponse>()
-
-    for (balance in req.accountBalances) {
-      subAccounts[balance.accountCode] = createSubAccountResponse(
-        accountMapping.mapPrisonerSubAccount(balance.accountCode),
-        parentAccountid,
-      )
-    }
-
-    val parentAccount = createParentAccountResponse(prisonNumber, parentAccountid, subAccounts.values.toList())
-
-    whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(parentAccount)
-
-    whenever(generalLedgerApiClient.migrateSubAccountBalance(any(), any()))
-      .thenReturn(null)
-
-    generalLedgerMigrationService.migratePrisonerBalances(prisonNumber, req)
-
-    for (subAccount in subAccounts.values) {
-      val request = CreateStatementBalanceRequest(
-        req.accountBalances
-          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .sumOf { it.balance }.toPence(),
-        req.accountBalances
-          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
-      )
-      verify(generalLedgerApiClient).migrateSubAccountBalance(subAccount.id, request)
-      val logs = listAppender.list.map { it.formattedMessage }
-      assertTrue(logs[logs.size - 1].contains("Failed to migrate balance for prisoner "))
-    }
-    verify(telemetryClient, times(2)).trackEvent(eq(generalLedgerMigrationService.telemetryMigrationEventError), any(), eq(null))
-  }
-
-  @Test
   fun `should create Parent Account and Sub accounts when they are not found and migrate balances`() {
     val req = PrisonerBalancesSyncRequest(
       listOf(
@@ -278,6 +211,9 @@ class GeneralLedgerMigrationServiceTest {
     for (subAccount in subAccounts.values) {
       whenever(generalLedgerApiClient.createSubAccount(parentAccount.id, subAccount.reference)).thenReturn(subAccount)
     }
+
+    whenever(generalLedgerApiClient.migrateSubAccountBalance(any(), any()))
+      .thenReturn(StatementBalanceResponse(123, UUID.randomUUID(), Instant.now()))
 
     generalLedgerMigrationService.migratePrisonerBalances(prisonNumber, req)
 

@@ -27,7 +27,8 @@ class GeneralLedgerApiClient(
   }
 
   // POST /sub-accounts/{subAccountId}/balance
-  fun migrateSubAccountBalance(subAccountID: UUID, createStatementBalanceRequest: CreateStatementBalanceRequest) = subAccountApi.postStatementBalance(subAccountID, createStatementBalanceRequest).block()
+  fun migrateSubAccountBalance(subAccountID: UUID, createStatementBalanceRequest: CreateStatementBalanceRequest) = subAccountApi.postStatementBalance(subAccountID, createStatementBalanceRequest)
+    .block() ?: throw IllegalStateException("Received null response when migrating sub-account $subAccountID")
 
   // GET /accounts?reference={reference}
   fun findAccountByReference(reference: String): AccountResponse? = accountApi.getAccount(reference)
