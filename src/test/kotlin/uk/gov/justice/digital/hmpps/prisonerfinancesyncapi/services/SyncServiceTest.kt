@@ -22,6 +22,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerSyncService
 import java.time.Instant
@@ -50,10 +51,13 @@ class SyncServiceTest {
   private lateinit var syncService: SyncService
 
   private lateinit var dummyGeneralLedgerTransactionRequest: SyncGeneralLedgerTransactionRequest
+  private lateinit var dummyOffenderTransactionRequest: SyncOffenderTransactionRequest
   private lateinit var dummyStoredPayload: NomisSyncPayload
 
   @BeforeEach
   fun setupGlobalDummies() {
+    val now = LocalDateTime.now()
+
     dummyGeneralLedgerTransactionRequest = SyncGeneralLedgerTransactionRequest(
       transactionId = 19228029,
       requestId = UUID.fromString("c3d4e5f6-a7b8-9012-3456-7890abcdef01"),
@@ -61,8 +65,8 @@ class SyncServiceTest {
       reference = "REF12345",
       caseloadId = "MDI",
       transactionType = "GJ",
-      transactionTimestamp = LocalDateTime.now(),
-      createdAt = LocalDateTime.now(),
+      transactionTimestamp = now,
+      createdAt = now,
       createdBy = "JD12346",
       createdByDisplayName = "J. Smith",
       lastModifiedAt = null,
@@ -72,6 +76,20 @@ class SyncServiceTest {
         GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = 50.00),
         GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = 50.00),
       ),
+    )
+
+    dummyOffenderTransactionRequest = SyncOffenderTransactionRequest(
+      transactionId = 999L,
+      requestId = UUID.randomUUID(),
+      caseloadId = "MDI",
+      offenderTransactions = emptyList(),
+      transactionTimestamp = now,
+      createdAt = now,
+      createdBy = "JD12346",
+      createdByDisplayName = "J. Doe",
+      lastModifiedAt = null,
+      lastModifiedBy = null,
+      lastModifiedByDisplayName = null,
     )
 
     dummyStoredPayload = NomisSyncPayload(
@@ -231,6 +249,26 @@ class SyncServiceTest {
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
       assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.UPDATED)
+    }
+
+    @Test
+    fun `should process Offender Transaction and use the first UUID from the list`() {
+      val transactionUuid1 = UUID.randomUUID()
+      val transactionUuid2 = UUID.randomUUID()
+
+      whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
+      whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
+
+      whenever(ledgerSyncService.syncOffenderTransaction(any()))
+        .thenReturn(listOf(transactionUuid1, transactionUuid2))
+
+      whenever(requestCaptureService.captureAndStoreRequest(any(), anyOrNull())).thenReturn(dummyStoredPayload)
+
+      val result = syncService.syncTransaction(dummyOffenderTransactionRequest)
+
+      assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
+
+      verify(requestCaptureService).captureAndStoreRequest(any(), eq(transactionUuid1))
     }
   }
 }

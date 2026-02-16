@@ -72,8 +72,8 @@ class DualWriteLedgerServiceTest {
 
   @Test
   fun `should return result from internalLedger and call General Ledger when syncing offender transaction`() {
-    val lambdaCaptor = argumentCaptor<() -> UUID>()
-    val expectedResult = UUID.randomUUID()
+    val lambdaCaptor = argumentCaptor<() -> List<UUID>>()
+    val expectedResult = listOf(UUID.randomUUID())
     whenever(internalLedger.syncOffenderTransaction(request)).thenReturn(expectedResult)
 
     val res = dualWriteService.syncOffenderTransaction(request)
@@ -86,7 +86,7 @@ class DualWriteLedgerServiceTest {
 
     verifyNoInteractions(generalLedger)
 
-    lambdaCaptor.firstValue.invoke() // Switch service is a mock. Lambda requires a manual trigger to check what's called
+    lambdaCaptor.firstValue.invoke()
     verify(generalLedger).syncOffenderTransaction(request)
 
     verify(internalLedger).syncOffenderTransaction(request)

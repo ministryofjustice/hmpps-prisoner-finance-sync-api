@@ -15,7 +15,7 @@ class DualWriteLedgerService(
   private val generalLedgerForwarder: GeneralLedgerForwarder,
 ) : LedgerService {
 
-  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
+  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
     val result = internalLedger.syncOffenderTransaction(request)
     val offenderDisplayId = request.offenderTransactions.firstOrNull()?.offenderDisplayId ?: ""
 

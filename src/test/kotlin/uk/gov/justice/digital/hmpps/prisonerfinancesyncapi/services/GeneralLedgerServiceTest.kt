@@ -70,7 +70,6 @@ class GeneralLedgerServiceTest {
 
   private val offenderDisplayId = "A1234AA"
 
-  // FIXED: Return real AccountResponse (Data classes cannot be mocked)
   fun mockAccount(reference: String, accountUUID: UUID = UUID.randomUUID(), subAccounts: List<SubAccountResponse> = emptyList()): AccountResponse {
     val accountResponse = AccountResponse(
       id = accountUUID,
@@ -85,7 +84,6 @@ class GeneralLedgerServiceTest {
     return accountResponse
   }
 
-  // FIXED: Return real SubAccountResponse (Data classes cannot be mocked)
   fun mockSubAccount(parentReference: String, subAccountReference: String, accountUUID: UUID = UUID.randomUUID()): SubAccountResponse {
     val mockGLSubAccountResponse = SubAccountResponse(
       id = accountUUID,
@@ -443,8 +441,7 @@ class GeneralLedgerServiceTest {
       )
 
       val result = generalLedgerService.syncOffenderTransaction(request)
-
-      assertThat(result).isEqualTo(transactionRequestUUID)
+      assertThat(result).contains(transactionRequestUUID)
 
       verify(generalLedgerApiClient).findAccountByReference(offenderDisplayId)
       assertThat(result).isNotNull()
@@ -510,7 +507,7 @@ class GeneralLedgerServiceTest {
       )
 
       val result = generalLedgerService.syncOffenderTransaction(request)
-      assertThat(result).isEqualTo(transactionRequestUUID)
+      assertThat(result).contains(transactionRequestUUID)
 
       verify(generalLedgerApiClient, times(1)).findAccountByReference(request.caseloadId)
       assertThat(result).isNotNull()
@@ -563,8 +560,7 @@ class GeneralLedgerServiceTest {
       )
 
       val result = generalLedgerService.syncOffenderTransaction(request)
-
-      assertThat(result).isEqualTo(transactionRequestUUID)
+      assertThat(result).contains(transactionRequestUUID)
 
       verify(generalLedgerApiClient, times(1)).findAccountByReference(offenderDisplayId)
       verify(generalLedgerApiClient, times(1)).findAccountByReference(request.caseloadId)
@@ -621,7 +617,7 @@ class GeneralLedgerServiceTest {
       )
 
       val result = generalLedgerService.syncOffenderTransaction(request)
-      assertThat(result).isEqualTo(transactionRequestUUID)
+      assertThat(result).contains(transactionRequestUUID)
 
       verify(generalLedgerApiClient).findAccountByReference(request.caseloadId)
       verify(generalLedgerApiClient).findAccountByReference(offenderDisplayId)
@@ -649,6 +645,54 @@ class GeneralLedgerServiceTest {
       assertThatThrownBy {
         generalLedgerService.syncOffenderTransaction(request)
       }.isEqualTo(expectedError)
+    }
+
+    @Test
+    fun `should return list of UUIDs when multiple transactions are processed`() {
+      val tx1 = OffenderTransaction(
+        entrySequence = 1,
+        offenderId = 1L,
+        offenderDisplayId = offenderDisplayId,
+        offenderBookingId = 100L,
+        subAccountType = "SPND",
+        postingType = "DR",
+        type = "CANT",
+        description = "Tx 1",
+        amount = 10.00,
+        reference = "REF1",
+        generalLedgerEntries = listOf(GeneralLedgerEntry(1, 2101, "DR", 10.00)),
+      )
+
+      val tx2 = tx1.copy(
+        offenderDisplayId = "B1234BB",
+        description = "Tx 2",
+        reference = "REF2",
+      )
+
+      val request = mock<SyncOffenderTransactionRequest>()
+      whenever(request.caseloadId).thenReturn("MDI")
+      whenever(request.transactionTimestamp).thenReturn(LocalDateTime.now())
+      whenever(request.offenderTransactions).thenReturn(listOf(tx1, tx2))
+
+      mockAccount("MDI")
+      mockAccount(offenderDisplayId)
+      mockAccount("B1234BB")
+
+      whenever(generalLedgerApiClient.findSubAccount(any(), any())).thenReturn(
+        SubAccountResponse(UUID.randomUUID(), "REF", UUID.randomUUID(), "TEST", Instant.now()),
+      )
+
+      val uuid1 = UUID.randomUUID()
+      val uuid2 = UUID.randomUUID()
+
+      whenever(generalLedgerApiClient.postTransaction(any(), any()))
+        .thenReturn(uuid1)
+        .thenReturn(uuid2)
+
+      val result = generalLedgerService.syncOffenderTransaction(request)
+
+      assertThat(result).hasSize(2)
+      assertThat(result).containsExactlyInAnyOrder(uuid1, uuid2)
     }
 
     private fun createRequest(offenderDisplayId: String, prisonCode: String = "TES", glEntries: List<GeneralLedgerEntry> = emptyList()): SyncOffenderTransactionRequest {
