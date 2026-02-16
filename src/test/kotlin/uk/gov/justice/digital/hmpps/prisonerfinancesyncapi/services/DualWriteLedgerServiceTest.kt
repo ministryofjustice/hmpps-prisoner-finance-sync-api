@@ -15,6 +15,7 @@ import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -63,7 +64,7 @@ class DualWriteLedgerServiceTest {
         postingType = "CR",
         type = "OR",
         description = "",
-        amount = 5.99,
+        amount = BigDecimal("5.99"),
         reference = null,
         generalLedgerEntries = emptyList(),
       ),
