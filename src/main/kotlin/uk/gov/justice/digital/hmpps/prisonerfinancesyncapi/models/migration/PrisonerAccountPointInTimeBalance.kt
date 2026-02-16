@@ -23,7 +23,7 @@ data class PrisonerAccountPointInTimeBalance(
   val balance: BigDecimal,
 
   @field:NotNull
-  @field:Schema(description = "The amount on hold for the sub-account.", example = "10.00")
+  @field:Schema(description = "The amount on hold for the sub-account.", example = "10.00", format = "decimal")
   @field:Digits(integer = 19, fraction = 2)
   var holdBalance: BigDecimal,
 

@@ -25,6 +25,7 @@ data class PrisonerEstablishmentBalanceDetails(
   @field:Schema(
     description = "The total amount on hold for this sub account at this establishment.",
     example = "8.00",
+    format = "decimal",
   )
   @field:Digits(integer = 19, fraction = 2)
   val holdBalance: BigDecimal,
