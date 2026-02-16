@@ -68,6 +68,9 @@ class GeneralLedgerServiceTest {
   @Spy
   private val timeConversionService = TimeConversionService()
 
+  @Mock
+  private lateinit var glAccountResolver: GlAccountResolver
+
   @InjectMocks
   private lateinit var generalLedgerService: GeneralLedgerService
 
@@ -91,56 +94,25 @@ class GeneralLedgerServiceTest {
     return accountResponse
   }
 
-  fun mockSubAccount(parentReference: String, subAccountReference: String, accountUUID: UUID = UUID.randomUUID()): SubAccountResponse {
-    val mockGLSubAccountResponse = SubAccountResponse(
-      id = accountUUID,
-      reference = subAccountReference,
-      parentAccountId = UUID.randomUUID(),
-      createdBy = "OMS_OWNER",
-      createdAt = Instant.now(),
-    )
-    whenever(generalLedgerApiClient.findSubAccount(parentReference, subAccountReference))
-      .thenReturn(mockGLSubAccountResponse)
+  private fun makeMockSubAccountResolver(request: SyncOffenderTransactionRequest): MutableMap<String, UUID> {
+    val mapUUID = mutableMapOf<String, UUID>()
 
-    return mockGLSubAccountResponse
-  }
-
-  fun mockAccountNotFoundAndCreateAccount(reference: String, accountUUID: UUID = UUID.randomUUID()) {
-    whenever(generalLedgerApiClient.findAccountByReference(reference)).thenReturn(null)
-
-    val mockGlAccountResponse = AccountResponse(
-      id = accountUUID,
-      reference = reference,
-      createdBy = "OMS_OWNER",
-      createdAt = Instant.now(),
-      subAccounts = emptyList(),
-    )
-    whenever(generalLedgerApiClient.createAccount(reference))
-      .thenReturn(mockGlAccountResponse)
-  }
-
-  fun mockSubAccountNotFoundAndCreateSubAccount(parentReference: String, parentReferenceUUId: UUID, subAccountReference: String) {
-    whenever(
-      generalLedgerApiClient.findSubAccount(
-        parentReference,
-        subAccountReference,
-      ),
-    ).thenReturn(null)
-
-    val mockPrisonSubAccountResponse = SubAccountResponse(
-      id = UUID.randomUUID(),
-      reference = subAccountReference,
-      parentAccountId = parentReferenceUUId,
-      createdBy = "OMS_OWNER",
-      createdAt = Instant.now(),
-    )
-
-    whenever(
-      generalLedgerApiClient.createSubAccount(
-        parentReferenceUUId,
-        subAccountReference,
-      ),
-    ).thenReturn(mockPrisonSubAccountResponse)
+    for ((i, transaction) in request.offenderTransactions.withIndex()) {
+      for (entry in transaction.generalLedgerEntries) {
+        mapUUID["$i-${entry.entrySequence}"] = UUID.randomUUID()
+        whenever(
+          glAccountResolver.resolveSubAccount(
+            eq(request.caseloadId),
+            eq(transaction.offenderDisplayId),
+            eq(entry.code),
+            eq(transaction.type),
+            any(),
+          ),
+        )
+          .thenReturn(mapUUID["$i-${entry.entrySequence}"])
+      }
+    }
+    return mapUUID
   }
 
   fun mockPostTransaction(request: SyncOffenderTransactionRequest, postingsGL: List<CreatePostingRequest>, returnUUID: UUID = UUID.randomUUID()): CreateTransactionRequest {
@@ -161,6 +133,8 @@ class GeneralLedgerServiceTest {
   fun setup() {
     listAppender = ListAppender<ILoggingEvent>().apply { start() }
     logger.addAppender(listAppender)
+
+    accountMapping = LedgerAccountMappingService()
   }
 
   @AfterEach
@@ -401,261 +375,58 @@ class GeneralLedgerServiceTest {
   @Nested
   @DisplayName("syncOffenderTransaction")
   inner class SyncOffenderTransaction {
-
     @Test
-    fun `should log accountId when existing prison and prisoner account found`() {
-      val request = createRequest(offenderDisplayId)
-      val accountUuidPrison = UUID.randomUUID()
-      val accountUuidPrisoner = UUID.randomUUID()
-
-      mockAccount(request.caseloadId, accountUuidPrison)
-      mockAccount(offenderDisplayId, accountUuidPrisoner)
-
-      val subAccountPrisonUUID = UUID.randomUUID()
-      val subAccountPrisonerUUID = UUID.randomUUID()
-      mockSubAccount(
-        request.caseloadId,
-        accountMapping.mapPrisonSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[0].code,
-          request.offenderTransactions[0].type,
-        ),
-        subAccountPrisonUUID,
-      )
-      mockSubAccount(
-        offenderDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-        subAccountPrisonerUUID,
+    fun `should propagate exception from resolveSubAccount`() {
+      val glEntry = GeneralLedgerEntry(
+        entrySequence = 1,
+        code = 1,
+        postingType = "CREDIT",
+        amount = BigDecimal("100.00"),
       )
 
-      val transactionRequestUUID = UUID.randomUUID()
-      mockPostTransaction(
-        request,
-        listOf<CreatePostingRequest>(
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
-          ),
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonerUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
-          ),
-        ),
-        transactionRequestUUID,
+      val offenderTransaction = OffenderTransaction(
+        offenderDisplayId = "A1234BC",
+        type = "CREDIT",
+        generalLedgerEntries = listOf(glEntry),
+        reference = "TX123",
+        description = "Test Transaction",
+        entrySequence = 1,
+        offenderId = 1234567,
+        offenderBookingId = 1,
+        subAccountType = "",
+        postingType = "CR",
+        amount = BigDecimal("100.00"),
       )
 
-      val result = generalLedgerService.syncOffenderTransaction(request)
-      assertThat(result).contains(transactionRequestUUID)
-
-      verify(generalLedgerApiClient).findAccountByReference(offenderDisplayId)
-      assertThat(result).isNotNull()
-
-      val logs = listAppender.list.map { it.formattedMessage }
-      assertThat(logs).contains("General Ledger account found for '${request.caseloadId}' (UUID: $accountUuidPrison)")
-      assertThat(logs).contains("General Ledger account found for '$offenderDisplayId' (UUID: $accountUuidPrisoner)")
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should create parent account for prison when account not found`() {
-      val request = createRequest(offenderDisplayId)
-
-      mockAccount(offenderDisplayId)
-
-      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId)).thenReturn(null)
-
-      val accountResponse = AccountResponse(
-        id = UUID.randomUUID(),
-        reference = request.caseloadId,
-        createdBy = "OMS_OWNER",
-        createdAt = Instant.now(),
-        subAccounts = emptyList(),
+      val request = SyncOffenderTransactionRequest(
+        caseloadId = "LEI",
+        transactionTimestamp = LocalDateTime.now(),
+        offenderTransactions = listOf(offenderTransaction),
+        transactionId = 1234567,
+        requestId = UUID.randomUUID(),
+        createdBy = Instant.now().toString(),
+        createdAt = LocalDateTime.now(),
+        createdByDisplayName = "test-user",
+        lastModifiedAt = LocalDateTime.now(),
+        lastModifiedBy = "test-user",
+        lastModifiedByDisplayName = "Test User",
       )
-      whenever(generalLedgerApiClient.createAccount(request.caseloadId))
-        .thenReturn(accountResponse)
-
-      val subAccountPrisonUUID = UUID.randomUUID()
-      val subAccountPrisonerUUID = UUID.randomUUID()
-      mockSubAccount(
-        request.caseloadId,
-        accountMapping.mapPrisonSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[0].code,
-          request.offenderTransactions[0].type,
-        ),
-        subAccountPrisonUUID,
-      )
-
-      mockSubAccount(
-        offenderDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-        subAccountPrisonerUUID,
-      )
-
-      val transactionRequestUUID = UUID.randomUUID()
-      mockPostTransaction(
-        request,
-        listOf<CreatePostingRequest>(
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
-          ),
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonerUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
-          ),
-        ),
-        transactionRequestUUID,
-      )
-
-      val result = generalLedgerService.syncOffenderTransaction(request)
-      assertThat(result).contains(transactionRequestUUID)
-
-      verify(generalLedgerApiClient, times(1)).findAccountByReference(request.caseloadId)
-      assertThat(result).isNotNull()
-
-      verify(generalLedgerApiClient, times(1)).createAccount(request.caseloadId)
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should create parent account for prisoner when account not found`() {
-      val request = createRequest(offenderDisplayId)
-
-      mockAccountNotFoundAndCreateAccount(offenderDisplayId)
-      mockAccountNotFoundAndCreateAccount(request.caseloadId)
-
-      val subAccountPrisonUUID = UUID.randomUUID()
-      mockSubAccount(
-        request.caseloadId,
-        accountMapping.mapPrisonSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[0].code,
-          request.offenderTransactions[0].type,
-        ),
-        subAccountPrisonUUID,
-      )
-
-      val subAccountPrisonerUUID = UUID.randomUUID()
-      mockSubAccount(
-        offenderDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-        subAccountPrisonerUUID,
-      )
-
-      val transactionRequestUUID = UUID.randomUUID()
-      val mockTransaction = mockPostTransaction(
-        request,
-        listOf<CreatePostingRequest>(
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
-          ),
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonerUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
-          ),
-        ),
-        transactionRequestUUID,
-      )
-
-      val result = generalLedgerService.syncOffenderTransaction(request)
-      assertThat(result).contains(transactionRequestUUID)
-
-      verify(generalLedgerApiClient, times(1)).findAccountByReference(offenderDisplayId)
-      verify(generalLedgerApiClient, times(1)).findAccountByReference(request.caseloadId)
-
-      assertThat(result).isNotNull()
-
-      verify(generalLedgerApiClient, times(1)).createAccount(offenderDisplayId)
-
-      verify(generalLedgerApiClient, times(1)).postTransaction(eq(mockTransaction), any())
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should create a new accounts when both prisoner and prison accounts are not found`() {
-      val request = createRequest(offenderDisplayId)
-
-      mockAccountNotFoundAndCreateAccount(offenderDisplayId)
-      mockAccountNotFoundAndCreateAccount(request.caseloadId)
-
-      val subAccountPrisonUUID = UUID.randomUUID()
-      val subAccountPrisonerUUID = UUID.randomUUID()
-      mockSubAccount(
-        request.caseloadId,
-        accountMapping.mapPrisonSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[0].code,
-          request.offenderTransactions[0].type,
-        ),
-        subAccountPrisonUUID,
-      )
-
-      mockSubAccount(
-        offenderDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          request.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-        subAccountPrisonerUUID,
-      )
-
-      val transactionRequestUUID = UUID.randomUUID()
-      mockPostTransaction(
-        request,
-        listOf<CreatePostingRequest>(
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[0].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[0].amount.toPence(),
-          ),
-          CreatePostingRequest(
-            subAccountId = subAccountPrisonerUUID,
-            type = CreatePostingRequest.Type.valueOf(request.offenderTransactions[0].generalLedgerEntries[1].postingType),
-            amount = request.offenderTransactions[0].generalLedgerEntries[1].amount.toPence(),
-          ),
-        ),
-        transactionRequestUUID,
-      )
-
-      val result = generalLedgerService.syncOffenderTransaction(request)
-      assertThat(result).contains(transactionRequestUUID)
-
-      verify(generalLedgerApiClient).findAccountByReference(request.caseloadId)
-      verify(generalLedgerApiClient).findAccountByReference(offenderDisplayId)
-      assertThat(result).isNotNull()
-
-      val logs = listAppender.list.map { it.formattedMessage }
-
-      verify(generalLedgerApiClient, times(1)).createAccount(offenderDisplayId)
-      verify(generalLedgerApiClient, times(1)).createAccount(request.caseloadId)
-
-      assertThat(logs).contains("General Ledger account not found for '${request.caseloadId}'. Creating new account.")
-      assertThat(logs).contains("General Ledger account not found for '$offenderDisplayId'. Creating new account.")
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should propagate exception from findAccountByReference`() {
-      val request = mock<SyncOffenderTransactionRequest>()
-      whenever(request.caseloadId).thenReturn("TES")
 
       val expectedError = RuntimeException("Network Error")
 
-      whenever(generalLedgerApiClient.findAccountByReference(request.caseloadId))
-        .thenThrow(expectedError)
+      whenever(
+        glAccountResolver.resolveSubAccount(
+          any<String>(),
+          any<String>(),
+          any(),
+          any<String>(),
+          any(),
+        ),
+      ).thenThrow(expectedError)
 
       assertThatThrownBy {
         generalLedgerService.syncOffenderTransaction(request)
-      }.isEqualTo(expectedError)
+      }.isSameAs(expectedError)
     }
 
     @Test
@@ -687,13 +458,10 @@ class GeneralLedgerServiceTest {
       whenever(request.transactionTimestamp).thenReturn(LocalDateTime.now())
       whenever(request.offenderTransactions).thenReturn(listOf(tx1, tx2))
 
-      mockAccount("MDI")
-      mockAccount(offenderDisplayId)
-      mockAccount("B1234BB")
-
-      whenever(generalLedgerApiClient.findSubAccount(any(), any())).thenReturn(
-        SubAccountResponse(UUID.randomUUID(), "REF", UUID.randomUUID(), "TEST", Instant.now()),
-      )
+      whenever(glAccountResolver.resolveSubAccount(any(), any(), any(), any(), any()))
+        .thenReturn(
+          UUID.randomUUID(),
+        )
 
       val uuid1 = UUID.randomUUID()
       val uuid2 = UUID.randomUUID()
@@ -711,13 +479,38 @@ class GeneralLedgerServiceTest {
 
     @Test
     fun `should save mapping with correct NOMIS transaction ID`() {
-      val request = createRequest(offenderDisplayId)
-      val tx = request.offenderTransactions[0]
-      mockAccount(request.caseloadId)
-      mockAccount(offenderDisplayId)
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 12345L,
+        caseloadId = "TEST",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction for Balance Check",
+            amount = BigDecimal("10.00"),
+            reference = "REF-54322L",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+        ),
+      )
 
-      mockSubAccount(request.caseloadId, accountMapping.mapPrisonSubAccount(tx.generalLedgerEntries[0].code, tx.type))
-      mockSubAccount(offenderDisplayId, accountMapping.mapPrisonerSubAccount(tx.generalLedgerEntries[1].code))
+      makeMockSubAccountResolver(request)
 
       whenever(generalLedgerApiClient.postTransaction(any(), any())).thenReturn(UUID.randomUUID())
 
@@ -725,38 +518,9 @@ class GeneralLedgerServiceTest {
 
       verify(generalLedgerTransactionMappingRepository).save(
         org.mockito.kotlin.check {
-          assertThat(it.legacyTransactionId).isEqualTo(12345L)
+          assertThat(it.legacyTransactionId).isEqualTo(request.transactionId)
         },
       )
-    }
-
-    private fun createRequest(offenderDisplayId: String, prisonCode: String = "TES", glEntries: List<GeneralLedgerEntry> = emptyList()): SyncOffenderTransactionRequest {
-      val offenderTx = mock<OffenderTransaction>()
-      whenever(offenderTx.type).thenReturn("CANT")
-      whenever(offenderTx.offenderDisplayId).thenReturn(offenderDisplayId)
-      whenever(offenderTx.description).thenReturn("description text")
-      whenever(offenderTx.reference).thenReturn("reference text")
-      whenever(offenderTx.amount).thenReturn(BigDecimal("10.00"))
-      whenever(offenderTx.entrySequence).thenReturn(1)
-
-      if (glEntries.isNotEmpty()) {
-        whenever(offenderTx.generalLedgerEntries).thenReturn(glEntries)
-      } else {
-        whenever(offenderTx.generalLedgerEntries).thenReturn(
-          listOf(
-            GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
-            GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
-          ),
-        )
-      }
-
-      val request = mock<SyncOffenderTransactionRequest>()
-      whenever(request.transactionId).thenReturn(12345L)
-      whenever(request.offenderTransactions).thenReturn(listOf(offenderTx))
-      whenever(request.caseloadId).thenReturn(prisonCode)
-      whenever(request.transactionTimestamp).thenReturn(LocalDateTime.now())
-
-      return request
     }
   }
 
@@ -793,10 +557,6 @@ class GeneralLedgerServiceTest {
         lastModifiedByDisplayName = null,
         offenderTransactions = emptyList(),
       )
-
-      val accountUUIDPrison = UUID.randomUUID()
-
-      mockAccount(requestWithNoOffenderTransactions.caseloadId, accountUUIDPrison)
 
       assertThatThrownBy {
         generalLedgerService.syncOffenderTransaction(requestWithNoOffenderTransactions)
@@ -846,27 +606,7 @@ class GeneralLedgerServiceTest {
         ),
       )
 
-      val accountUUIDPrisoner = UUID.randomUUID()
-      val accountUUIDPrison = UUID.randomUUID()
-
-      val subAccountUUIDPrisoner = UUID.randomUUID()
-      val subAccountUUIDPrison = UUID.randomUUID()
-
-      mockAccount(request.caseloadId, accountUUIDPrison)
-
-      mockAccount(offenderDisplayId, accountUUIDPrisoner)
-
-      mockSubAccount(
-        prisonId,
-        accountMapping.mapPrisonSubAccount(prisonAccountCode, transactionType),
-        subAccountUUIDPrison,
-      )
-
-      mockSubAccount(
-        offenderDisplayId,
-        accountMapping.mapPrisonerSubAccount(prisonerAccountCode),
-        subAccountUUIDPrisoner,
-      )
+      val mapOfUUIDs = makeMockSubAccountResolver(request)
 
       val glTransactionRequest = CreateTransactionRequest(
         reference = request.offenderTransactions[0].reference!!,
@@ -874,8 +614,8 @@ class GeneralLedgerServiceTest {
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = amount.toPence(),
         postings = listOf(
-          CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
-          CreatePostingRequest(subAccountId = subAccountUUIDPrisoner, type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-1"), type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-2"), type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
         ),
       )
       val expectedUUID = UUID.randomUUID()
@@ -948,37 +688,7 @@ class GeneralLedgerServiceTest {
         ),
       )
 
-      val accountUUIDPrisoner1 = UUID.randomUUID()
-      val accountUUIDPrisoner2 = UUID.randomUUID()
-      val accountUUIDPrison = UUID.randomUUID()
-
-      val subAccountUUIDPrisoner1 = UUID.randomUUID()
-      val subAccountUUIDPrisoner2 = UUID.randomUUID()
-      val subAccountUUIDPrison = UUID.randomUUID()
-
-      mockAccount(requestTransactionWithMultiplePrisoners.caseloadId, accountUUIDPrison)
-
-      mockAccount(prisoner1DisplayId, accountUUIDPrisoner1)
-
-      mockAccount(prisoner2DisplayId, accountUUIDPrisoner2)
-
-      mockSubAccount(
-        prisonId,
-        accountMapping.mapPrisonSubAccount(prisonAccountCode, transactionType),
-        subAccountUUIDPrison,
-      )
-
-      mockSubAccount(
-        prisoner1DisplayId,
-        accountMapping.mapPrisonerSubAccount(prisonerAccountCode),
-        subAccountUUIDPrisoner1,
-      )
-
-      mockSubAccount(
-        prisoner2DisplayId,
-        accountMapping.mapPrisonerSubAccount(prisonerAccountCode),
-        subAccountUUIDPrisoner2,
-      )
+      val mapUUID = makeMockSubAccountResolver(requestTransactionWithMultiplePrisoners)
 
       val glTransactionRequestPrisoner1 = CreateTransactionRequest(
         reference = requestTransactionWithMultiplePrisoners.offenderTransactions[0].reference!!,
@@ -986,8 +696,8 @@ class GeneralLedgerServiceTest {
         timestamp = timeConversionService.toUtcInstant(requestTransactionWithMultiplePrisoners.transactionTimestamp),
         amount = amount.toPence(),
         postings = listOf(
-          CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
-          CreatePostingRequest(subAccountId = subAccountUUIDPrisoner1, type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("0-1"), type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("0-2"), type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
         ),
       )
 
@@ -997,8 +707,8 @@ class GeneralLedgerServiceTest {
         timestamp = timeConversionService.toUtcInstant(requestTransactionWithMultiplePrisoners.transactionTimestamp),
         amount = amount.toPence(),
         postings = listOf(
-          CreatePostingRequest(subAccountId = subAccountUUIDPrison, type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
-          CreatePostingRequest(subAccountId = subAccountUUIDPrisoner2, type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("1-1"), type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("1-2"), type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
         ),
       )
       whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner1), any())).thenReturn(UUID.randomUUID())
@@ -1009,282 +719,6 @@ class GeneralLedgerServiceTest {
       verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner1), any())
       verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner2), any())
       verify(generalLedgerTransactionMappingRepository, times(2)).save(any())
-    }
-  }
-
-  @Nested
-  @DisplayName("syncOffenderTransactionSubAccount")
-  inner class SyncOffenderTransactionSubAccount {
-
-    fun makeMockTransactions(
-      prisonerDisplayId: String,
-      prisonCode: String,
-      transactionType: String,
-      transactionEntries: List<GeneralLedgerEntry>,
-    ): SyncOffenderTransactionRequest {
-      val transaction =
-        OffenderTransaction(
-          entrySequence = 1,
-          offenderId = 1L,
-          offenderDisplayId = prisonerDisplayId,
-          offenderBookingId = 100L,
-          subAccountType = "SPND",
-          postingType = "DR",
-          type = transactionType,
-          description = "Test Transaction",
-          amount = BigDecimal("10.00"),
-          reference = "REF",
-          generalLedgerEntries = transactionEntries,
-        )
-
-      val syncOffenderTransactionRequest = mock<SyncOffenderTransactionRequest>()
-      whenever(syncOffenderTransactionRequest.transactionId).thenReturn(12345L)
-      whenever(syncOffenderTransactionRequest.offenderTransactions).thenReturn(listOf(transaction))
-      whenever(syncOffenderTransactionRequest.transactionTimestamp).thenReturn(LocalDateTime.now())
-
-      whenever(syncOffenderTransactionRequest.caseloadId).thenReturn(prisonCode)
-
-      return syncOffenderTransactionRequest
-    }
-
-    @Test
-    fun `should find prisoner SUB account when prisoner account exists`() {
-      val prisonerDisplayId = "A123456"
-      val prisonCode = "MDI"
-
-      val syncOffenderTransactionRequest = makeMockTransactions(
-        prisonerDisplayId,
-        prisonCode,
-        "TEST",
-        listOf(
-          GeneralLedgerEntry(1, 2102, "DR", BigDecimal("10.00")),
-          GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
-        ),
-      )
-      mockAccount(prisonerDisplayId)
-      mockAccount(prisonCode)
-
-      syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries.forEach { entry ->
-        mockSubAccount(
-          prisonerDisplayId,
-          accountMapping.mapPrisonerSubAccount(entry.code),
-        )
-      }
-
-      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenReturn(UUID.randomUUID())
-
-      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
-
-      verify(generalLedgerApiClient, times(1)).findSubAccount(
-        prisonerDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
-        ),
-      )
-      verify(generalLedgerApiClient, times(1)).findSubAccount(
-        prisonerDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-      )
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should find prison SUB account when prison sub account exists`() {
-      val prisonerDisplayId = "A123456"
-      val prisonCode = "MDI"
-      val transactionType = "CANT"
-      val prisonerSubAccount = 2101
-      val prisonSubAccount = 1502
-
-      val syncOffenderTransactionRequest = makeMockTransactions(
-        prisonerDisplayId,
-        prisonCode,
-        transactionType,
-        listOf(
-          GeneralLedgerEntry(1, prisonSubAccount, "DR", BigDecimal("10.00")),
-          GeneralLedgerEntry(2, prisonerSubAccount, "CR", BigDecimal("10.00")),
-        ),
-      )
-
-      mockAccount(prisonerDisplayId)
-      mockAccount(prisonCode)
-      mockSubAccount(
-        prisonCode,
-        accountMapping.mapPrisonSubAccount(prisonSubAccount, transactionType),
-      )
-      mockSubAccount(
-        prisonerDisplayId,
-        accountMapping.mapPrisonerSubAccount(prisonerSubAccount),
-      )
-
-      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenReturn(UUID.randomUUID())
-
-      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
-
-      verify(generalLedgerApiClient, times(1)).findSubAccount(
-        prisonCode,
-        accountMapping.mapPrisonSubAccount(
-          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
-          transactionType,
-        ),
-      )
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should find prisoner and prison SUB accounts when prisoner and prison sub accounts exist`() {
-      val prisonerDisplayId = "A123456"
-      val prisonCode = "MDI"
-      val transactionType = "CANT"
-      val prisonerSubAccount = 2101
-      val prisonSubAccount = 1502
-
-      val syncOffenderTransactionRequest = makeMockTransactions(
-        prisonerDisplayId,
-        prisonCode,
-        transactionType,
-        listOf(
-          GeneralLedgerEntry(1, prisonSubAccount, "DR", BigDecimal("10.00")),
-          GeneralLedgerEntry(2, prisonerSubAccount, "CR", BigDecimal("10.00")),
-        ),
-      )
-
-      mockAccount(prisonerDisplayId)
-      mockAccount(prisonCode)
-
-      mockSubAccount(
-        prisonCode,
-        accountMapping.mapPrisonSubAccount(prisonSubAccount, transactionType),
-      )
-      mockSubAccount(
-        prisonerDisplayId,
-        accountMapping.mapPrisonerSubAccount(prisonerSubAccount),
-      )
-
-      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenReturn(UUID.randomUUID())
-
-      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
-
-      verify(generalLedgerApiClient, times(1)).findSubAccount(
-        prisonCode,
-        accountMapping.mapPrisonSubAccount(
-          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
-          transactionType,
-        ),
-      )
-      verify(generalLedgerApiClient, times(1)).findSubAccount(
-        prisonerDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-      )
-
-      verify(generalLedgerApiClient, times(0)).createSubAccount(
-        any(),
-        any(),
-      )
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should find and create prisoner SUB account when prisoner sub account doesnt exist`() {
-      val prisonerDisplayId = "A123456"
-      val prisonCode = "MDI"
-
-      val syncOffenderTransactionRequest = makeMockTransactions(
-        prisonerDisplayId,
-        prisonCode,
-        "TEST",
-        listOf(
-          GeneralLedgerEntry(1, 2102, "DR", BigDecimal("10.00")),
-          GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
-        ),
-      )
-
-      val parentUUID = UUID.randomUUID()
-      mockAccount(prisonerDisplayId, parentUUID)
-      mockAccount(prisonCode)
-
-      val subAccountRefs = mutableListOf<String>()
-      syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries.forEach { entry ->
-        val prisonerSubAccountRef = accountMapping.mapPrisonerSubAccount(entry.code)
-        subAccountRefs.add(prisonerSubAccountRef)
-        mockSubAccountNotFoundAndCreateSubAccount(prisonerDisplayId, parentUUID, prisonerSubAccountRef)
-      }
-
-      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenReturn(UUID.randomUUID())
-
-      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
-
-      subAccountRefs.forEach { ref ->
-        verify(generalLedgerApiClient, times(1)).findSubAccount(
-          prisonerDisplayId,
-          ref,
-        )
-        verify(generalLedgerApiClient, times(1)).createSubAccount(
-          parentUUID,
-          ref,
-        )
-      }
-      verify(generalLedgerTransactionMappingRepository).save(any())
-    }
-
-    @Test
-    fun `should find and create prison SUB account when prison sub account doesnt exist`() {
-      val prisonerDisplayId = "A123456"
-      val prisonCode = "MDI"
-      val transactionType = "CANT"
-
-      val syncOffenderTransactionRequest = makeMockTransactions(
-        prisonerDisplayId,
-        prisonCode,
-        transactionType,
-        listOf(
-          GeneralLedgerEntry(1, 1502, "DR", BigDecimal("10.00")),
-          GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
-        ),
-      )
-
-      val parentUUIDPrison = UUID.randomUUID()
-      mockAccount(prisonerDisplayId)
-      mockAccount(prisonCode, parentUUIDPrison)
-
-      mockSubAccount(
-        prisonerDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-      )
-
-      val prisonSubAccountRef = accountMapping.mapPrisonSubAccount(
-        syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[0].code,
-        transactionType,
-      )
-
-      mockSubAccountNotFoundAndCreateSubAccount(
-        prisonCode,
-        parentUUIDPrison,
-        prisonSubAccountRef,
-      )
-
-      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenReturn(UUID.randomUUID())
-
-      generalLedgerService.syncOffenderTransaction(syncOffenderTransactionRequest)
-
-      verify(generalLedgerApiClient, times(1)).findSubAccount(
-        prisonerDisplayId,
-        accountMapping.mapPrisonerSubAccount(
-          syncOffenderTransactionRequest.offenderTransactions[0].generalLedgerEntries[1].code,
-        ),
-      )
-
-      verify(generalLedgerApiClient, times(1)).createSubAccount(
-        parentUUIDPrison,
-        prisonSubAccountRef,
-      )
-      verify(generalLedgerTransactionMappingRepository).save(any())
     }
   }
 }

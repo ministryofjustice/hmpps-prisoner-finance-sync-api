@@ -136,7 +136,7 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
     }
 
     generalLedgerApi.stubGetAccountNotFound(PRISONER_DISPLAY_ID)
-    generalLedgerApi.stubCreateAccount(PRISONER_DISPLAY_ID, parentAccountId.toString())
+    generalLedgerApi.stubCreateAccount(PRISONER_DISPLAY_ID, parentAccountId)
 
     for (subAccount in subAccounts.values) {
       generalLedgerApi.stubCreateSubAccount(parentAccountId, subAccount.reference, subAccount.id.toString())
