@@ -25,6 +25,25 @@ class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
   private lateinit var objectMapper: ObjectMapper
 
   @Test
+  fun `should throw 400 BAD request when amount has more than 2 decimal places`() {
+    val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
+    val requestBody = GeneralLedgerBalancesSyncRequest(
+      accountBalances = listOf(
+        GeneralLedgerPointInTimeBalance(accountCode = 2101, balance = BigDecimal("10.001"), asOfTimestamp = LocalDateTime.now()),
+      ),
+    )
+
+    webTestClient
+      .post()
+      .uri("/migrate/general-ledger-balances/{prisonId}", prisonId)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(requestBody))
+      .exchange()
+      .expectStatus().isBadRequest
+  }
+
+  @Test
   fun `should migrate initial balances for non-prisoner GL accounts correctly`() {
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
     val accountCode1 = 1501 // Receivable For Earnings (Asset)

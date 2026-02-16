@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync
 
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.Digits
 import java.math.BigDecimal
 
 @Schema(description = "Balance of prison general ledger account")
@@ -12,5 +13,6 @@ data class GeneralLedgerBalanceDetails(
     description = "The current monetary balance of the prison general ledger account. This value can be positive or negative.",
     example = "1234.56",
   )
+  @field:Digits(integer = 19, fraction = 2)
   val balance: BigDecimal = BigDecimal.ZERO,
 )

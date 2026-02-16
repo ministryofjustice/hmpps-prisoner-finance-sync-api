@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration
 
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.Digits
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import java.math.BigDecimal
@@ -18,15 +19,17 @@ data class PrisonerAccountPointInTimeBalance(
 
   @field:NotNull
   @field:Schema(description = "The account balance at the specified time.", example = "123.45")
+  @field:Digits(integer = 19, fraction = 2)
   val balance: BigDecimal,
 
   @field:NotNull
   @field:Schema(description = "The amount on hold for the sub-account.", example = "10.00")
-  val holdBalance: BigDecimal,
+  @field:Digits(integer = 19, fraction = 2)
+  var holdBalance: BigDecimal,
 
   @field:NotNull
   @field:Schema(description = "The transaction ID that resulted in the last update to the prisoner balance.")
-  val transactionId: Long?,
+  var transactionId: Long?,
 
   @field:NotNull
   @field:Schema(

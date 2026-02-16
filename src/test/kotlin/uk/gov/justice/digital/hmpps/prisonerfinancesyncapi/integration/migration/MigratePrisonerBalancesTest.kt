@@ -19,6 +19,24 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
   private lateinit var objectMapper: ObjectMapper
 
   @Test
+  fun `should throw 400 Bad request when amount has more than 2 decimal places`() {
+    val prisonerMigrationRequestBody = PrisonerBalancesSyncRequest(
+      accountBalances = listOf(
+        PrisonerAccountPointInTimeBalance(prisonId = "TEST", accountCode = 2101, balance = BigDecimal("10.001"), holdBalance = BigDecimal.ZERO, asOfTimestamp = LocalDateTime.now(), transactionId = 1234L),
+      ),
+    )
+
+    webTestClient
+      .post()
+      .uri("/migrate/prisoner-balances/{prisonNumber}", "A1234AA")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(prisonerMigrationRequestBody))
+      .exchange()
+      .expectStatus().isBadRequest
+  }
+
+  @Test
   fun `should migrate initial balances for a new prisoner and retrieve them correctly`() {
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
     val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
