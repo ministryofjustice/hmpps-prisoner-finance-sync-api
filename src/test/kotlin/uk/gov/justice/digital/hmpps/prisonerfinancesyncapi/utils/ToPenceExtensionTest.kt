@@ -19,6 +19,9 @@ class ToPenceExtensionTest {
     "9.99,999",
     "0.01,1",
     "1.15,115",
+    "1.1599,115",
+    "1.150000000001,115",
+    "1.1999,119",
     "100000.00,10000000",
   )
   fun `should cast Decimal to GL Long`(inputVal: BigDecimal, expected: Long) {
