@@ -5,6 +5,8 @@ import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
+import org.apache.commons.lang3.StringUtils
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -28,6 +30,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.Pris
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -73,6 +77,13 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
     transactionEntryRepository.deleteAll()
     transactionRepository.deleteAll()
     accountRepository.deleteAll()
+  }
+
+  private fun captureOutputStream(): ByteArrayOutputStream {
+    val outputStream = ByteArrayOutputStream()
+    val printStream = PrintStream(outputStream)
+    System.setOut(printStream)
+    return outputStream
   }
 
   fun createSubAccountResponse(subAccountRef: String, parentUUID: UUID) = SubAccountResponse(
@@ -203,6 +214,8 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
       )
     }
 
+    val outputStream = captureOutputStream()
+
     generalLedgerApi.stubGetAccount(PRISONER_DISPLAY_ID, parentAccountId, subAccounts.values.toList())
 
     for (subAccount in subAccounts.values) {
@@ -231,6 +244,98 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
       getRequestedFor(urlPathMatching("/accounts"))
         .withQueryParam("reference", equalTo(PRISONER_DISPLAY_ID)),
     )
+
+    assertThat(
+      StringUtils.countMatches(
+        outputStream.toString(),
+        "Successfully migrated balance",
+      ),
+    )
+      .isEqualTo(2)
+
+    generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/sub-accounts.*/balance")))
+  }
+
+  @Test
+  fun `should log an error when GL POST sub account balance returns Not Found response`() {
+    val req = PrisonerBalancesSyncRequest(
+      accountBalances = listOf(
+        PrisonerAccountPointInTimeBalance(
+          prisonId = "TEST",
+          accountCode = 2101,
+          balance = BigDecimal("100.00"),
+          holdBalance = BigDecimal.ZERO,
+          asOfTimestamp = LocalDateTime.now(),
+          transactionId = 1234L,
+        ),
+        PrisonerAccountPointInTimeBalance(
+          prisonId = "LEI",
+          accountCode = 2101,
+          balance = BigDecimal("120.00"),
+          holdBalance = BigDecimal.ZERO,
+          asOfTimestamp = LocalDateTime.now() - Duration.ofDays(1),
+          transactionId = 1234L,
+        ),
+        PrisonerAccountPointInTimeBalance(
+          prisonId = "LEI",
+          accountCode = 2102,
+          balance = BigDecimal("10.00"),
+          holdBalance = BigDecimal.ZERO,
+          asOfTimestamp = LocalDateTime.now() - Duration.ofDays(2),
+          transactionId = 1234L,
+        ),
+      ),
+    )
+
+    val parentAccountId = UUID.randomUUID()
+    val subAccounts = mutableMapOf<Int, SubAccountResponse>()
+
+    for (balance in req.accountBalances) {
+      subAccounts[balance.accountCode] = createSubAccountResponse(
+        accountMapping.mapPrisonerSubAccount(balance.accountCode),
+        parentAccountId,
+      )
+    }
+
+    val outputStream = captureOutputStream()
+
+    generalLedgerApi.stubGetAccount(PRISONER_DISPLAY_ID, parentAccountId, subAccounts.values.toList())
+
+    for (subAccount in subAccounts.values) {
+      generalLedgerApi.stubPostSubAccountBalanceNotFound(
+        subAccount.id,
+        req.accountBalances
+          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
+          .sumOf { it.balance }.toPence(),
+        req.accountBalances
+          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
+          .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
+      )
+    }
+
+    webTestClient
+      .post()
+      .uri("/migrate/prisoner-balances/{prisonNumber}", PRISONER_DISPLAY_ID)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(req))
+      .exchange()
+      .expectStatus().isOk
+
+    generalLedgerApi.verify(
+      1,
+      getRequestedFor(urlPathMatching("/accounts"))
+        .withQueryParam("reference", equalTo(PRISONER_DISPLAY_ID)),
+    )
+
+    assertThat(
+      StringUtils.countMatches(
+        outputStream.toString(),
+        "Failed to migrate balance for prisoner",
+      ),
+    )
+      .isEqualTo(2)
+
     generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/sub-accounts.*/balance")))
   }
 }
