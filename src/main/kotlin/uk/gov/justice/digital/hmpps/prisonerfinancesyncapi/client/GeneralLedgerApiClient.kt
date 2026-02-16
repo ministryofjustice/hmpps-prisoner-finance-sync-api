@@ -7,11 +7,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateAccountRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateStatementBalanceRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import java.util.UUID
+import kotlin.collections.firstOrNull
 
 @Component
 class GeneralLedgerApiClient(
@@ -23,6 +25,10 @@ class GeneralLedgerApiClient(
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
   }
+
+  // POST /sub-accounts/{subAccountId}/balance
+  fun migrateSubAccountBalance(subAccountID: UUID, createStatementBalanceRequest: CreateStatementBalanceRequest) = subAccountApi.postStatementBalance(subAccountID, createStatementBalanceRequest)
+    .block() ?: throw IllegalStateException("Received null response when migrating sub-account $subAccountID")
 
   // GET /accounts?reference={reference}
   fun findAccountByReference(reference: String): AccountResponse? = accountApi.getAccount(reference)

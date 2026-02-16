@@ -68,6 +68,54 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  // POST /sub-accounts/{subAccountId}/balance
+  fun stubPostSubAccountBalance(subAccountID: UUID, amount: Long, balanceDateTime: Instant) {
+    stubFor(
+      post(urlPathEqualTo("/sub-accounts/$subAccountID/balance"))
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(amount.toString())))
+        .withRequestBody(matchingJsonPath("$.balanceDateTime", equalTo(balanceDateTime.toString())))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(
+              """
+                        {
+                          "amount": $amount,
+                          "subAccountId": "$subAccountID",
+                          "balanceDateTime": "$balanceDateTime"
+                        }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  // POST /sub-accounts/{subAccountId}/balance
+  fun stubPostSubAccountBalanceNotFound(subAccountID: UUID, amount: Long, balanceDateTime: Instant) {
+    stubFor(
+      post(urlPathEqualTo("/sub-accounts/$subAccountID/balance"))
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(amount.toString())))
+        .withRequestBody(matchingJsonPath("$.balanceDateTime", equalTo(balanceDateTime.toString())))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(404)
+            .withBody(
+              """
+                      {
+                      "status": 404,
+                      "errorCode": "NotFound",
+                      "userMessage": "Not found Error",
+                      "developerMessage": "Test not found error",
+                      "moreInfo": "more info"
+                    }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   // GET /accounts?reference={ref} -> Returns List<AccountResponse>
   fun stubGetAccount(
     reference: String,
