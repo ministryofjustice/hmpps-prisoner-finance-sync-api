@@ -133,11 +133,13 @@ the second will have no `GLTransaction` records.*
 ```mermaid
 sequenceDiagram
     actor user as NOMIS User
+
     box NOMIS
         participant NOMIS.UI as UI
-        participant NOMIS.DB as Database
+        participant NOMIS.DB@{ "type" : "database" }
         participant NOMIS.sync as Sync service
     end
+
     box Prisoner Finance
         participant PF.sync as Sync service
         participant PF.log as Sync log
@@ -153,39 +155,57 @@ sequenceDiagram
     NOMIS.DB ->> NOMIS.DB: Trigger <OffenderTransactionEvent>
     NOMIS.DB -->>- NOMIS.UI: Success response
     NOMIS.UI -->>- user: Success response
+
     NOMIS.sync ->>+ NOMIS.DB: SELECT <OffenderTransactionEvent>
-    activate NOMIS.sync
     NOMIS.DB -->>- NOMIS.sync: Success response
+
     NOMIS.sync ->>+ NOMIS.DB: SELECT <OffenderTransaction>
     NOMIS.DB -->>- NOMIS.sync: Success response
+
     NOMIS.sync ->>+ PF.sync: POST <OffenderTransaction>
+
     PF.sync ->>+ PF.log: Create <Transaction> log
     PF.log -->>- PF.sync: Success response
+
     PF.sync ->>+ PF.ledger: Create <Transaction>
     PF.ledger -->>- PF.sync: Success response
+
     rect rgb(240, 248, 255)
-        note right of PF.sync: Dual Running (General Ledger API)
+        note over PF.sync,PF.newGL: Dual Running (General Ledger API)
 
+        PF.sync ->>+ PF.newGL: GET /accounts (Find parent + sub-accounts)
+
+        opt Parent Account Not Found
+            PF.sync ->> PF.newGL: POST /accounts (Create parent account)
+            PF.newGL -->> PF.sync: Return Parent UUID
+        end
+        
+        PF.newGL -->>- PF.sync: Return Parent UUID + Sub-Accounts[]
+        
         loop For Debtor & Creditor
-            PF.sync ->>+ PF.newGL: GET /accounts?reference={ref}
-            opt Parent Account Not Found
-                PF.sync ->> PF.newGL: POST /accounts
-            end
-            PF.newGL -->>- PF.sync: Return Parent UUID
+ 
+            note over PF.sync: Use cached sub-accounts for this offender
 
-            PF.sync ->>+ PF.newGL: GET /sub-accounts?reference={ref}&accountReference={ref}
-            opt Sub-Account Not Found
-                PF.sync ->> PF.newGL: POST /accounts/{uuid}/sub-accounts
+            loop generalLedgerEntries
+
+                note over PF.sync: Ensure sub-account exists
+                alt Sub-account exists in cached list
+                    Note over PF.sync: Use existing Sub-Account UUID
+                else Not Found
+                    PF.sync ->>+ PF.newGL: POST /accounts/{id}/sub-accounts
+                    PF.newGL -->>- PF.sync: Sub-Account UUID
+                end
+
             end
-            PF.newGL -->>- PF.sync: Return Sub-Account UUID
+
+            PF.sync ->>+ PF.newGL: POST /transactions
+            PF.newGL -->> PF.sync: 201 Created (Transaction Receipt)
+            PF.newGL -->>- PF.sync: 500 Error
         end
 
-        PF.sync ->>+ PF.newGL: POST /transactions
-        PF.newGL -->>- PF.sync: 201 Created (Transaction Receipt)
     end
 
     PF.sync -->>- NOMIS.sync: Success response
-    deactivate NOMIS.sync
 ```
 
 ### Verify Offender transaction
