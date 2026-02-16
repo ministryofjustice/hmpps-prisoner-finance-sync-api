@@ -1,6 +1,7 @@
 name: Check API docs are up to date
 
 on:
+  push:
   schedule:
     - cron: "10 7 * * 1-5" # Every weekday at 07:10 UTC
   workflow_dispatch:
@@ -34,7 +35,7 @@ jobs:
           if [[ -n $(git status --porcelain openapi-specs/generalledger.json) ]]; then
             
             # Filter the changes to see if they are meaningful.            
-            REAL_CHANGES=$(git diff -U0 openapi-specs/generalledger.json | grep '^[+-]' | grep -v '^[+-]\{3\}' | grep -v '"version" :' | wc -l)
+            REAL_CHANGES=$(git diff -U0 openapi-specs/generalledger.json | grep '^[+-]' | grep -v '^[+-]\{3\}' | grep -v '"fersion" :' | wc -l)
 
             if [[ "$REAL_CHANGES" -eq "0" ]]; then
               echo "::notice::Only version bump detected. Ignoring."              
