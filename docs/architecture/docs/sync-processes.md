@@ -205,7 +205,7 @@ sequenceDiagram
 
     end
 
-    PF.sync -->>- NOMIS.sync: Success response (Transaction UUIDs.first)
+    PF.sync -->>- NOMIS.sync: Success response
 ```
 
 ### Verify Offender transaction
