@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -54,11 +55,11 @@ class BalanceReconciliationTest : IntegrationTestBase() {
           postingType = "CR",
           type = "POST",
           description = "Money Through Post (pre-migration)",
-          amount = preMigrationTransactionAmount.toDouble(),
+          amount = preMigrationTransactionAmount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = privateCashAccountCode, postingType = "CR", amount = preMigrationTransactionAmount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = holdsGLAccountCode, postingType = "DR", amount = preMigrationTransactionAmount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = privateCashAccountCode, postingType = "CR", amount = preMigrationTransactionAmount),
+            GeneralLedgerEntry(entrySequence = 2, code = holdsGLAccountCode, postingType = "DR", amount = preMigrationTransactionAmount),
           ),
         ),
       ),
@@ -116,11 +117,11 @@ class BalanceReconciliationTest : IntegrationTestBase() {
           postingType = "CR",
           type = "CASH",
           description = "Cash Deposit (post-migration)",
-          amount = postMigrationTransactionAmount.toDouble(),
+          amount = postMigrationTransactionAmount,
           reference = null,
           generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = privateCashAccountCode, postingType = "CR", amount = postMigrationTransactionAmount.toDouble()),
-            GeneralLedgerEntry(entrySequence = 2, code = holdsGLAccountCode, postingType = "DR", amount = postMigrationTransactionAmount.toDouble()),
+            GeneralLedgerEntry(entrySequence = 1, code = privateCashAccountCode, postingType = "CR", amount = postMigrationTransactionAmount),
+            GeneralLedgerEntry(entrySequence = 2, code = holdsGLAccountCode, postingType = "DR", amount = postMigrationTransactionAmount),
           ),
         ),
       ),
@@ -152,7 +153,7 @@ class BalanceReconciliationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedFinalBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(expectedFinalHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedFinalBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(expectedFinalHoldBalance)
   }
 }

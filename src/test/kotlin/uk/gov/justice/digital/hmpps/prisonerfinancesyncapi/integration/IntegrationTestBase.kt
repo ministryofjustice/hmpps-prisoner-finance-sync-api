@@ -1,5 +1,11 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration
 
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.jayway.jsonpath.Configuration
+import com.jayway.jsonpath.Option
+import com.jayway.jsonpath.spi.json.JacksonJsonProvider
+import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -17,6 +23,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
+import java.util.EnumSet
 
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
 @SpringBootTest(
@@ -53,6 +60,25 @@ abstract class IntegrationTestBase {
     @DynamicPropertySource
     fun testcontainers(registry: DynamicPropertyRegistry) {
       registry.registerPostgresProperties(postgres)
+    }
+
+    // Forcing WebTestClient ObjectMapper to use Jackson.
+    // At the moment, it depends on Jackson2.
+    // This is required because otherwise the testclient uses Doubles instead of Decimals.
+    init {
+      val jackson2Mapper = ObjectMapper()
+        .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+
+      Configuration.setDefaults(
+        object : Configuration.Defaults {
+          private val jsonProvider = JacksonJsonProvider(jackson2Mapper)
+          private val mappingProvider = JacksonMappingProvider(jackson2Mapper)
+
+          override fun jsonProvider() = jsonProvider
+          override fun mappingProvider() = mappingProvider
+          override fun options() = EnumSet.noneOf(Option::class.java)
+        },
+      )
     }
   }
 }

@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -20,7 +21,14 @@ class TestBuilders {
       return caseload
     }
 
-    fun createSyncOffenderTransactionRequest(caseloadId: String): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
+    fun createSyncOffenderTransactionRequest(
+      caseloadId: String,
+      generalLedgerEntries: List<GeneralLedgerEntry> = listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
+      ),
+      amount: BigDecimal = BigDecimal("162.00"),
+    ): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
       transactionId = (1..Long.MAX_VALUE).random(),
       requestId = UUID.randomUUID(),
       caseloadId = caseloadId,
@@ -41,12 +49,9 @@ class TestBuilders {
           postingType = "DR",
           type = "OT",
           description = "Sub-Account Transfer",
-          amount = 162.00,
+          amount = amount,
           reference = null,
-          generalLedgerEntries = listOf(
-            GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 162.00),
-            GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 162.00),
-          ),
+          generalLedgerEntries = generalLedgerEntries,
         ),
       ),
     )

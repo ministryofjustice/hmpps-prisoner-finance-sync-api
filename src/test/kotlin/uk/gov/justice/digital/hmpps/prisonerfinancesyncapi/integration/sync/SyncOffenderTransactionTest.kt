@@ -9,6 +9,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.createSyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 class SyncOffenderTransactionTest : IntegrationTestBase() {
@@ -55,6 +57,47 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
       .expectStatus().isCreated
       .expectBody()
       .jsonPath("$.action").isEqualTo("CREATED")
+  }
+
+  @Test
+  fun `400 Bad Request - when transaction amount has more than 2 decimal places`() {
+    val caseloadId = uniqueCaseloadId()
+
+    val newTransactionRequest = createSyncOffenderTransactionRequest(caseloadId, amount = BigDecimal("162.005"))
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isBadRequest
+  }
+
+  @Test
+  fun `400 Bad Request - when transaction ENTRY amount has more than 2 decimal places`() {
+    val caseloadId = uniqueCaseloadId()
+
+    val newTransactionRequest = createSyncOffenderTransactionRequest(
+      caseloadId,
+      listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.005")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.005")),
+      ),
+      amount = BigDecimal("162.00500"),
+    )
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isBadRequest
   }
 
   @Test

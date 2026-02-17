@@ -1,6 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync
 
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.Digits
+import java.math.BigDecimal
 
 @Schema(description = "Represents a general ledger entry.")
 data class GeneralLedgerEntry(
@@ -13,6 +15,12 @@ data class GeneralLedgerEntry(
   @field:Schema(description = "Indicates whether the entry is a Debit (DR) or Credit (CR).", allowableValues = ["DR", "CR"], example = "DR", required = true)
   val postingType: String,
 
-  @field:Schema(description = "The monetary amount of the general ledger entry.", example = "162.00", required = true)
-  val amount: Double,
+  @field:Schema(
+    description = "The monetary amount of the general ledger entry.",
+    example = "162.00",
+    format = "decimal",
+    required = true,
+  )
+  @field:Digits(integer = 19, fraction = 2)
+  val amount: BigDecimal,
 )

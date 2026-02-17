@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
@@ -52,7 +53,7 @@ class MigrateHoldGLBalanceAndPrisonerWithHoldTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(generalLedgerHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(generalLedgerHoldBalance)
 
     val prisonerAvailableBalance = BigDecimal("10.00")
     val prisonerHoldBalance = BigDecimal("10.00")
@@ -86,8 +87,8 @@ class MigrateHoldGLBalanceAndPrisonerWithHoldTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(prisonerAvailableBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(prisonerHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(prisonerAvailableBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(prisonerHoldBalance)
 
     webTestClient
       .get()
@@ -96,6 +97,6 @@ class MigrateHoldGLBalanceAndPrisonerWithHoldTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(generalLedgerHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(generalLedgerHoldBalance)
   }
 }

@@ -9,6 +9,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -54,6 +55,26 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
       .expectStatus().isCreated
       .expectBody()
       .jsonPath("$.action").isEqualTo("CREATED")
+  }
+
+  @Test
+  fun `400 Bad Request - when amount has more than 2 decimal places`() {
+    val newTransactionRequest = createSyncGeneralLedgerTransactionRequest(
+      listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = BigDecimal("50.001")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = BigDecimal("50.001")),
+      ),
+    )
+
+    webTestClient
+      .post()
+      .uri("/sync/general-ledger-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isBadRequest
   }
 
   @Test
@@ -110,7 +131,12 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
       .isEqualTo("Validation failed: createdBy: Created by must be supplied and be <= 32 characters")
   }
 
-  private fun createSyncGeneralLedgerTransactionRequest(): SyncGeneralLedgerTransactionRequest = SyncGeneralLedgerTransactionRequest(
+  private fun createSyncGeneralLedgerTransactionRequest(
+    generalLedgerEntries: List<GeneralLedgerEntry> = listOf(
+      GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = BigDecimal("50.00")),
+      GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = BigDecimal("50.00")),
+    ),
+  ): SyncGeneralLedgerTransactionRequest = SyncGeneralLedgerTransactionRequest(
     transactionId = 19228028,
     requestId = UUID.randomUUID(),
     description = "General Ledger Account Transfer",
@@ -124,9 +150,6 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
     lastModifiedAt = null,
     lastModifiedBy = null,
     lastModifiedByDisplayName = null,
-    generalLedgerEntries = listOf(
-      GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = 50.00),
-      GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = 50.00),
-    ),
+    generalLedgerEntries = generalLedgerEntries,
   )
 }

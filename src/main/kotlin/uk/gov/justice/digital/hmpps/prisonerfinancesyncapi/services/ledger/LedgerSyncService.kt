@@ -8,7 +8,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGener
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
-import java.math.BigDecimal
 import java.util.UUID
 
 @Service("internalLedgerService")
@@ -50,7 +49,7 @@ open class LedgerSyncService(
           offenderTransaction.offenderDisplayId,
           prison.id!!,
         )
-        Triple(account.id!!, BigDecimal.valueOf(glEntry.amount), PostingType.valueOf(glEntry.postingType))
+        Triple(account.id!!, glEntry.amount, PostingType.valueOf(glEntry.postingType))
       }
 
       transactionService.recordTransaction(
@@ -95,7 +94,7 @@ open class LedgerSyncService(
         prisonId = prison.id,
         accountCode = glEntry.code,
       )
-      Triple(account.id!!, BigDecimal.valueOf(glEntry.amount), PostingType.valueOf(glEntry.postingType))
+      Triple(account.id!!, glEntry.amount, PostingType.valueOf(glEntry.postingType))
     }
 
     transactionService.recordTransaction(

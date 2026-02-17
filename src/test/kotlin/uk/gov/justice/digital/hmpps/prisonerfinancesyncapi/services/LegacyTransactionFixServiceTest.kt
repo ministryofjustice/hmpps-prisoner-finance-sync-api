@@ -9,6 +9,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLe
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
+import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.collections.List
@@ -25,8 +26,8 @@ class LegacyTransactionFixServiceTest {
 
   fun createGeneralLedgerEntries(includeGeneralLedgerEntries: Boolean): List<GeneralLedgerEntry> {
     val generalLedgerEntries = listOf(
-      GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = 5.99),
-      GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = 5.99),
+      GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("5.99")),
+      GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("5.99")),
     )
     return if (includeGeneralLedgerEntries) generalLedgerEntries else emptyList()
   }
@@ -56,7 +57,7 @@ class LegacyTransactionFixServiceTest {
         postingType = "CR",
         type = offenderTransactionType,
         description = "",
-        amount = 5.99,
+        amount = BigDecimal("5.99"),
         reference = null,
         generalLedgerEntries = createGeneralLedgerEntries(includeGeneralLedgerEntries),
       ),
@@ -90,11 +91,11 @@ class LegacyTransactionFixServiceTest {
     assertThat(result.offenderTransactions[0].generalLedgerEntries[0].entrySequence).isEqualTo(1)
     assertThat(result.offenderTransactions[0].generalLedgerEntries[0].code).isEqualTo(2101)
     assertThat(result.offenderTransactions[0].generalLedgerEntries[0].postingType).isEqualTo("DR")
-    assertThat(result.offenderTransactions[0].generalLedgerEntries[0].amount).isEqualTo(5.99)
+    assertThat(result.offenderTransactions[0].generalLedgerEntries[0].amount).isEqualTo(BigDecimal("5.99"))
     assertThat(result.offenderTransactions[0].generalLedgerEntries[1].entrySequence).isEqualTo(2)
     assertThat(result.offenderTransactions[0].generalLedgerEntries[1].code).isEqualTo(2102)
     assertThat(result.offenderTransactions[0].generalLedgerEntries[1].postingType).isEqualTo("CR")
-    assertThat(result.offenderTransactions[0].generalLedgerEntries[1].amount).isEqualTo(5.99)
+    assertThat(result.offenderTransactions[0].generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.99"))
   }
 
   @Test

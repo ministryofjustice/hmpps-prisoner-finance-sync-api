@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration
 
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.Digits
 import jakarta.validation.constraints.NotNull
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -13,6 +14,7 @@ data class GeneralLedgerPointInTimeBalance(
 
   @field:NotNull
   @field:Schema(description = "The account balance at the specified time.", example = "123.45")
+  @field:Digits(integer = 19, fraction = 2)
   val balance: BigDecimal,
 
   @field:NotNull

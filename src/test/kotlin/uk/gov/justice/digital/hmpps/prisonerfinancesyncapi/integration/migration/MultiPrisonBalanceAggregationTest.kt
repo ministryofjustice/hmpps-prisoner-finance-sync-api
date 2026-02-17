@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import java.math.BigDecimal
@@ -88,8 +89,8 @@ class MultiPrisonBalanceAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedTotalSpendsBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(expectedTotalSpendsHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedTotalSpendsBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(expectedTotalSpendsHoldBalance)
 
     webTestClient
       .get()
@@ -98,7 +99,7 @@ class MultiPrisonBalanceAggregationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(expectedTotalSavingsBalance.toDouble())
-      .jsonPath("$.holdBalance").isEqualTo(expectedTotalSavingsHoldBalance.toDouble())
+      .jsonPath("$.balance").isMoneyEqual(expectedTotalSavingsBalance)
+      .jsonPath("$.holdBalance").isMoneyEqual(expectedTotalSavingsHoldBalance)
   }
 }
