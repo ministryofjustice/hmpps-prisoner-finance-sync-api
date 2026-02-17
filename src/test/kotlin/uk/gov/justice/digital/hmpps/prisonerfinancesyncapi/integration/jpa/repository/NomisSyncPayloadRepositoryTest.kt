@@ -87,6 +87,7 @@ class NomisSyncPayloadRepositoryTest(
       requestTypeIdentifier = requestType,
       synchronizedTransactionId = syncTxId,
       body = "{}",
+      transactionType = "TEST",
       transactionTimestamp = timestamp.minus(1, ChronoUnit.DAYS),
     )
     return entityManager.persistAndFlush(payload)
@@ -160,6 +161,7 @@ class NomisSyncPayloadRepositoryTest(
         requestTypeIdentifier = "NewSyncType",
         synchronizedTransactionId = UUID.randomUUID(),
         body = """{"new": "data"}""",
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
 

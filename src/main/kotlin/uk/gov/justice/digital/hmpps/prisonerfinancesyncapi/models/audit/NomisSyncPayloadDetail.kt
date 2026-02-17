@@ -12,6 +12,7 @@ data class NomisSyncPayloadDetail(
   val caseloadId: String?,
   val requestTypeIdentifier: String?,
   val transactionTimestamp: Instant?,
+  val transactionType: String,
   val body: String,
 )
 
@@ -23,5 +24,6 @@ fun NomisSyncPayload.toDetail() = NomisSyncPayloadDetail(
   caseloadId = caseloadId,
   requestTypeIdentifier = requestTypeIdentifier,
   transactionTimestamp = transactionTimestamp,
+  transactionType = transactionType,
   body = body,
 )

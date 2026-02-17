@@ -170,6 +170,7 @@ class RequestCaptureServiceTest {
           caseloadId = payloadToSave.caseloadId,
           requestTypeIdentifier = payloadToSave.requestTypeIdentifier,
           body = payloadToSave.body,
+          transactionType = "TEST",
           transactionTimestamp = payloadToSave.transactionTimestamp,
         )
       }

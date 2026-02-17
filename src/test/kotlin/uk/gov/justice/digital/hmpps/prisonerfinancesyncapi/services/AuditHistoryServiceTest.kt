@@ -237,6 +237,7 @@ class AuditHistoryServiceTest {
         requestTypeIdentifier = "NewSyncType",
         synchronizedTransactionId = UUID.randomUUID(),
         body = """{"test": "data"}""",
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
       whenever(nomisSyncPayloadRepository.findByRequestId(requestId)).thenReturn(payload)

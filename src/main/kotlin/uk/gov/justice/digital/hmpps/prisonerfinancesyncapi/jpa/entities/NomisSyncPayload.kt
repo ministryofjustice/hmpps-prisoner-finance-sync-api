@@ -39,6 +39,9 @@ data class NomisSyncPayload(
   @Column(name = "transaction_timestamp")
   val transactionTimestamp: Instant? = null,
 
+  @Column(name = "transaction_type")
+  val transactionType: String,
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column
   val body: String,

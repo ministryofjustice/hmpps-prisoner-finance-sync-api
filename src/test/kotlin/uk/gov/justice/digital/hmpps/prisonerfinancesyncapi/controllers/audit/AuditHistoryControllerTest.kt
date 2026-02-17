@@ -92,6 +92,7 @@ class AuditHistoryControllerTest {
         caseloadId = "MDI",
         requestTypeIdentifier = "TEST",
         synchronizedTransactionId = UUID.randomUUID(),
+        transactionType = "TEST",
         body = """{"transactionId":1001,"caseloadId":"MDI","offenderId":123,"eventType":"SyncOffenderTransaction"}""",
         transactionTimestamp = Instant.now(),
       )

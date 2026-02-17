@@ -37,17 +37,20 @@ class RequestCaptureService(
     val rawBodyJson = safeSerializeRequest(requestBodyObject)
 
     var caseloadId: String? = null
+    var transactionType = ""
     var requestTypeIdentifier: String?
     var transactionInstant: Instant? = null
 
     when (requestBodyObject) {
       is SyncOffenderTransactionRequest -> {
         caseloadId = requestBodyObject.caseloadId
+        transactionType = requestBodyObject.offenderTransactions.firstOrNull()?.type ?: ""
         requestTypeIdentifier = SyncOffenderTransactionRequest::class.simpleName
         transactionInstant = timeConversionService.toUtcInstant(requestBodyObject.transactionTimestamp)
       }
       is SyncGeneralLedgerTransactionRequest -> {
         caseloadId = requestBodyObject.caseloadId
+        transactionType = requestBodyObject.transactionType
         requestTypeIdentifier = SyncGeneralLedgerTransactionRequest::class.simpleName
         transactionInstant = timeConversionService.toUtcInstant(requestBodyObject.transactionTimestamp)
       }
@@ -65,6 +68,7 @@ class RequestCaptureService(
       caseloadId = caseloadId,
       requestTypeIdentifier = requestTypeIdentifier,
       body = rawBodyJson,
+      transactionType = transactionType,
       transactionTimestamp = transactionInstant,
     )
     return nomisSyncPayloadRepository.save(payload)

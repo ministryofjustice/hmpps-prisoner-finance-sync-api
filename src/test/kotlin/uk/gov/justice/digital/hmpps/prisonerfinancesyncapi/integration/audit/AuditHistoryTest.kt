@@ -40,6 +40,7 @@ class AuditHistoryTest(
     requestTypeIdentifier = requestTypeIdentifier,
     synchronizedTransactionId = synchronizedTransactionId,
     body = body,
+    transactionType = "TEST",
     transactionTimestamp = transactionTimestamp,
   )
 

@@ -56,6 +56,7 @@ class SyncQueryServiceTest {
       requestTypeIdentifier = "dummy",
       synchronizedTransactionId = dummySyncId,
       body = "{}",
+      transactionType = "TEST",
       transactionTimestamp = Instant.now(),
     )
   }

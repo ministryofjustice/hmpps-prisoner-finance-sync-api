@@ -18,6 +18,7 @@ class NomisSyncDetailTest {
       caseloadId = "MDI",
       requestTypeIdentifier = "TEST",
       transactionTimestamp = Instant.now(),
+      transactionType = "TEST",
       body = """{"key":"value"}""",
     )
 
