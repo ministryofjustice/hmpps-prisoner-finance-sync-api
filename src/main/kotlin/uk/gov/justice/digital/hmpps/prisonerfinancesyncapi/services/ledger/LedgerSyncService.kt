@@ -25,7 +25,7 @@ open class LedgerSyncService(
   }
 
   @Transactional
-  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
+  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
     if (request.offenderTransactions.isEmpty()) {
       throw IllegalArgumentException("No offender transactions provided in the request.")
     }
@@ -33,7 +33,7 @@ open class LedgerSyncService(
     val fixedRequest = legacyTransactionFixService.fixLegacyTransactions(request)
 
     if (fixedRequest.offenderTransactions.isEmpty()) {
-      return UUID.randomUUID()
+      return listOf(UUID.randomUUID())
     }
 
     val prison = prisonService.getPrison(fixedRequest.caseloadId)
@@ -72,7 +72,7 @@ open class LedgerSyncService(
       )
     }
 
-    return synchronizedTransactionId
+    return listOf(synchronizedTransactionId)
   }
 
   @Transactional

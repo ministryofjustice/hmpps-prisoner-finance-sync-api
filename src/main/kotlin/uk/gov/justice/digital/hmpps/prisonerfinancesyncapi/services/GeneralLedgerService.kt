@@ -59,7 +59,7 @@ class GeneralLedgerService(
     return subAccount
   }
 
-  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID {
+  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
     val prisonAccount = getOrCreateAccount(request.caseloadId)
     val transactionGLUUIDs = mutableListOf<UUID>()
 
@@ -116,7 +116,7 @@ class GeneralLedgerService(
       throw IllegalStateException("No General Ledger Transaction returned")
     }
 
-    return transactionGLUUIDs.first()
+    return transactionGLUUIDs
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")

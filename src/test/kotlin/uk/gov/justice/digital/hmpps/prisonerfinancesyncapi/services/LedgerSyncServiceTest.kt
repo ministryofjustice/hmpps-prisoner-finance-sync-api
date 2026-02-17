@@ -103,7 +103,7 @@ class LedgerSyncServiceTest {
 
       val result = ledgerSyncService.syncOffenderTransaction(request)
 
-      assertThat(result).isNotNull()
+      assertThat(result).hasSize(1)
 
       verify(transactionService).recordTransaction(
         eq(tx.type),
@@ -111,7 +111,7 @@ class LedgerSyncServiceTest {
         capture(entriesCaptor),
         eq(fixedNow),
         eq(request.transactionId),
-        eq(result),
+        eq(result.first()),
         eq(request.caseloadId),
         eq(null),
       )

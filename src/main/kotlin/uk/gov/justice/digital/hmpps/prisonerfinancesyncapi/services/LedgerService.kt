@@ -5,6 +5,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import java.util.UUID
 
 interface LedgerService {
-  fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): UUID
+  fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID>
   fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID
 }

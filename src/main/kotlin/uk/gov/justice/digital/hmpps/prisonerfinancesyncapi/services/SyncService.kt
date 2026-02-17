@@ -91,9 +91,11 @@ class SyncService(
     )
   }
 
-  private fun <T : SyncRequest> processLedgerRequest(request: T): UUID = when (request) {
+  private fun processLedgerRequest(request: SyncRequest): UUID = when (request) {
     is SyncOffenderTransactionRequest -> {
       ledgerSyncService.syncOffenderTransaction(request)
+        .firstOrNull()
+        ?: throw IllegalStateException("No transaction ID returned for offender sync")
     }
     is SyncGeneralLedgerTransactionRequest -> {
       ledgerSyncService.syncGeneralLedgerTransaction(request)
