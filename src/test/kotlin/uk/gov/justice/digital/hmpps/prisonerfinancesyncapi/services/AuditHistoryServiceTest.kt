@@ -46,6 +46,7 @@ class AuditHistoryServiceTest {
   data class TestNomisSyncPayloadSummary(
     override val id: Long,
     override val legacyTransactionId: Long?,
+    override val transactionType: String?,
     override val synchronizedTransactionId: UUID,
     override val caseloadId: String?,
     override val timestamp: Instant,
@@ -71,6 +72,7 @@ class AuditHistoryServiceTest {
         id = 1L,
         timestamp = Instant.now(),
         legacyTransactionId = 12345L,
+        transactionType = "TEST",
         synchronizedTransactionId = UUID.randomUUID(),
         requestId = requestId,
         caseloadId = caseloadId,
@@ -82,6 +84,7 @@ class AuditHistoryServiceTest {
         nomisSyncPayloadRepository.findMatchingPayloads(
           eq(caseloadId),
           eq(null),
+          eq(null),
           anyOrNull(),
           anyOrNull(),
           eq(null),
@@ -90,10 +93,10 @@ class AuditHistoryServiceTest {
         ),
       ).thenReturn(listOf(entity))
 
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(eq(caseloadId), eq(null), anyOrNull(), anyOrNull()))
+      whenever(nomisSyncPayloadRepository.countMatchingPayloads(eq(caseloadId), anyOrNull(), eq(null), anyOrNull(), anyOrNull()))
         .thenReturn(1L)
 
-      val result = auditHistoryService.getMatchingPayloads(caseloadId, null, startDate, endDate, cursor, size)
+      val result = auditHistoryService.getMatchingPayloads(caseloadId, null, null, startDate, endDate, cursor, size)
 
       assertThat(result.content).hasSize(1)
       assertThat(result.content[0].requestId).isEqualTo(requestId)
@@ -105,14 +108,15 @@ class AuditHistoryServiceTest {
       val startDateCaptor = argumentCaptor<Instant>()
 
       lenient().doReturn(emptyList<NomisSyncPayloadSummary>())
-        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
       lenient().doReturn(0L)
-        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
 
-      auditHistoryService.getMatchingPayloads("MDI", null, null, null, cursor, size)
+      auditHistoryService.getMatchingPayloads("MDI", null, null, null, null, cursor, size)
 
       verify(nomisSyncPayloadRepository).findMatchingPayloads(
         eq("MDI"),
+        eq(null),
         eq(null),
         startDateCaptor.capture(),
         endDateCaptor.capture(),
@@ -130,15 +134,39 @@ class AuditHistoryServiceTest {
       val legacyTxId = 12345L
 
       lenient().doReturn(emptyList<NomisSyncPayloadSummary>())
-        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
       lenient().doReturn(0L)
-        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
 
-      auditHistoryService.getMatchingPayloads("MDI", legacyTxId, null, null, cursor, size)
+      auditHistoryService.getMatchingPayloads("MDI", legacyTxId, null, null, null, cursor, size)
 
       verify(nomisSyncPayloadRepository).findMatchingPayloads(
         eq("MDI"),
         eq(legacyTxId),
+        eq(null),
+        eq(null),
+        eq(null),
+        eq(null),
+        eq(null),
+        eq(pageable),
+      )
+    }
+
+    @Test
+    fun `Should pass transactionType to repository when provided`() {
+      val transactionType = "TEST"
+
+      lenient().doReturn(emptyList<NomisSyncPayloadSummary>())
+        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+      lenient().doReturn(0L)
+        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+
+      auditHistoryService.getMatchingPayloads("MDI", null, transactionType, null, null, cursor, size)
+
+      verify(nomisSyncPayloadRepository).findMatchingPayloads(
+        eq("MDI"),
+        eq(null),
+        eq(transactionType),
         eq(null),
         eq(null),
         eq(null),
@@ -155,6 +183,7 @@ class AuditHistoryServiceTest {
           id = i.toLong(),
           timestamp = now.minusSeconds(i.toLong()),
           legacyTransactionId = i.toLong(),
+          transactionType = "TEST",
           synchronizedTransactionId = UUID.randomUUID(),
           requestId = UUID.randomUUID(),
           caseloadId = "MDI",
@@ -163,12 +192,12 @@ class AuditHistoryServiceTest {
         )
       }
 
-      whenever(nomisSyncPayloadRepository.findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), eq(pageable)))
+      whenever(nomisSyncPayloadRepository.findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), eq(pageable)))
         .thenReturn(entities)
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
+      whenever(nomisSyncPayloadRepository.countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
         .thenReturn(100L)
 
-      val result = auditHistoryService.getMatchingPayloads("MDI", null, null, null, null, 10)
+      val result = auditHistoryService.getMatchingPayloads("MDI", null, null, null, null, null, 10)
 
       assertThat(result.content).hasSize(10)
       assertThat(result.nextCursor).isNotNull()
@@ -184,16 +213,17 @@ class AuditHistoryServiceTest {
       val cursorId = 999L
       val cursorString = AuditCursor(cursorTimestamp, cursorId).toString()
 
-      whenever(nomisSyncPayloadRepository.findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), eq(cursorTimestamp), eq(cursorId), eq(pageable)))
+      whenever(nomisSyncPayloadRepository.findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), eq(cursorTimestamp), eq(cursorId), eq(pageable)))
         .thenReturn(emptyList())
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
+      whenever(nomisSyncPayloadRepository.countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
         .thenReturn(0L)
 
-      auditHistoryService.getMatchingPayloads(null, null, null, null, cursorString, 10)
+      auditHistoryService.getMatchingPayloads(null, null, null, null, null, cursorString, 10)
 
       verify(nomisSyncPayloadRepository).findMatchingPayloads(
         prisonId = eq(null),
         legacyTransactionId = eq(null),
+        transactionType = eq(null),
         startDate = eq(null),
         endDate = eq(null),
         cursorTimestamp = eq(cursorTimestamp),
@@ -204,16 +234,17 @@ class AuditHistoryServiceTest {
 
     @Test
     fun `should normalize prisonId if blank or string null`() {
-      whenever(nomisSyncPayloadRepository.findMatchingPayloads(eq(null), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
+      whenever(nomisSyncPayloadRepository.findMatchingPayloads(eq(null), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
         .thenReturn(emptyList())
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(eq(null), anyOrNull(), anyOrNull(), anyOrNull()))
+      whenever(nomisSyncPayloadRepository.countMatchingPayloads(eq(null), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
         .thenReturn(0L)
 
-      auditHistoryService.getMatchingPayloads(" ", null, null, null, null, 10)
-      auditHistoryService.getMatchingPayloads("null", null, null, null, null, 10)
+      auditHistoryService.getMatchingPayloads(" ", null, null, null, null, null, 10)
+      auditHistoryService.getMatchingPayloads("null", null, null, null, null, null, 10)
 
       verify(nomisSyncPayloadRepository, times(2)).findMatchingPayloads(
         prisonId = eq(null),
+        anyOrNull(),
         anyOrNull(),
         anyOrNull(),
         anyOrNull(),

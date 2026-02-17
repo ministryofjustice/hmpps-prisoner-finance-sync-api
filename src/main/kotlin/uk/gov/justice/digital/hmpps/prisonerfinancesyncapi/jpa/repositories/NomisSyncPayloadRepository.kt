@@ -23,6 +23,7 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   SELECT 
     n.id as id,
     n.legacyTransactionId as legacyTransactionId,
+    n.transactionType as transactionType,
     n.synchronizedTransactionId as synchronizedTransactionId,
     n.caseloadId as caseloadId,
     n.timestamp as timestamp,
@@ -33,6 +34,7 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   WHERE 
     (:prisonId IS NULL OR n.caseloadId = :prisonId) AND
     (:legacyTransactionId IS NULL OR n.legacyTransactionId = :legacyTransactionId) AND
+    (:transactionType IS NULL OR n.transactionType = :transactionType) AND
     (CAST(:startDate AS timestamp) IS NULL OR n.timestamp >= :startDate) AND
     (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate) AND 
     (
@@ -47,6 +49,7 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   fun findMatchingPayloads(
     @Param("prisonId") prisonId: String?,
     @Param("legacyTransactionId") legacyTransactionId: Long?,
+    @Param("transactionType") transactionType: String?,
     @Param("startDate") startDate: Instant?,
     @Param("endDate") endDate: Instant?,
     @Param("cursorTimestamp") cursorTimestamp: Instant?,
@@ -59,6 +62,7 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   SELECT count(n) FROM NomisSyncPayload n 
   WHERE (:prisonId IS NULL OR n.caseloadId = :prisonId)
   AND (:legacyTransactionId IS NULL OR n.legacyTransactionId = :legacyTransactionId)
+  AND (:transactionType IS NULL OR n.transactionType = :transactionType)
   AND (CAST(:startDate AS timestamp) IS NULL OR n.timestamp >= :startDate)
   AND (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate)
   """,
@@ -66,6 +70,7 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   fun countMatchingPayloads(
     @Param("prisonId") prisonId: String?,
     @Param("legacyTransactionId") legacyTransactionId: Long?,
+    @Param("transactionType") transactionType: String?,
     @Param("startDate") startDate: Instant?,
     @Param("endDate") endDate: Instant?,
   ): Long

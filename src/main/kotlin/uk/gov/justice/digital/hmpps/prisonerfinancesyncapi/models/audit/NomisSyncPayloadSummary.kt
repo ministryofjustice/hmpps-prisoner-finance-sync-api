@@ -6,6 +6,7 @@ import java.util.UUID
 interface NomisSyncPayloadSummary {
   val id: Long
   val legacyTransactionId: Long?
+  val transactionType: String?
   val synchronizedTransactionId: UUID
   val caseloadId: String?
   val timestamp: Instant

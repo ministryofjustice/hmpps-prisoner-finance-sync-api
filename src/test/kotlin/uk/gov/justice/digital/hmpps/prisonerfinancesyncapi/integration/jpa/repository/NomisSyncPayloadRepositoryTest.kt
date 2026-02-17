@@ -27,8 +27,9 @@ class NomisSyncPayloadRepositoryTest(
   private lateinit var payload2: NomisSyncPayload
   private lateinit var payload3: NomisSyncPayload
   private lateinit var payload4: NomisSyncPayload
+  private lateinit var payload5: NomisSyncPayload
 
-  private val initialPayloadCount = 4
+  private val initialPayloadCount = 5
 
   @BeforeEach
   fun setup() {
@@ -70,6 +71,15 @@ class NomisSyncPayloadRepositoryTest(
       requestType = "AnotherSyncType",
       syncTxId = UUID.randomUUID(),
     )
+
+    payload5 = createAndPersist(
+      timestamp = now.minus(2, ChronoUnit.MINUTES),
+      legacyTransactionId = 1004,
+      caseloadId = "MDI",
+      requestType = "AnotherSyncType",
+      transactionType = "UniqueTxn",
+      syncTxId = UUID.randomUUID(),
+    )
   }
 
   private fun createAndPersist(
@@ -78,6 +88,7 @@ class NomisSyncPayloadRepositoryTest(
     caseloadId: String,
     requestType: String,
     syncTxId: UUID,
+    transactionType: String = "TEST",
   ): NomisSyncPayload {
     val payload = NomisSyncPayload(
       timestamp = timestamp,
@@ -87,7 +98,7 @@ class NomisSyncPayloadRepositoryTest(
       requestTypeIdentifier = requestType,
       synchronizedTransactionId = syncTxId,
       body = "{}",
-      transactionType = "TEST",
+      transactionType = transactionType,
       transactionTimestamp = timestamp.minus(1, ChronoUnit.DAYS),
     )
     return entityManager.persistAndFlush(payload)
@@ -112,12 +123,14 @@ class NomisSyncPayloadRepositoryTest(
         null,
         null,
         null,
+        null,
         pageable,
       )
       assertThat(initialResults.map { it.requestId }).containsSubsequence(pHigh.requestId, pLow.requestId)
 
       val cursorResults = nomisSyncPayloadRepository.findMatchingPayloads(
         "MDI",
+        null,
         null,
         null,
         null,
@@ -130,12 +143,23 @@ class NomisSyncPayloadRepositoryTest(
     }
 
     @Test
+    fun `should correctly filter by transactionType`() {
+      val transactionType = payload5.transactionType
+      val pageable = PageRequest.of(0, 10)
+
+      val results = nomisSyncPayloadRepository.findMatchingPayloads(null, null, transactionType, null, null, null, null, pageable)
+
+      assertThat(results).hasSize(1)
+      assertThat(results[0].transactionType).isEqualTo(transactionType)
+    }
+
+    @Test
     fun `should correctly filter by prisonId and date range`() {
       val start = Instant.now().minus(1, ChronoUnit.HOURS)
       val end = Instant.now().plus(1, ChronoUnit.HOURS)
       val pageable = PageRequest.of(0, 10)
 
-      val results = nomisSyncPayloadRepository.findMatchingPayloads("LEI", null, start, end, null, null, pageable)
+      val results = nomisSyncPayloadRepository.findMatchingPayloads("LEI", null, null, start, end, null, null, pageable)
 
       assertThat(results).hasSize(1)
       assertThat(results[0].caseloadId).isEqualTo("LEI")
@@ -143,8 +167,8 @@ class NomisSyncPayloadRepositoryTest(
 
     @Test
     fun `should count results without applying cursor logic`() {
-      val count = nomisSyncPayloadRepository.countMatchingPayloads("MDI", null, null, null)
-      assertThat(count).isEqualTo(3)
+      val count = nomisSyncPayloadRepository.countMatchingPayloads("MDI", null, null, null, null)
+      assertThat(count).isEqualTo(4)
     }
   }
 
