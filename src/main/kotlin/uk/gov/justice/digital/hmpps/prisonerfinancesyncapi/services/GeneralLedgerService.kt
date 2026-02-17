@@ -108,7 +108,6 @@ class GeneralLedgerService(
         postings = glEntries,
       )
 
-      // TODO: this should be the request.requestId once we have a transaction endpoint that supports multiple postings
       val transactionGLUUID = generalLedgerApiClient.postTransaction(
         glTransactionRequest,
         idempotencyService.genTransactionIdempotencyKey(
