@@ -4,6 +4,8 @@ import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
@@ -26,6 +28,7 @@ class GeneralLedgerService(
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
   private val idempotencyService: GeneralLedgerIdempotencyService,
+  private val ledgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
 ) : LedgerService,
   ReconciliationService {
 
@@ -113,6 +116,14 @@ class GeneralLedgerService(
         idempotencyService.genTransactionIdempotencyKey(
           request.transactionId,
           transaction.entrySequence,
+        ),
+      )
+
+      ledgerTransactionMappingRepository.save(
+        GeneralLedgerTransactionMapping(
+          legacyTransactionId = request.transactionId,
+          entrySequence = transaction.entrySequence,
+          glTransactionUuid = transactionGLUUID,
         ),
       )
 
