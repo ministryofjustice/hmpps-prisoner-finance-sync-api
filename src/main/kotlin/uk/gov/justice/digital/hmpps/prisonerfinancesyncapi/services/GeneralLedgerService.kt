@@ -25,6 +25,7 @@ class GeneralLedgerService(
   private val ledgerQueryService: LedgerQueryService,
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
+  private val idempotencyService: GeneralLedgerIdempotencyService,
 ) : LedgerService,
   ReconciliationService {
 
@@ -107,8 +108,14 @@ class GeneralLedgerService(
         postings = glEntries,
       )
 
-      // TODO: this should be the request.requestId once we have a transaction endpoint that supports multiple postings
-      val transactionGLUUID = generalLedgerApiClient.postTransaction(glTransactionRequest, UUID.randomUUID())
+      val transactionGLUUID = generalLedgerApiClient.postTransaction(
+        glTransactionRequest,
+        idempotencyService.genTransactionIdempotencyKey(
+          request.transactionId,
+          transaction.entrySequence,
+        ),
+      )
+
       transactionGLUUIDs.add(transactionGLUUID)
     }
 
