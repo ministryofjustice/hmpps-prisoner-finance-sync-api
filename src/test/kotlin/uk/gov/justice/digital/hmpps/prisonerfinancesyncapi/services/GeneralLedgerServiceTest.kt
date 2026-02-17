@@ -56,6 +56,9 @@ class GeneralLedgerServiceTest {
   private lateinit var ledgerQueryService: LedgerQueryService
 
   @Spy
+  private lateinit var idempotencyService: GeneralLedgerIdempotencyService
+
+  @Spy
   private lateinit var accountMapping: LedgerAccountMappingService
 
   @Spy
