@@ -658,9 +658,9 @@ class GeneralLedgerServiceTest {
         postingType = "DR",
         type = "CANT",
         description = "Tx 1",
-        amount = 10.00,
+        amount = BigDecimal("10.00"),
         reference = "REF1",
-        generalLedgerEntries = listOf(GeneralLedgerEntry(1, 2101, "DR", 10.00)),
+        generalLedgerEntries = listOf(GeneralLedgerEntry(1, 2101, "DR", BigDecimal("10.00"))),
       )
 
       val tx2 = tx1.copy(
