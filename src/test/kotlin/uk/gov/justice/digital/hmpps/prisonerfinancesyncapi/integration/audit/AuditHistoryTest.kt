@@ -2,11 +2,14 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.audit
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_TRANSACTION_TYPE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.createSyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
@@ -40,6 +43,7 @@ class AuditHistoryTest(
     requestTypeIdentifier = requestTypeIdentifier,
     synchronizedTransactionId = synchronizedTransactionId,
     body = body,
+    transactionType = "TEST",
     transactionTimestamp = transactionTimestamp,
   )
 
@@ -66,6 +70,61 @@ class AuditHistoryTest(
       .expectBody()
       .jsonPath("$.status").isEqualTo(400)
       .jsonPath("$.userMessage").value<String> { assertThat(it).contains(VALIDATION_MESSAGE_PRISON_ID) }
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+    value = [
+      "asd 123",
+      "txn123",
+      "TXN-123",
+      "veryloooooooooooooooooooooooooooooooooooooooooong",
+      "VERYLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG",
+      "sadas%asddsa",
+    ],
+  )
+  fun `Get History should return Bad Request when transaction Type is invalid`(payload: String) {
+    webTestClient
+      .get()
+      .uri("/audit/history?transactionType={transactionType}", payload)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
+      .exchange()
+      .expectStatus().isBadRequest
+      .expectBody()
+      .jsonPath("$.status").isEqualTo(400)
+      .jsonPath("$.userMessage").value<String> { assertThat(it).contains(VALIDATION_MESSAGE_TRANSACTION_TYPE) }
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+    value = [
+      "AD",
+      "ADJ",
+      "ADV",
+      "A_EARN",
+      "ATOF",
+      "BAB",
+      "BONFES",
+      "BONUS",
+      "CANT",
+      "DSAV",
+      "HOA",
+      "OT",
+      "POST",
+      "REFND",
+      "TELE",
+      "TIR",
+      "TOR",
+    ],
+  )
+  fun `Get History should return OK when transaction Type is valid`(payload: String) {
+    webTestClient
+      .get()
+      .uri("/audit/history?transactionType={transactionType}", payload)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
   }
 
   @Test

@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_AUDIT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_TRANSACTION_TYPE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISON_ID
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_TRANSACTION_TYPE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.CursorPage
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
@@ -78,6 +80,12 @@ class AuditHistoryController(
     prisonId: String?,
     @RequestParam(required = false)
     legacyTransactionId: Long?,
+    @RequestParam(required = false)
+    @Pattern(
+      regexp = VALIDATION_REGEX_TRANSACTION_TYPE,
+      message = VALIDATION_MESSAGE_TRANSACTION_TYPE,
+    )
+    transactionType: String?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate?,
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate?,
     @RequestParam(required = false) cursor: String?,
@@ -86,6 +94,7 @@ class AuditHistoryController(
     val items = auditHistoryService.getMatchingPayloads(
       prisonId,
       legacyTransactionId,
+      transactionType,
       startDate,
       endDate,
       cursor,

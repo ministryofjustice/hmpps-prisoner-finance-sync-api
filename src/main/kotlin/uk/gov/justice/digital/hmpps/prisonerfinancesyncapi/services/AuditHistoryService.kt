@@ -21,6 +21,7 @@ class AuditHistoryService(
   fun getMatchingPayloads(
     prisonId: String?,
     legacyTransactionId: Long?,
+    transactionType: String?,
     startDate: LocalDate?,
     endDate: LocalDate?,
     cursorString: String?,
@@ -35,6 +36,7 @@ class AuditHistoryService(
     val items = nomisSyncPayloadRepository.findMatchingPayloads(
       prisonId = normalizedPrisonId,
       legacyTransactionId = legacyTransactionId,
+      transactionType = transactionType,
       startDate = startInstant,
       endDate = endInstant,
       cursorTimestamp = cursor?.timestamp,
@@ -45,6 +47,7 @@ class AuditHistoryService(
     val totalElements = nomisSyncPayloadRepository.countMatchingPayloads(
       normalizedPrisonId,
       legacyTransactionId,
+      transactionType,
       startInstant,
       endInstant,
     )

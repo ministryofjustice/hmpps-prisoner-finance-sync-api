@@ -29,6 +29,7 @@ class AuditHistoryPayloadTest(
       requestTypeIdentifier = "NewSyncType",
       synchronizedTransactionId = UUID.randomUUID(),
       body = """{"test": "data"}""",
+      transactionType = "TEST",
       transactionTimestamp = Instant.now(),
     )
 

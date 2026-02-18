@@ -116,6 +116,7 @@ class ResponseMapperServiceTest {
         requestTypeIdentifier = SyncGeneralLedgerTransactionRequest::class.simpleName,
         synchronizedTransactionId = UUID.randomUUID(),
         body = "",
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
       val ex = assertThrows(MismatchedInputException::class.java) {
@@ -136,6 +137,7 @@ class ResponseMapperServiceTest {
         requestTypeIdentifier = SyncGeneralLedgerTransactionRequest::class.simpleName,
         synchronizedTransactionId = UUID.randomUUID(),
         body = bodySyncGeneralLedgerTransaction,
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
 
@@ -187,6 +189,7 @@ class ResponseMapperServiceTest {
         requestTypeIdentifier = SyncGeneralLedgerTransactionRequest::class.simpleName,
         synchronizedTransactionId = UUID.randomUUID(),
         body = bodySyncGeneralLedgerTransaction,
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
 
@@ -211,6 +214,7 @@ class ResponseMapperServiceTest {
         requestTypeIdentifier = SyncOffenderTransactionResponse::class.simpleName,
         synchronizedTransactionId = UUID.randomUUID(),
         body = "",
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
       val ex = assertThrows(MismatchedInputException::class.java) {
@@ -231,6 +235,7 @@ class ResponseMapperServiceTest {
         requestTypeIdentifier = SyncOffenderTransactionResponse::class.simpleName,
         synchronizedTransactionId = UUID.randomUUID(),
         body = bodySyncOffenderTransactionRequest,
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
 
@@ -266,6 +271,7 @@ class ResponseMapperServiceTest {
         requestTypeIdentifier = SyncOffenderTransactionResponse::class.simpleName,
         synchronizedTransactionId = UUID.randomUUID(),
         body = bodySyncOffenderTransactionRequest,
+        transactionType = "TEST",
         transactionTimestamp = Instant.now(),
       )
 

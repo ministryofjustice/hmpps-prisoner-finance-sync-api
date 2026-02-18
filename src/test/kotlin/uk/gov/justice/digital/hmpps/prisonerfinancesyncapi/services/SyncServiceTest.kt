@@ -102,6 +102,7 @@ class SyncServiceTest {
       requestTypeIdentifier = SyncGeneralLedgerTransactionRequest::class.simpleName,
       synchronizedTransactionId = UUID.fromString("a1a1a1a1-b1b1-c1c1-d1d1-e1e1e1e1e1e1"),
       body = "{}",
+      transactionType = "TEST",
       transactionTimestamp = Instant.now(),
     )
   }

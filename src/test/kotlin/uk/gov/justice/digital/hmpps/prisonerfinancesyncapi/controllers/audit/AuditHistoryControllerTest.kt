@@ -36,6 +36,7 @@ class AuditHistoryControllerTest {
     id = 1L,
     timestamp = timestamp,
     legacyTransactionId = legacyTransactionId,
+    transactionType = "TEST",
     synchronizedTransactionId = synchronizedTransactionId,
     requestId = requestId,
     caseloadId = caseloadId,
@@ -65,14 +66,14 @@ class AuditHistoryControllerTest {
       val payloads = listOf(createNomisSyncPayloadDto(1, caseloadId))
       val cursorPage = CursorPage(payloads, "next-cursor", 1, size)
 
-      Mockito.`when`(auditHistoryService.getMatchingPayloads(caseloadId, null, startDate, endDate, cursor, size))
+      Mockito.`when`(auditHistoryService.getMatchingPayloads(caseloadId, null, null, startDate, endDate, cursor, size))
         .thenReturn(cursorPage)
 
-      val response = auditHistoryController.getMatchingPayloads(caseloadId, null, startDate, endDate, cursor, size)
+      val response = auditHistoryController.getMatchingPayloads(caseloadId, null, null, startDate, endDate, cursor, size)
 
       Assertions.assertThat(response.body?.content).hasSize(1)
       Assertions.assertThat(response.body?.content?.get(0)?.legacyTransactionId).isEqualTo(1L)
-      verify(auditHistoryService).getMatchingPayloads(caseloadId, null, startDate, endDate, cursor, size)
+      verify(auditHistoryService).getMatchingPayloads(caseloadId, null, null, startDate, endDate, cursor, size)
       Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
       Assertions.assertThat(response.body).isEqualTo(cursorPage)
     }
@@ -92,6 +93,7 @@ class AuditHistoryControllerTest {
         caseloadId = "MDI",
         requestTypeIdentifier = "TEST",
         synchronizedTransactionId = UUID.randomUUID(),
+        transactionType = "TEST",
         body = """{"transactionId":1001,"caseloadId":"MDI","offenderId":123,"eventType":"SyncOffenderTransaction"}""",
         transactionTimestamp = Instant.now(),
       )
