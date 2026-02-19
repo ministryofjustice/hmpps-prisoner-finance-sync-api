@@ -47,7 +47,7 @@ class GeneralLedgerService(
         val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
           prisonId = request.caseloadId,
           offenderId = offenderId,
-          entryCode = entry.code,
+          accountCode = entry.code,
           transactionType = transaction.type,
           parentCache = requestCache,
         )

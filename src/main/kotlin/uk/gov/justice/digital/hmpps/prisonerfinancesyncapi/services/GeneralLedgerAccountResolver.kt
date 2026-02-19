@@ -23,18 +23,18 @@ class GeneralLedgerAccountResolver(
   fun resolveSubAccount(
     prisonId: String,
     offenderId: String,
-    entryCode: Int,
+    accountCode: Int,
     transactionType: String,
     parentCache: InMemoryAccountCache,
   ): UUID {
-    val isPrisoner = mapping.isValidPrisonerAccountCode(entryCode)
+    val isPrisoner = mapping.isValidPrisonerAccountCode(accountCode)
 
     val parentRef = if (isPrisoner) offenderId else prisonId
 
     val subRef = if (isPrisoner) {
-      mapping.mapPrisonerSubAccount(entryCode)
+      mapping.mapPrisonerSubAccount(accountCode)
     } else {
-      mapping.mapPrisonSubAccount(entryCode, transactionType)
+      mapping.mapPrisonSubAccount(accountCode, transactionType)
     }
 
     val parent = parentCache.getOrPut(parentRef) {
