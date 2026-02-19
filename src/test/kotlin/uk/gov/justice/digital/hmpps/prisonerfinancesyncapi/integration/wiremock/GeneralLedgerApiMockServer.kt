@@ -14,6 +14,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
+import com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED
 import org.junit.jupiter.api.extension.AfterAllCallback
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
@@ -121,6 +122,9 @@ class GeneralLedgerApiMockServer :
     reference: String,
     returnUuid: UUID = UUID.randomUUID(),
     subAccounts: List<SubAccountResponse> = emptyList(),
+    scenarioName: String? = null,
+    scenarioState: String = STARTED,
+    nextState: String = "SECOND_CALL",
   ) {
     val response = AccountResponse(
       id = returnUuid,
@@ -132,6 +136,13 @@ class GeneralLedgerApiMockServer :
 
     stubFor(
       get(urlPathEqualTo("/accounts"))
+        .apply {
+          if (scenarioName != null) {
+            inScenario(scenarioName)
+              .whenScenarioStateIs(scenarioState)
+              .willSetStateTo(nextState)
+          }
+        }
         .withQueryParam("reference", equalTo(reference))
         .willReturn(
           aResponse()
@@ -142,9 +153,16 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun stubGetAccountNotFound(reference: String) {
+  fun stubGetAccountNotFound(reference: String, scenarioName: String? = null, scenarioState: String = STARTED, nextState: String = "SECOND_CALL") {
     stubFor(
       get(urlPathEqualTo("/accounts"))
+        .apply {
+          if (scenarioName != null) {
+            inScenario(scenarioName)
+              .whenScenarioStateIs(scenarioState)
+              .willSetStateTo(nextState)
+          }
+        }
         .withQueryParam("reference", equalTo(reference))
         .willReturn(
           aResponse()
@@ -155,10 +173,106 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  // POST /accounts -> Returns 500
+  fun stubCreateAccountReturnsServerError(reference: String) {
+    stubFor(
+      post(urlEqualTo("/accounts"))
+        .withRequestBody(matchingJsonPath("$.accountReference", equalTo(reference)))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(500)
+            .withBody(
+              """
+              {
+                  "status": 500,
+                  "errorCode": null,
+                  "userMessage": "GL Server Error",
+                  "developerMessage": "GL Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  // POST /accounts -> Returns Conflict 409
+  fun stubCreateAccountReturnsConflict(reference: String) {
+    stubFor(
+      post(urlEqualTo("/accounts"))
+        .withRequestBody(matchingJsonPath("$.accountReference", equalTo(reference)))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(409)
+            .withBody(
+              """
+              {
+                  "status": 409,
+                  "errorCode": null,
+                  "userMessage": "Duplicate account reference: $reference",
+                  "developerMessage": "Duplicate account reference: $reference",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  // POST /accounts/{uuid}/sub-accounts -> Returns Conflict 409
+  fun stubCreateSubAccountReturnsConflict(parentId: UUID, reference: String) {
+    stubFor(
+      post(urlEqualTo("/accounts/$parentId/sub-accounts"))
+        .withRequestBody(matchingJsonPath("$.subAccountReference", equalTo(reference)))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(409)
+            .withBody(
+              """
+              {
+                  "status": 409,
+                  "errorCode": null,
+                  "userMessage": "Duplicate sub account reference: $reference parentId: $parentId",
+                  "developerMessage": "Duplicate account reference: $reference  parentId: $parentId",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  // POST /accounts/{uuid}/sub-accounts -> 500
+  fun stubCreateSubAccountReturnsServerError(parentId: UUID, reference: String) {
+    stubFor(
+      post(urlEqualTo("/accounts/$parentId/sub-accounts"))
+        .withRequestBody(matchingJsonPath("$.subAccountReference", equalTo(reference)))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(500)
+            .withBody(
+              """
+              {
+                  "status": 500,
+                  "errorCode": null,
+                  "userMessage": "GL Server Error",
+                  "developerMessage": "GL Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   // POST /accounts -> Returns Single AccountResponse
-  fun stubCreateAccount(reference: String, returnUuid: String = UUID.randomUUID().toString()) {
+  fun stubCreateAccount(reference: String, returnUuid: UUID = UUID.randomUUID()) {
     val response = AccountResponse(
-      id = UUID.fromString(returnUuid),
+      id = returnUuid,
       reference = reference,
       createdAt = Instant.now(),
       createdBy = "MOCK_USER",

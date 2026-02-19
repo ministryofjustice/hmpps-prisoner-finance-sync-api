@@ -6,12 +6,10 @@ import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -29,6 +27,7 @@ class GeneralLedgerService(
   private val timeConversionService: TimeConversionService,
   private val idempotencyService: GeneralLedgerIdempotencyService,
   private val ledgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
+  private val generalLedgerAccountResolver: GeneralLedgerAccountResolver,
 ) : LedgerService,
   ReconciliationService {
 
@@ -36,83 +35,40 @@ class GeneralLedgerService(
     private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
   }
 
-  private fun getOrCreateAccount(reference: String): AccountResponse {
-    var account = generalLedgerApiClient.findAccountByReference(reference)
-
-    if (account != null) {
-      log.info("General Ledger account found for '$reference' (UUID: ${account.id})")
-      return account
-    }
-
-    log.info("General Ledger account not found for '$reference'. Creating new account.")
-    account = generalLedgerApiClient.createAccount(reference)
-
-    return account
-  }
-
-  private fun getOrCreateSubAccount(parentAccount: String, parentAccountId: UUID, reference: String): SubAccountResponse {
-    var subAccount = generalLedgerApiClient.findSubAccount(parentAccount, reference)
-    if (subAccount != null) {
-      log.info("General Ledger sub-account found for '$reference' (UUID: ${subAccount.id})")
-      return subAccount
-    }
-
-    log.info("General Ledger sub-account not found for '$reference'. Creating new sub-account.")
-    subAccount = generalLedgerApiClient.createSubAccount(parentAccountId, reference)
-
-    return subAccount
-  }
-
   override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
-    val prisonAccount = getOrCreateAccount(request.caseloadId)
     val transactionGLUUIDs = mutableListOf<UUID>()
+    val requestCache = InMemoryAccountCache()
 
-    val prisonerAccounts = mutableMapOf<String, AccountResponse>()
-
-    request.offenderTransactions.forEach { transaction ->
+    request.offenderTransactions.map { transaction ->
       val offenderId = transaction.offenderDisplayId
-      val prisonerAccount = prisonerAccounts.getOrPut(offenderId) {
-        getOrCreateAccount(offenderId)
-      }
 
-      val glEntries = mutableListOf<CreatePostingRequest>()
+      val postings = transaction.generalLedgerEntries.map { entry ->
 
-      transaction.generalLedgerEntries.forEach { entry ->
+        val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
+          prisonId = request.caseloadId,
+          offenderId = offenderId,
+          entryCode = entry.code,
+          transactionType = transaction.type,
+          parentCache = requestCache,
+        )
 
-        val isPrisonerAccount = accountMapping.isValidPrisonerAccountCode(entry.code)
-
-        val accountReference = if (isPrisonerAccount) {
-          accountMapping.mapPrisonerSubAccount(entry.code)
-        } else {
-          accountMapping.mapPrisonSubAccount(
-            entry.code,
-            transaction.type,
-          )
-        }
-
-        val parentAccountString = if (isPrisonerAccount) offenderId else request.caseloadId
-        val parentAccount = if (isPrisonerAccount) prisonerAccount else prisonAccount
-
-        val subAccount = getOrCreateSubAccount(parentAccountString, parentAccount.id, accountReference)
-        glEntries.add(
-          CreatePostingRequest(
-            subAccountId = subAccount.id,
-            type = CreatePostingRequest.Type.valueOf(entry.postingType),
-            amount = entry.amount.toPence(),
-          ),
+        return@map CreatePostingRequest(
+          subAccountUuid,
+          type = CreatePostingRequest.Type.valueOf(entry.postingType),
+          amount = entry.amount.toPence(),
         )
       }
 
-      val glTransactionRequest = CreateTransactionRequest(
+      val glRequest = CreateTransactionRequest(
         reference = transaction.reference ?: "",
         description = transaction.description,
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = transaction.amount.toPence(),
-        postings = glEntries,
+        postings = postings,
       )
 
       val transactionGLUUID = generalLedgerApiClient.postTransaction(
-        glTransactionRequest,
+        glRequest,
         idempotencyService.genTransactionIdempotencyKey(
           request.transactionId,
           transaction.entrySequence,

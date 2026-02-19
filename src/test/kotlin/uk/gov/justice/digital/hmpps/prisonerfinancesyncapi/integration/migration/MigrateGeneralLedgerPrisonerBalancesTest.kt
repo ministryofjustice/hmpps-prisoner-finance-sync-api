@@ -1,16 +1,19 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.migration
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
-import org.apache.commons.lang3.StringUtils
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
@@ -30,8 +33,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.Pris
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -65,25 +66,24 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
 
   @Autowired lateinit var timeConversionService: TimeConversionService
 
+  private lateinit var listAppender: ListAppender<ILoggingEvent>
+  private val rootLogger = LoggerFactory.getLogger("uk.gov.justice.digital.hmpps.prisonerfinancesyncapi") as Logger
+
   @BeforeEach
   fun setup() {
     generalLedgerApi.resetAll()
     hmppsAuth.stubGrantToken()
+    listAppender = ListAppender<ILoggingEvent>().apply { start() }
+    rootLogger.addAppender(listAppender)
   }
 
   @AfterEach
   fun tearDown() {
+    rootLogger.detachAppender(listAppender)
     nomisSyncPayloadRepository.deleteAll()
     transactionEntryRepository.deleteAll()
     transactionRepository.deleteAll()
     accountRepository.deleteAll()
-  }
-
-  private fun captureOutputStream(): ByteArrayOutputStream {
-    val outputStream = ByteArrayOutputStream()
-    val printStream = PrintStream(outputStream)
-    System.setOut(printStream)
-    return outputStream
   }
 
   fun createSubAccountResponse(subAccountRef: String, parentUUID: UUID) = SubAccountResponse(
@@ -136,7 +136,7 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
     }
 
     generalLedgerApi.stubGetAccountNotFound(PRISONER_DISPLAY_ID)
-    generalLedgerApi.stubCreateAccount(PRISONER_DISPLAY_ID, parentAccountId.toString())
+    generalLedgerApi.stubCreateAccount(PRISONER_DISPLAY_ID, parentAccountId)
 
     for (subAccount in subAccounts.values) {
       generalLedgerApi.stubCreateSubAccount(parentAccountId, subAccount.reference, subAccount.id.toString())
@@ -214,8 +214,6 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
       )
     }
 
-    val outputStream = captureOutputStream()
-
     generalLedgerApi.stubGetAccount(PRISONER_DISPLAY_ID, parentAccountId, subAccounts.values.toList())
 
     for (subAccount in subAccounts.values) {
@@ -245,13 +243,12 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
         .withQueryParam("reference", equalTo(PRISONER_DISPLAY_ID)),
     )
 
-    assertThat(
-      StringUtils.countMatches(
-        outputStream.toString(),
-        "Successfully migrated balance",
-      ),
-    )
-      .isEqualTo(2)
+    val logs = listAppender.list.map {
+      it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+    }
+
+    val matchingLogs = logs.count { it.contains("Successfully migrated balance") }
+    assertThat(matchingLogs).isEqualTo(2)
 
     generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/sub-accounts.*/balance")))
   }
