@@ -27,7 +27,7 @@ class GeneralLedgerService(
   private val timeConversionService: TimeConversionService,
   private val idempotencyService: GeneralLedgerIdempotencyService,
   private val ledgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
-  private val glAccountResolver: GlAccountResolver,
+  private val generalLedgerAccountResolver: GeneralLedgerAccountResolver,
 ) : LedgerService,
   ReconciliationService {
 
@@ -44,7 +44,7 @@ class GeneralLedgerService(
 
       val postings = transaction.generalLedgerEntries.map { entry ->
 
-        val subAccountUuid = glAccountResolver.resolveSubAccount(
+        val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
           prisonId = request.caseloadId,
           offenderId = offenderId,
           entryCode = entry.code,

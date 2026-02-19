@@ -24,7 +24,7 @@ import java.util.UUID
 import kotlin.collections.emptyList
 
 @ExtendWith(MockitoExtension::class)
-class GlAccountResolverTest {
+class GeneralLedgerAccountResolverTest {
 
   @Mock
   private lateinit var apiClient: GeneralLedgerApiClient
@@ -33,7 +33,7 @@ class GlAccountResolverTest {
   private lateinit var mapping: LedgerAccountMappingService
 
   @InjectMocks
-  private lateinit var accountResolver: GlAccountResolver
+  private lateinit var accountResolver: GeneralLedgerAccountResolver
 
   @Test
   fun `should return existing prisoner sub account id when sub account already exists`() {
@@ -326,7 +326,7 @@ class GlAccountResolverTest {
 
     val cache = InMemoryAccountCache()
 
-    assertThrows<GlAccountResolver.RetryAfterConflictException> {
+    assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
     }
 
@@ -363,7 +363,7 @@ class GlAccountResolverTest {
 
     val cache = InMemoryAccountCache()
 
-    assertThrows<GlAccountResolver.RetryAfterConflictException> {
+    assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
     }
 

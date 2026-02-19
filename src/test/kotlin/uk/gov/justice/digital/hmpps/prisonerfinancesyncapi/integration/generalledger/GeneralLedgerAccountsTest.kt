@@ -1,5 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.generalledger
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
@@ -17,6 +20,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
@@ -38,8 +42,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderT
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
@@ -71,17 +73,15 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
   @Autowired
   private lateinit var accountMapping: LedgerAccountMappingService
 
-  private fun captureOutputStream(): ByteArrayOutputStream {
-    val outputStream = ByteArrayOutputStream()
-    val printStream = PrintStream(outputStream)
-    System.setOut(printStream)
-    return outputStream
-  }
+  private lateinit var listAppender: ListAppender<ILoggingEvent>
+  private val rootLogger = LoggerFactory.getLogger("uk.gov.justice.digital.hmpps.prisonerfinancesyncapi") as Logger
 
   @BeforeEach
   fun setup() {
     generalLedgerApi.resetAll()
     hmppsAuth.stubGrantToken()
+    listAppender = ListAppender<ILoggingEvent>().apply { start() }
+    rootLogger.addAppender(listAppender)
   }
 
   @AfterEach
@@ -150,8 +150,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         prisonerRef,
       )
 
-      val stream = captureOutputStream()
-
       webTestClient.post()
         .uri("/sync/offender-transactions")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
@@ -160,7 +158,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
 
-      assertThat(stream.toString()).contains("Sub account not found after server responded with 409 for reference: $prisonerRef")
+      val logs = listAppender.list.map {
+        it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+      }
+      assertThat(logs).anyMatch { it.contains("Sub account not found after server responded with 409 for reference: $prisonerRef") }
 
       generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
@@ -180,8 +181,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccountNotFound(testPrisonerId, scenarioName = scenario, scenarioState = secondState)
 
-      val stream = captureOutputStream()
-
       webTestClient
         .post()
         .uri("/sync/offender-transactions")
@@ -191,7 +190,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
 
-      assertThat(stream.toString()).contains("Account not found after server responded with 409 for reference: $testPrisonerId")
+      val logs = listAppender.list.map {
+        it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+      }
+      assertThat(logs).anyMatch { it.contains("Account not found after server responded with 409 for reference: $testPrisonerId") }
 
       generalLedgerApi.verify(
         2,
@@ -249,8 +251,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         prisonerRef,
       )
 
-      val stream = captureOutputStream()
-
       webTestClient.post()
         .uri("/sync/offender-transactions")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
@@ -259,7 +259,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
 
-      assertThat(stream.toString()).contains("GL Server Error")
+      val logs = listAppender.list.map {
+        it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+      }
+      assertThat(logs).anyMatch { it.contains("GL Server Error") }
 
       generalLedgerApi.verify(2, getRequestedFor(urlPathMatching("/accounts.*")))
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
@@ -281,8 +284,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(testPrisonerId, parentAccountId, scenarioName = scenario, scenarioState = secondState)
 
-      val stream = captureOutputStream()
-
       webTestClient
         .post()
         .uri("/sync/offender-transactions")
@@ -292,7 +293,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
 
-      assertThat(stream.toString()).contains("GL Server Error")
+      val logs = listAppender.list.map {
+        it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+      }
+      assertThat(logs).anyMatch { it.contains("GL Server Error") }
 
       generalLedgerApi.verify(
         1,
@@ -1150,8 +1154,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         subAccountReturnedResponses.add(generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 100))
       }
 
-      val outputStream = captureOutputStream()
-
       webTestClient
         .get()
         .uri("/reconcile/prisoner-balances/$testPrisonerId")
@@ -1199,7 +1201,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           ),
         )
 
-        assertThat(outputStream.toString()).contains(expectedLog.toString())
+        val logs = listAppender.list.map {
+          it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+        }
+        assertThat(logs).anyMatch { it.contains(expectedLog.toString()) }
       }
 
       subAccountResponses.forEach { subAccount ->
@@ -1269,8 +1274,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         subAccountReturnedResponses.add(generalLedgerApi.stubGetSubAccountBalance(subAccount.id, 1000))
       }
 
-      val outputStream = captureOutputStream()
-
       webTestClient
         .get()
         .uri("/reconcile/prisoner-balances/$testPrisonerId")
@@ -1286,7 +1289,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
 
-      assertThat(outputStream.toString()).doesNotContain("GeneralLedgerDiscrepancyDetails")
+      val logs = listAppender.list.map {
+        it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+      }
+      assertThat(logs).allMatch { it.contains("GeneralLedgerDiscrepancyDetails") == false }
 
       subAccountResponses.forEach { subAccount ->
         generalLedgerApi.verify(1, getRequestedFor(urlPathMatching("/sub-accounts/${subAccount.id}/balance")))
@@ -1347,8 +1353,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
-      val outputStream = captureOutputStream()
-
       webTestClient
         .get()
         .uri("/reconcile/prisoner-balances/$testPrisonerId")
@@ -1395,7 +1399,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           ),
         )
 
-        assertThat(outputStream.toString()).contains(expectedLog.toString())
+        val logs = listAppender.list.map {
+          it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+        }
+        assertThat(logs).anyMatch { it.contains(expectedLog.toString()) }
       }
 
       generalLedgerApi.verify(0, getRequestedFor(urlPathMatching("/sub-accounts/.*/balance")))
@@ -1453,8 +1460,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
-      val outputStream = captureOutputStream()
-
       webTestClient
         .get()
         .uri("/reconcile/prisoner-balances/$testPrisonerId")
@@ -1501,7 +1506,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           ),
         )
 
-        assertThat(outputStream.toString()).contains(expectedLog.toString())
+        val logs = listAppender.list.map {
+          it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+        }
+        assertThat(logs).anyMatch { it.contains(expectedLog.toString()) }
       }
 
       generalLedgerApi.verify(0, getRequestedFor(urlPathMatching("/sub-accounts/.*/balance")))

@@ -10,14 +10,14 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import java.util.UUID
 
 @Service
-class GlAccountResolver(
+class GeneralLedgerAccountResolver(
   private val apiClient: GeneralLedgerApiClient,
   private val mapping: LedgerAccountMappingService,
 ) {
   class RetryAfterConflictException(message: String) : Exception(message)
 
   private companion object {
-    private val log = LoggerFactory.getLogger(GlAccountResolver::class.java)
+    private val log = LoggerFactory.getLogger(GeneralLedgerAccountResolver::class.java)
   }
 
   fun resolveSubAccount(

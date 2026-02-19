@@ -69,7 +69,7 @@ class GeneralLedgerServiceTest {
   private val timeConversionService = TimeConversionService()
 
   @Mock
-  private lateinit var glAccountResolver: GlAccountResolver
+  private lateinit var generalLedgerAccountResolver: GeneralLedgerAccountResolver
 
   @InjectMocks
   private lateinit var generalLedgerService: GeneralLedgerService
@@ -101,7 +101,7 @@ class GeneralLedgerServiceTest {
       for (entry in transaction.generalLedgerEntries) {
         mapUUID["$i-${entry.entrySequence}"] = UUID.randomUUID()
         whenever(
-          glAccountResolver.resolveSubAccount(
+          generalLedgerAccountResolver.resolveSubAccount(
             eq(request.caseloadId),
             eq(transaction.offenderDisplayId),
             eq(entry.code),
@@ -415,7 +415,7 @@ class GeneralLedgerServiceTest {
       val expectedError = RuntimeException("Network Error")
 
       whenever(
-        glAccountResolver.resolveSubAccount(
+        generalLedgerAccountResolver.resolveSubAccount(
           any<String>(),
           any<String>(),
           any(),
@@ -458,7 +458,7 @@ class GeneralLedgerServiceTest {
       whenever(request.transactionTimestamp).thenReturn(LocalDateTime.now())
       whenever(request.offenderTransactions).thenReturn(listOf(tx1, tx2))
 
-      whenever(glAccountResolver.resolveSubAccount(any(), any(), any(), any(), any()))
+      whenever(generalLedgerAccountResolver.resolveSubAccount(any(), any(), any(), any(), any()))
         .thenReturn(
           UUID.randomUUID(),
         )
