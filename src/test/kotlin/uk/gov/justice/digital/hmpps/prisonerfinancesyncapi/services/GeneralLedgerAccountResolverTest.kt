@@ -373,7 +373,7 @@ class GeneralLedgerAccountResolverTest {
   }
 
   @Test
-  fun `should propagate Exception when POST parent account`() {
+  fun `should propagate NOT (409) Conflict HTTP error when POST parent account`() {
     val prisonId = "MDI"
     val offenderId = "A1234BC"
     val entryCode = 1501
@@ -383,11 +383,11 @@ class GeneralLedgerAccountResolverTest {
       .thenReturn(null)
 
     whenever(apiClient.createAccount(prisonId))
-      .thenThrow(RuntimeException("API Unavailable"))
+      .thenThrow(WebClientResponseException(500, "Server Error", null, null, null))
 
     val cache = InMemoryAccountCache()
 
-    assertThrows<RuntimeException> {
+    assertThrows<WebClientResponseException> {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
     }
 
@@ -396,7 +396,7 @@ class GeneralLedgerAccountResolverTest {
   }
 
   @Test
-  fun `should propagate Exception when POST sub account`() {
+  fun `should propagate NOT (409) Conflict HTTP error Exception when POST sub account`() {
     val prisonId = "MDI"
     val offenderId = "A1234BC"
     val entryCode = 2101
@@ -417,11 +417,11 @@ class GeneralLedgerAccountResolverTest {
       )
 
     whenever(apiClient.createSubAccount(eq(parentId), any()))
-      .thenThrow(RuntimeException("API Unavailable"))
+      .thenThrow(WebClientResponseException(500, "Server Error", null, null, null))
 
     val cache = InMemoryAccountCache()
 
-    assertThrows<RuntimeException> {
+    assertThrows<WebClientResponseException> {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
     }
 
