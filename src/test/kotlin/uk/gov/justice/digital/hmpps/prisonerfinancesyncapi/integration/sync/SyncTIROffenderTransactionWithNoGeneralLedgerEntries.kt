@@ -6,6 +6,7 @@ import org.springframework.http.MediaType
 import tools.jackson.databind.ObjectMapper
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import java.math.BigDecimal
@@ -20,7 +21,7 @@ class SyncTIROffenderTransactionWithNoGeneralLedgerEntries : IntegrationTestBase
   @Test
   fun `should correctly fix TIR offender transaction by generating GL entries and updating all sub-accounts`() {
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
-    val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonNumber = uniquePrisonNumber()
 
     val regAccountCode = 2101
     val spendsAccountCode = 2102

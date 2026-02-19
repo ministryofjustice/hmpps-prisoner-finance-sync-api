@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
@@ -23,7 +24,7 @@ class SyncOffenderAddHoldTest : IntegrationTestBase() {
   @Test
   fun `should correctly apply a hold and update balances accordingly`() {
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
-    val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonNumber = uniquePrisonNumber()
     val offenderAccountCode = 2101
     val prisonBankGLAccountCode = 1104
     val prisonCashGLAccountCode = 2101

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
@@ -30,7 +31,7 @@ class MigratePrisonerWithHoldRemovalTest : IntegrationTestBase() {
     val transactionTimestamp = LocalDateTime.of(2025, 9, 19, 10, 0, 0)
 
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
-    val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonNumber = uniquePrisonNumber()
 
     val privateCashAccountCode = 2101
     val holdsGLAccountCode = 2199

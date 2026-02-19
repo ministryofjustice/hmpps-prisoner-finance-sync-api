@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -21,7 +22,8 @@ class SyncOffenderTransactionBalanceIntegrationTest : IntegrationTestBase() {
 
   @Test
   fun `given a single offender transaction is synced, the offender and prison account balances should be updated correctly`() {
-    val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonNumber = uniquePrisonNumber()
+
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
     val offenderAccountCode = 2102
     val prisonAccountCode = 1501
@@ -111,7 +113,8 @@ class SyncOffenderTransactionBalanceIntegrationTest : IntegrationTestBase() {
 
   @Test
   fun `given a prisoner with accounts, the account and transaction endpoints should return the correct data`() {
-    val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonNumber = uniquePrisonNumber()
+
     val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
     val offenderAccountCode = 2102
 

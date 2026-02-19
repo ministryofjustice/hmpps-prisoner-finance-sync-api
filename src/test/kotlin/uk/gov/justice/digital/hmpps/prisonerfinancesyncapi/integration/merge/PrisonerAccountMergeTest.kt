@@ -7,6 +7,7 @@ import software.amazon.awssdk.services.sns.model.MessageAttributeValue
 import software.amazon.awssdk.services.sns.model.PublishRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.SqsIntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.AdditionalInformation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
@@ -28,8 +29,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
 
   @Test
   fun `should correctly calculate prisoner balances after merging two accounts (Standard Transactions)`() {
-    val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
-    val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val toPrisoner = uniquePrisonNumber()
+    val fromPrisoner = uniquePrisonNumber()
 
     val amount1 = BigDecimal("3.50")
     postSyncTransaction(createSyncRequest(toPrisoner, LocalDateTime.now(), amount1))
@@ -51,8 +52,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
 
   @Test
   fun `should correctly reflect a Hold Allocation (HOA) after merge`() {
-    val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
-    val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val toPrisoner = uniquePrisonNumber()
+    val fromPrisoner = uniquePrisonNumber()
     val initialCash = BigDecimal("50.00")
     val holdAmount = BigDecimal("10.00")
 
@@ -82,8 +83,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
 
   @Test
   fun `should correctly reflect reversal of a Hold Removal (HOR) after merge`() {
-    val toPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
-    val fromPrisoner = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val toPrisoner = uniquePrisonNumber()
+    val fromPrisoner = uniquePrisonNumber()
     val initialHold = BigDecimal("10.00")
 
     migrateBalance(fromPrisoner, spendsAccountCode, BigDecimal("40.00"), initialHold)
@@ -123,8 +124,8 @@ class PrisonerAccountMergeTest : SqsIntegrationTestBase() {
 
   @Test
   fun `should correctly handle sequential and recursive merges`() {
-    val prisonerA = UUID.randomUUID().toString().substring(0, 8).uppercase()
-    val prisonerB = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonerA = uniquePrisonNumber()
+    val prisonerB = uniquePrisonNumber()
 
     val initialCash = BigDecimal("50.00")
     val initialHold = BigDecimal("5.00")
