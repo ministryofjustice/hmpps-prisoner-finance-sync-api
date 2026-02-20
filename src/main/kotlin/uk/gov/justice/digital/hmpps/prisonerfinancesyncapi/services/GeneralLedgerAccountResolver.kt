@@ -20,28 +20,30 @@ class GeneralLedgerAccountResolver(
     private val log = LoggerFactory.getLogger(GeneralLedgerAccountResolver::class.java)
   }
 
+  fun resolvePrisonerSubAccount(offenderId: String, accountCode: Int, parentCache: InMemoryAccountCache): UUID {
+    val subRef = mapping.mapPrisonerSubAccount(accountCode)
+
+    return getOrCreateSubAccount(offenderId, subRef, parentCache)
+  }
+
   fun resolveSubAccount(
     prisonId: String,
     offenderId: String,
-    entryCode: Int,
+    accountCode: Int,
     transactionType: String,
     parentCache: InMemoryAccountCache,
   ): UUID {
-    val isPrisoner = mapping.isValidPrisonerAccountCode(entryCode)
+    val isPrisoner = mapping.isValidPrisonerAccountCode(accountCode)
 
     val parentRef = if (isPrisoner) offenderId else prisonId
 
     val subRef = if (isPrisoner) {
-      mapping.mapPrisonerSubAccount(entryCode)
+      mapping.mapPrisonerSubAccount(accountCode)
     } else {
-      mapping.mapPrisonSubAccount(entryCode, transactionType)
+      mapping.mapPrisonSubAccount(accountCode, transactionType)
     }
 
-    val parent = parentCache.getOrPut(parentRef) {
-      findOrCreateParent(parentRef)
-    }
-
-    return getOrCreateSubAccount(parentRef, parent, subRef, parentCache)
+    return getOrCreateSubAccount(parentRef, subRef, parentCache)
   }
 
   private fun findOrCreateParent(reference: String): AccountResponse {
@@ -65,10 +67,13 @@ class GeneralLedgerAccountResolver(
 
   private fun getOrCreateSubAccount(
     parentRef: String,
-    parent: AccountResponse,
     subRef: String,
     parentCache: InMemoryAccountCache,
   ): UUID {
+    val parent = parentCache.getOrPut(parentRef) {
+      findOrCreateParent(parentRef)
+    }
+
     parent.subAccounts
       .firstOrNull { it.reference == subRef }
       ?.let { return it.id }

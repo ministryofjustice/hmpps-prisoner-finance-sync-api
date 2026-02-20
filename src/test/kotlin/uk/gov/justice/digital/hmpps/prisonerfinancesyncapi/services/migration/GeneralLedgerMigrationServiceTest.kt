@@ -20,13 +20,11 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateStatementBalanceRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.StatementBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerAccountResolver
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
@@ -42,8 +40,8 @@ class GeneralLedgerMigrationServiceTest {
   @Mock
   private lateinit var generalLedgerApiClient: GeneralLedgerApiClient
 
-  @Spy
-  private lateinit var accountMapping: LedgerAccountMappingService
+  @Mock
+  private lateinit var accountResolver: GeneralLedgerAccountResolver
 
   @Spy
   private val timeConversionService = TimeConversionService()
@@ -62,22 +60,6 @@ class GeneralLedgerMigrationServiceTest {
     listAppender = ListAppender<ILoggingEvent>().apply { start() }
     logger.addAppender(listAppender)
   }
-
-  fun createSubAccountResponse(subAccountRef: String, parentUUID: UUID) = SubAccountResponse(
-    UUID.randomUUID(),
-    subAccountRef,
-    parentUUID,
-    "Test",
-    Instant.now(),
-  )
-
-  fun createParentAccountResponse(prisonerRef: String, accountId: UUID = UUID.randomUUID(), subAccounts: List<SubAccountResponse> = emptyList()) = AccountResponse(
-    accountId,
-    prisonerRef,
-    "Test",
-    Instant.now(),
-    subAccounts,
-  )
 
   val prisonNumber = "A1234AA"
 
@@ -112,20 +94,22 @@ class GeneralLedgerMigrationServiceTest {
       ),
     )
 
-    val parentAccountid = UUID.randomUUID()
-
-    val subAccounts = mutableMapOf<Int, SubAccountResponse>()
+    val subAccounts = mutableMapOf<Int, UUID>()
 
     for (balance in req.accountBalances) {
-      subAccounts[balance.accountCode] = createSubAccountResponse(
-        accountMapping.mapPrisonerSubAccount(balance.accountCode),
-        parentAccountid,
+      subAccounts[balance.accountCode] = UUID.randomUUID()
+    }
+    for ((code, subAccountId) in subAccounts) {
+      whenever(
+        accountResolver.resolvePrisonerSubAccount(
+          eq(prisonNumber),
+          eq(code),
+          any(),
+        ),
+      ).thenReturn(
+        subAccountId,
       )
     }
-
-    val parentAccount = createParentAccountResponse(prisonNumber, parentAccountid, subAccounts.values.toList())
-
-    whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(parentAccount)
 
     whenever(generalLedgerApiClient.migrateSubAccountBalance(any(), any())).thenReturn(
       StatementBalanceResponse(
@@ -137,102 +121,19 @@ class GeneralLedgerMigrationServiceTest {
 
     generalLedgerMigrationService.migratePrisonerBalances(prisonNumber, req)
 
-    for (subAccount in subAccounts.values) {
+    for ((code, subAccountId) in subAccounts) {
       val request = CreateStatementBalanceRequest(
         req.accountBalances
-          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
+          .filter { it.accountCode == code }
           .sumOf { it.balance }.toPence(),
         req.accountBalances
-          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
+          .filter { it.accountCode == code }
           .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
       )
-      verify(generalLedgerApiClient).migrateSubAccountBalance(subAccount.id, request)
+      verify(generalLedgerApiClient).migrateSubAccountBalance(subAccountId, request)
       val logs = listAppender.list.map { it.formattedMessage }
       assertTrue(logs[logs.size - 1].contains("Successfully migrated balance "))
     }
     verify(telemetryClient, times(2)).trackEvent(eq(generalLedgerMigrationService.telemetryMigrationEvent), any(), eq(null))
-  }
-
-  @Test
-  fun `should create Parent Account and Sub accounts when they are not found and migrate balances`() {
-    val req = PrisonerBalancesSyncRequest(
-      listOf(
-        PrisonerAccountPointInTimeBalance(
-          "TES",
-          2101,
-          BigDecimal("10"),
-          BigDecimal.ZERO,
-          1,
-          LocalDateTime.now() - Duration.ofDays(1),
-        ),
-        PrisonerAccountPointInTimeBalance(
-          "MDI",
-          2101,
-          BigDecimal("0"),
-          BigDecimal.ZERO,
-          1,
-          LocalDateTime.now(),
-        ),
-        PrisonerAccountPointInTimeBalance(
-          "KMI",
-          2101,
-          BigDecimal("20"),
-          BigDecimal.ZERO,
-          1,
-          LocalDateTime.now() - Duration.ofDays(5),
-        ),
-        PrisonerAccountPointInTimeBalance(
-          "MDI",
-          2102,
-          BigDecimal("33"),
-          BigDecimal.ZERO,
-          1,
-          LocalDateTime.now() - Duration.ofDays(3),
-        ),
-      ),
-    )
-
-    val parentAccountid = UUID.randomUUID()
-
-    val subAccounts = mutableMapOf<Int, SubAccountResponse>()
-
-    for (balance in req.accountBalances) {
-      subAccounts[balance.accountCode] = createSubAccountResponse(
-        accountMapping.mapPrisonerSubAccount(balance.accountCode),
-        parentAccountid,
-      )
-    }
-
-    val parentAccount = createParentAccountResponse(prisonNumber, parentAccountid)
-
-    whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(null)
-    whenever(generalLedgerApiClient.createAccount(prisonNumber)).thenReturn(parentAccount)
-
-    for (subAccount in subAccounts.values) {
-      whenever(generalLedgerApiClient.createSubAccount(parentAccount.id, subAccount.reference)).thenReturn(subAccount)
-    }
-
-    whenever(generalLedgerApiClient.migrateSubAccountBalance(any(), any()))
-      .thenReturn(StatementBalanceResponse(123, UUID.randomUUID(), Instant.now()))
-
-    generalLedgerMigrationService.migratePrisonerBalances(prisonNumber, req)
-
-    verify(generalLedgerApiClient).createAccount(prisonNumber)
-
-    for (subAccount in subAccounts.values) {
-      verify(generalLedgerApiClient).createSubAccount(parentAccount.id, subAccount.reference)
-    }
-
-    for (subAccount in subAccounts.values) {
-      val request = CreateStatementBalanceRequest(
-        req.accountBalances
-          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .sumOf { it.balance }.toPence(),
-        req.accountBalances
-          .filter { accountMapping.mapPrisonerSubAccount(it.accountCode) == subAccount.reference }
-          .maxOf { timeConversionService.toUtcInstant(it.asOfTimestamp) },
-      )
-      verify(generalLedgerApiClient).migrateSubAccountBalance(subAccount.id, request)
-    }
   }
 }
