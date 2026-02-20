@@ -32,7 +32,7 @@ class GeneralLedgerForwarderTest {
   fun setup() {
     listAppender = ListAppender<ILoggingEvent>().apply { start() }
     logger.addAppender(listAppender)
-    generalLedgerForwarder = GeneralLedgerForwarder(true, matchingPrisonerId)
+    generalLedgerForwarder = GeneralLedgerForwarder(true, listOf(matchingPrisonerId))
   }
 
   @AfterEach
@@ -45,7 +45,7 @@ class GeneralLedgerForwarderTest {
     val logs = listAppender.list.map { it.formattedMessage }
 
     assertThat(logs).anyMatch {
-      it.contains("GeneralLedgerSwitchManager initialized. Enabled: ${true}. Test Prisoner ID: $matchingPrisonerId")
+      it.contains("GeneralLedgerSwitchManager initialized. Enabled: ${true}. Test Prisoner IDs: ${listOf(matchingPrisonerId)}")
     }
   }
 
@@ -104,7 +104,7 @@ class GeneralLedgerForwarderTest {
 
   @Test
   fun `should not call GL when flag is disabled`() {
-    generalLedgerForwarder = GeneralLedgerForwarder(false, matchingPrisonerId)
+    generalLedgerForwarder = GeneralLedgerForwarder(false, listOf(matchingPrisonerId))
 
     val funCall = mock<() -> Boolean>()
 
@@ -120,7 +120,7 @@ class GeneralLedgerForwarderTest {
 
   @Test
   fun `should not call GL when prisonerId doesn't match`() {
-    generalLedgerForwarder = GeneralLedgerForwarder(true, "UNKNOWN_ID")
+    generalLedgerForwarder = GeneralLedgerForwarder(true, listOf("UNKNOWN_ID"))
 
     val funCall = mock<() -> Boolean>()
 
@@ -132,5 +132,21 @@ class GeneralLedgerForwarderTest {
 
     assertThat(result).isNull()
     verify(funCall, never()).invoke()
+  }
+
+  @Test
+  fun `should not call GL for multiple whitelisted prisonerIds`() {
+    val multiplePrisonerIds = listOf("A1234AA", "A1234AB")
+    generalLedgerForwarder = GeneralLedgerForwarder(true, multiplePrisonerIds)
+
+    for (prisonerId in multiplePrisonerIds) {
+      val result = generalLedgerForwarder.executeIfEnabled(
+        "Test",
+        prisonerId,
+        { true },
+      )
+
+      assertThat(result).isTrue()
+    }
   }
 }

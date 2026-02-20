@@ -51,7 +51,7 @@ import kotlin.random.Random
 @TestPropertySource(
   properties = [
     "feature.general-ledger-api.enabled=true",
-    "feature.general-ledger-api.test-prisoner-id=A1234AA",
+    "feature.general-ledger-api.test-prisoner-ids=A1234AA,",
   ],
 )
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)

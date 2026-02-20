@@ -8,14 +8,14 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 @Service
 class GeneralLedgerForwarder(
   @Value("\${feature.general-ledger-api.enabled:false}") private val shouldSyncToGeneralLedger: Boolean,
-  @Value("\${feature.general-ledger-api.test-prisoner-id:DISABLED}") private val testPrisonerId: String,
+  @Value("\${feature.general-ledger-api.test-prisoner-ids:DISABLED}") private val testPrisonerIds: List<String>,
 ) {
 
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
   }
   init {
-    log.info("GeneralLedgerSwitchManager initialized. Enabled: $shouldSyncToGeneralLedger. Test Prisoner ID: $testPrisonerId")
+    log.info("GeneralLedgerSwitchManager initialized. Enabled: $shouldSyncToGeneralLedger. Test Prisoner IDs: $testPrisonerIds")
   }
 
   fun <T> executeIfEnabled(
@@ -23,7 +23,7 @@ class GeneralLedgerForwarder(
     prisonNumber: String,
     block: () -> T,
   ): T? {
-    if (shouldSyncToGeneralLedger && prisonNumber == testPrisonerId) {
+    if (shouldSyncToGeneralLedger && testPrisonerIds.contains(prisonNumber)) {
       try {
         return block()
       } catch (e: WebClientResponseException) {

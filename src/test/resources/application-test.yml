@@ -45,7 +45,7 @@ springdoc:
 feature:
   general-ledger-api:
     enabled: true
-    test-prisoner-id: 'TEST'
+    test-prisoner-ids: TEST, TEST2
 
 general-ledger-api:
     url: http://localhost:8091

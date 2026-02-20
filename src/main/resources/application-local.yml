@@ -24,7 +24,7 @@ hmpps.sqs:
 feature:
   general-ledger-api:
     enabled: true
-    test-prisoner-id: 'A0251AB'
+    test-prisoner-ids: A0251AB, A0251AC
 
 general-ledger-api:
   url: http://localhost:8084
