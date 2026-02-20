@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
@@ -31,7 +32,7 @@ class StaggeredMigrationBalanceAggregationTest : IntegrationTestBase() {
 
   @Test
   fun `should correctly aggregate balances by summing per-prison balances when migration dates differ`() {
-    val prisonNumber = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonNumber = uniquePrisonNumber()
 
     val prisonA = UUID.randomUUID().toString().substring(0, 3).uppercase()
     val prisonB = UUID.randomUUID().toString().substring(0, 3).uppercase()

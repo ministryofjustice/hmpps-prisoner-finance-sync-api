@@ -13,6 +13,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATIO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.createSyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
@@ -151,7 +152,9 @@ class AuditHistoryTest(
   @Test
   fun `Get History should return a list with a payload`() {
     val caseloadId = uniqueCaseloadId()
-    val request = createSyncOffenderTransactionRequest(caseloadId)
+    val prisonNumber = uniquePrisonNumber()
+
+    val request = createSyncOffenderTransactionRequest(caseloadId, prisonNumber)
 
     val receipt: SyncTransactionReceipt = webTestClient
       .post()

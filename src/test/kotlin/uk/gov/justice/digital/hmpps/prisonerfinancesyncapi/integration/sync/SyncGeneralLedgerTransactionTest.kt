@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import java.math.BigDecimal
@@ -60,6 +61,8 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
   @Test
   fun `400 Bad Request - when amount has more than 2 decimal places`() {
     val newTransactionRequest = createSyncGeneralLedgerTransactionRequest(
+      uniqueCaseloadId(),
+      "GJ",
       listOf(
         GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = BigDecimal("50.001")),
         GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = BigDecimal("50.001")),
@@ -131,7 +134,50 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
       .isEqualTo("Validation failed: createdBy: Created by must be supplied and be <= 32 characters")
   }
 
+  @Test
+  fun `400 Bad Request - invalid caseloadId`() {
+    val caseloadId = "-A-"
+
+    val request = createSyncGeneralLedgerTransactionRequest(caseloadId = caseloadId)
+
+    webTestClient
+      .post()
+      .uri("/sync/general-ledger-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(request)
+      .exchange()
+      .expectStatus().isBadRequest
+      .expectBody()
+      .jsonPath("$.developerMessage")
+      .isEqualTo("Validation failed: caseloadId: prisonId must be 3 alphanumeric characters")
+  }
+
+  @Test
+  fun `400 Bad Request - invalid transactionType`() {
+    val transactionType = "£DRAIN"
+
+    val request = createSyncGeneralLedgerTransactionRequest(transactionType = transactionType)
+
+    webTestClient
+      .post()
+      .uri("/sync/general-ledger-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(request)
+      .exchange()
+      .expectStatus().isBadRequest
+      .expectBody()
+      .jsonPath("$.developerMessage").value<String> { message ->
+        assertThat(message).contains("Transaction Type must be 1-19 capital alphanumeric characters or underscores")
+      }
+  }
+
   private fun createSyncGeneralLedgerTransactionRequest(
+    caseloadId: String = "GMI",
+    transactionType: String = "AD",
     generalLedgerEntries: List<GeneralLedgerEntry> = listOf(
       GeneralLedgerEntry(entrySequence = 1, code = 1101, postingType = "DR", amount = BigDecimal("50.00")),
       GeneralLedgerEntry(entrySequence = 2, code = 2503, postingType = "CR", amount = BigDecimal("50.00")),
@@ -141,8 +187,8 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
     requestId = UUID.randomUUID(),
     description = "General Ledger Account Transfer",
     reference = "REF12345",
-    caseloadId = "GMI",
-    transactionType = "GJ",
+    caseloadId = caseloadId,
+    transactionType = transactionType,
     transactionTimestamp = LocalDateTime.now(),
     createdAt = LocalDateTime.now(),
     createdBy = "JD12345",

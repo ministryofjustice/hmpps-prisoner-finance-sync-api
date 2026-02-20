@@ -909,7 +909,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       val prisoner1 = testPrisonerId
       val amount1 = BigDecimal("1.40")
 
-      val prisoner2 = "PRISONER_2"
+      val prisoner2 = "Z9876ZZ"
       val amount2 = BigDecimal("2.20")
 
       val prisoner1ParentUuid = UUID.randomUUID()

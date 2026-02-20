@@ -2,7 +2,10 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISON_ID
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISON_ID
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -22,6 +25,10 @@ data class SyncOffenderTransactionRequest(
   )
   override val requestId: UUID,
 
+  @field:Pattern(
+    regexp = VALIDATION_REGEX_PRISON_ID,
+    message = VALIDATION_MESSAGE_PRISON_ID,
+  )
   @field:Schema(
     description = "The ID of the caseload associated with this transaction.",
     example = "GMI",

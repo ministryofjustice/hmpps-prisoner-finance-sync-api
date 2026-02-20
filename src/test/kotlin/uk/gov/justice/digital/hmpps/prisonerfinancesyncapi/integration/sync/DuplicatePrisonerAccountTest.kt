@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -20,7 +21,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
   @Test
   fun `should not create duplicate prisoner accounts in race-condition`() {
     val testOffenderId = 123L
-    val testOffenderDisplayId = UUID.randomUUID().toString().substring(0, 8).uppercase()
+    val prisonNumber = uniquePrisonNumber()
     val transferAmount = BigDecimal("324.00")
 
     val transferReq1 = createSyncOffenderTransactionRequest(
@@ -29,7 +30,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         createTestOffenderTransaction(
           type = "TOR",
           amount = BigDecimal("0.00"),
-          offenderDisplayId = testOffenderDisplayId,
+          offenderDisplayId = prisonNumber,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "REG",
@@ -41,7 +42,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         createTestOffenderTransaction(
           type = "TOR",
           amount = transferAmount,
-          offenderDisplayId = testOffenderDisplayId,
+          offenderDisplayId = prisonNumber,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SPND",
@@ -53,7 +54,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         createTestOffenderTransaction(
           type = "TOR",
           amount = BigDecimal("0.00"),
-          offenderDisplayId = testOffenderDisplayId,
+          offenderDisplayId = prisonNumber,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SAV",
@@ -71,7 +72,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         createTestOffenderTransaction(
           type = "TIR",
           amount = BigDecimal("0.00"),
-          offenderDisplayId = testOffenderDisplayId,
+          offenderDisplayId = prisonNumber,
           offenderId = testOffenderId,
           postingType = "CR",
           subaccountType = "REG",
@@ -83,7 +84,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         createTestOffenderTransaction(
           type = "TOR",
           amount = transferAmount,
-          offenderDisplayId = testOffenderDisplayId,
+          offenderDisplayId = prisonNumber,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SPND",
@@ -95,7 +96,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
         createTestOffenderTransaction(
           type = "TOR",
           amount = BigDecimal("0.00"),
-          offenderDisplayId = testOffenderDisplayId,
+          offenderDisplayId = prisonNumber,
           offenderId = testOffenderId,
           postingType = "DR",
           subaccountType = "SAV",
@@ -114,7 +115,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts", testOffenderDisplayId)
+      .uri("/prisoners/{prisonNumber}/accounts", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk

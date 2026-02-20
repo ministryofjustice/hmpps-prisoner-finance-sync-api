@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
@@ -25,8 +26,8 @@ class PrisonerGeneralLedgerAccountsAggregationTest : IntegrationTestBase() {
   @Test
   fun `should sum transactions from multiple prisoners in a single general ledger account`() {
     val prisonId = generateRandomCode(3)
-    val offender1DisplayId = generateRandomCode(7)
-    val offender2DisplayId = generateRandomCode(7)
+    val offender1DisplayId = uniquePrisonNumber()
+    val offender2DisplayId = uniquePrisonNumber()
 
     val offenderAccountCode = 2102
     val prisonAccountCode = 2102

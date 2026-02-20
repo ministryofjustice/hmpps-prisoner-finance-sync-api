@@ -3,6 +3,11 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Digits
+import jakarta.validation.constraints.Pattern
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_PRISONER_ID
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_TRANSACTION_TYPE
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISONER_ID
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_TRANSACTION_TYPE
 import java.math.BigDecimal
 
 @Schema(description = "Represents a single offender transaction entry, including related general ledger entries.")
@@ -13,7 +18,11 @@ data class OffenderTransaction(
   @field:Schema(description = "The internal ID of the offender.", example = "1015388", required = true)
   val offenderId: Long,
 
-  @field:Schema(description = "The display ID for the offender.", example = "AA001AA", required = true)
+  @field:Pattern(
+    regexp = VALIDATION_REGEX_PRISONER_ID,
+    message = VALIDATION_MESSAGE_PRISONER_ID,
+  )
+  @field:Schema(description = "The display ID for the offender.", example = "A1234AA", required = true)
   val offenderDisplayId: String,
 
   @field:Schema(description = "The booking ID of the offender transaction.", example = "455987", required = false, nullable = true)
@@ -25,6 +34,10 @@ data class OffenderTransaction(
   @field:Schema(description = "The type of posting (DR/CR).", allowableValues = ["DR", "CR"], example = "DR", required = true)
   val postingType: String,
 
+  @field:Pattern(
+    regexp = VALIDATION_REGEX_TRANSACTION_TYPE,
+    message = VALIDATION_MESSAGE_TRANSACTION_TYPE,
+  )
   @field:Schema(description = "The type of transaction (e.g., OT, DISCP).", example = "OT", required = true)
   val type: String,
 
