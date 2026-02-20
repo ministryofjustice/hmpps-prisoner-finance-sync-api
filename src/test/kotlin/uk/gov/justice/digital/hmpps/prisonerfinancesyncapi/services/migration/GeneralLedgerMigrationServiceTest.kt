@@ -25,7 +25,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerAccountResolver
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
@@ -52,8 +51,6 @@ class GeneralLedgerMigrationServiceTest {
 
   @InjectMocks
   private lateinit var generalLedgerMigrationService: GeneralLedgerMigrationService
-
-  private val accountMapping = LedgerAccountMappingService()
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
   private val logger = LoggerFactory.getLogger(GeneralLedgerMigrationService::class.java) as Logger
@@ -104,11 +101,9 @@ class GeneralLedgerMigrationServiceTest {
     }
     for ((code, subAccountId) in subAccounts) {
       whenever(
-        accountResolver.resolveSubAccount(
-          eq(""),
+        accountResolver.resolvePrisonerSubAccount(
           eq(prisonNumber),
           eq(code),
-          eq(""),
           any(),
         ),
       ).thenReturn(

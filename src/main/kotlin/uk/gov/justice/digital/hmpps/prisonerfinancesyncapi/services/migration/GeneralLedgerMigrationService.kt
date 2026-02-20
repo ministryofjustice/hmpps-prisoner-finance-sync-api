@@ -59,11 +59,9 @@ class GeneralLedgerMigrationService(
     }
 
     for ((accountCode, balance) in balanceByAccount) {
-      val subAccountId = accountResolver.resolveSubAccount(
-        "",
+      val subAccountId = accountResolver.resolvePrisonerSubAccount(
         prisonNumber,
         accountCode,
-        "",
         requestCache,
       )
 
@@ -77,7 +75,7 @@ class GeneralLedgerMigrationService(
       val logMessage = mapOf(
         "prisonNumber" to prisonNumber,
         "subAccountId" to res.subAccountId.toString(),
-        "AccountCode" to accountCode.toString(),
+        "accountCode" to accountCode.toString(),
         "balance" to res.amount.toString(),
         "balanceDateTime" to res.balanceDateTime.toString(),
       )

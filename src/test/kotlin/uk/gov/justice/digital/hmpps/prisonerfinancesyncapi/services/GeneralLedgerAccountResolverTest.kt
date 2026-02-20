@@ -1,6 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -35,398 +37,515 @@ class GeneralLedgerAccountResolverTest {
   @InjectMocks
   private lateinit var accountResolver: GeneralLedgerAccountResolver
 
-  @Test
-  fun `should return existing prisoner sub account id when sub account already exists`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 2101
-    val transactionType = "CANT"
+  @Nested
+  @DisplayName("resolvePrisonerSubAccount")
+  inner class ResolvePrisonerSubAccount {
+    @Test
+    fun `should create sub account when sub account does not exist for prisoner`() {
+      val offenderId = "A1234BC"
+      val accountCode = 2101
 
-    val parentId = UUID.randomUUID()
-    val subId = UUID.randomUUID()
+      val parentId = UUID.randomUUID()
+      val subId = UUID.randomUUID()
 
-    val existingSub = SubAccountResponse(
-      id = subId,
-      reference = "CASH",
-      parentAccountId = parentId,
-      createdBy = "test-user",
-      createdAt = Instant.now(),
-    )
+      val parent = AccountResponse(
+        id = parentId,
+        reference = offenderId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = emptyList(),
+      )
 
-    val parent = AccountResponse(
-      id = parentId,
-      reference = offenderId,
-      createdBy = "test-user",
-      createdAt = Instant.now(),
-      subAccounts = listOf(existingSub),
-    )
+      val createdSub = SubAccountResponse(
+        id = subId,
+        reference = "CASH",
+        parentAccountId = parentId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+      )
 
-    val cache = InMemoryAccountCache().apply {
-      put(offenderId, parent)
+      whenever(apiClient.createSubAccount(parentId, "CASH")).thenReturn(createdSub)
+
+      val cache = InMemoryAccountCache().apply {
+        put(offenderId, parent)
+      }
+
+      val result = accountResolver.resolvePrisonerSubAccount(offenderId, accountCode, cache)
+
+      assertEquals(subId, result)
+      verify(apiClient).createSubAccount(parentId, "CASH")
     }
 
-    val result = accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+    @Test
+    fun `should find existing parent account when not present in cache`() {
+      val offenderId = "A1234BC"
+      val accountCode = 2101
 
-    assertEquals(subId, result)
-    verify(apiClient, never()).createSubAccount(any(), any())
-    verifyNoMoreInteractions(apiClient)
-  }
+      val parentId = UUID.randomUUID()
 
-  @Test
-  fun `should create sub account when sub account does not exist for prisoner`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 2101
-    val transactionType = "CANT"
+      val parent = AccountResponse(
+        id = parentId,
+        reference = offenderId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = emptyList(),
+      )
 
-    val parentId = UUID.randomUUID()
-    val subId = UUID.randomUUID()
+      whenever(apiClient.findAccountByReference(offenderId)).thenReturn(parent)
+      whenever(apiClient.createSubAccount(parentId, "CASH"))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = "CASH",
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
 
-    val parent = AccountResponse(
-      id = parentId,
-      reference = offenderId,
-      createdBy = "test-user",
-      createdAt = Instant.now(),
-      subAccounts = emptyList(),
-    )
+      val cache = InMemoryAccountCache()
 
-    val createdSub = SubAccountResponse(
-      id = subId,
-      reference = "CASH",
-      parentAccountId = parentId,
-      createdBy = "test-user",
-      createdAt = Instant.now(),
-    )
+      accountResolver.resolvePrisonerSubAccount(offenderId, accountCode, cache)
 
-    whenever(apiClient.createSubAccount(parentId, "CASH")).thenReturn(createdSub)
-
-    val cache = InMemoryAccountCache().apply {
-      put(offenderId, parent)
+      verify(apiClient).findAccountByReference(offenderId)
+      verify(apiClient, never()).createAccount(any())
     }
 
-    val result = accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+    @Test
+    fun `should create parent account when not found by reference`() {
+      val offenderId = "A1234BC"
+      val accountCode = 2101
 
-    assertEquals(subId, result)
-    verify(apiClient).createSubAccount(parentId, "CASH")
+      val parentId = UUID.randomUUID()
+
+      whenever(apiClient.findAccountByReference(offenderId)).thenReturn(null)
+      whenever(apiClient.createAccount(offenderId))
+        .thenReturn(
+          AccountResponse(
+            id = parentId,
+            reference = offenderId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+            subAccounts = emptyList(),
+          ),
+        )
+
+      whenever(apiClient.createSubAccount(eq(parentId), any()))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = "CASH",
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
+
+      val cache = InMemoryAccountCache()
+
+      accountResolver.resolvePrisonerSubAccount(offenderId, accountCode, cache)
+
+      verify(apiClient).findAccountByReference(offenderId)
+      verify(apiClient).createAccount(offenderId)
+    }
   }
 
-  @Test
-  fun `should find existing parent account when not present in cache`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 2101
-    val transactionType = "CANT"
+  @Nested
+  @DisplayName("resolveSubAccount")
+  inner class ResolveSubAccount {
+    @Test
+    fun `should return existing prisoner sub account id when sub account already exists`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 2101
+      val transactionType = "CANT"
 
-    val parentId = UUID.randomUUID()
+      val parentId = UUID.randomUUID()
+      val subId = UUID.randomUUID()
 
-    val parent = AccountResponse(
-      id = parentId,
-      reference = offenderId,
-      createdBy = "test-user",
-      createdAt = Instant.now(),
-      subAccounts = emptyList(),
-    )
-
-    whenever(apiClient.findAccountByReference(offenderId)).thenReturn(parent)
-    whenever(apiClient.createSubAccount(parentId, "CASH"))
-      .thenReturn(
-        SubAccountResponse(
-          id = UUID.randomUUID(),
-          reference = "CASH",
-          parentAccountId = parentId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-        ),
+      val existingSub = SubAccountResponse(
+        id = subId,
+        reference = "CASH",
+        parentAccountId = parentId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
       )
 
-    val cache = InMemoryAccountCache()
-
-    accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
-
-    verify(apiClient).findAccountByReference(offenderId)
-    verify(apiClient, never()).createAccount(any())
-  }
-
-  @Test
-  fun `should create parent account when not found by reference`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 2101
-    val transactionType = "CANT"
-
-    val parentId = UUID.randomUUID()
-
-    whenever(apiClient.findAccountByReference(offenderId)).thenReturn(null)
-    whenever(apiClient.createAccount(offenderId))
-      .thenReturn(
-        AccountResponse(
-          id = parentId,
-          reference = offenderId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-          subAccounts = emptyList(),
-        ),
+      val parent = AccountResponse(
+        id = parentId,
+        reference = offenderId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = listOf(existingSub),
       )
 
-    whenever(apiClient.createSubAccount(eq(parentId), any()))
-      .thenReturn(
-        SubAccountResponse(
-          id = UUID.randomUUID(),
-          reference = "CASH",
-          parentAccountId = parentId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-        ),
+      val cache = InMemoryAccountCache().apply {
+        put(offenderId, parent)
+      }
+
+      val result = accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+
+      assertEquals(subId, result)
+      verify(apiClient, never()).createSubAccount(any(), any())
+      verifyNoMoreInteractions(apiClient)
+    }
+
+    @Test
+    fun `should create sub account when sub account does not exist for prisoner`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 2101
+      val transactionType = "CANT"
+
+      val parentId = UUID.randomUUID()
+      val subId = UUID.randomUUID()
+
+      val parent = AccountResponse(
+        id = parentId,
+        reference = offenderId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = emptyList(),
       )
 
-    val cache = InMemoryAccountCache()
-
-    accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
-
-    verify(apiClient).findAccountByReference(offenderId)
-    verify(apiClient).createAccount(offenderId)
-  }
-
-  @Test
-  fun `should use prison mapping when entry code is not prisoner type`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 1502
-    val transactionType = "ADV"
-
-    val subAccountReference = mapping.mapPrisonSubAccount(entryCode, transactionType)
-
-    val parentId = UUID.randomUUID()
-
-    val parent = AccountResponse(
-      id = parentId,
-      reference = "REF",
-      createdBy = "test-user",
-      createdAt = Instant.now(),
-      subAccounts = emptyList(),
-    )
-
-    whenever(apiClient.findAccountByReference(prisonId)).thenReturn(parent)
-    whenever(apiClient.createSubAccount(parentId, subAccountReference))
-      .thenReturn(
-        SubAccountResponse(
-          id = UUID.randomUUID(),
-          reference = subAccountReference,
-          parentAccountId = parentId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-        ),
+      val createdSub = SubAccountResponse(
+        id = subId,
+        reference = "CASH",
+        parentAccountId = parentId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
       )
 
-    val cache = InMemoryAccountCache()
+      whenever(apiClient.createSubAccount(parentId, "CASH")).thenReturn(createdSub)
 
-    accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
-  }
+      val cache = InMemoryAccountCache().apply {
+        put(offenderId, parent)
+      }
 
-  @Test
-  fun `should try to get parent account again when create account throws exception 409`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 1501
-    val transactionType = "CANT"
+      val result = accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
 
-    val parentId = UUID.randomUUID()
+      assertEquals(subId, result)
+      verify(apiClient).createSubAccount(parentId, "CASH")
+    }
 
-    whenever(apiClient.findAccountByReference(prisonId))
-      .thenReturn(null)
-      .thenReturn(
-        AccountResponse(
-          id = parentId,
-          reference = offenderId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-          subAccounts = emptyList(),
-        ),
+    @Test
+    fun `should find existing parent account when not present in cache`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 2101
+      val transactionType = "CANT"
+
+      val parentId = UUID.randomUUID()
+
+      val parent = AccountResponse(
+        id = parentId,
+        reference = offenderId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = emptyList(),
       )
 
-    whenever(apiClient.createAccount(prisonId))
-      .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
+      whenever(apiClient.findAccountByReference(offenderId)).thenReturn(parent)
+      whenever(apiClient.createSubAccount(parentId, "CASH"))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = "CASH",
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
 
-    whenever(apiClient.createSubAccount(eq(parentId), any()))
-      .thenReturn(
-        SubAccountResponse(
-          id = UUID.randomUUID(),
-          reference = "CASH",
-          parentAccountId = parentId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-        ),
+      val cache = InMemoryAccountCache()
+
+      accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+
+      verify(apiClient).findAccountByReference(offenderId)
+      verify(apiClient, never()).createAccount(any())
+    }
+
+    @Test
+    fun `should create parent account when not found by reference`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 2101
+      val transactionType = "CANT"
+
+      val parentId = UUID.randomUUID()
+
+      whenever(apiClient.findAccountByReference(offenderId)).thenReturn(null)
+      whenever(apiClient.createAccount(offenderId))
+        .thenReturn(
+          AccountResponse(
+            id = parentId,
+            reference = offenderId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+            subAccounts = emptyList(),
+          ),
+        )
+
+      whenever(apiClient.createSubAccount(eq(parentId), any()))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = "CASH",
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
+
+      val cache = InMemoryAccountCache()
+
+      accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+
+      verify(apiClient).findAccountByReference(offenderId)
+      verify(apiClient).createAccount(offenderId)
+    }
+
+    @Test
+    fun `should use prison mapping when entry code is not prisoner type`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 1502
+      val transactionType = "ADV"
+
+      val subAccountReference = mapping.mapPrisonSubAccount(entryCode, transactionType)
+
+      val parentId = UUID.randomUUID()
+
+      val parent = AccountResponse(
+        id = parentId,
+        reference = "REF",
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = emptyList(),
       )
 
-    val cache = InMemoryAccountCache()
+      whenever(apiClient.findAccountByReference(prisonId)).thenReturn(parent)
+      whenever(apiClient.createSubAccount(parentId, subAccountReference))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = subAccountReference,
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
 
-    accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+      val cache = InMemoryAccountCache()
 
-    verify(apiClient, times(2)).findAccountByReference(prisonId)
-    verify(apiClient).createAccount(prisonId)
-  }
-
-  @Test
-  fun `should try to get sub account again when create account throws exception 409`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 2101
-    val transactionType = "CANT"
-    val subAccountReference = "CASH"
-
-    val parentId = UUID.randomUUID()
-
-    whenever(apiClient.findAccountByReference(offenderId))
-      .thenReturn(
-        AccountResponse(
-          id = parentId,
-          reference = offenderId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-          subAccounts = emptyList(),
-        ),
-      )
-
-    whenever(apiClient.createSubAccount(eq(parentId), any()))
-      .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
-
-    whenever(apiClient.findSubAccount(offenderId, subAccountReference))
-      .thenReturn(
-        SubAccountResponse(
-          id = UUID.randomUUID(),
-          reference = subAccountReference,
-          parentAccountId = parentId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-        ),
-      )
-
-    val cache = InMemoryAccountCache()
-
-    accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
-
-    verify(apiClient).findAccountByReference(offenderId)
-    verify(apiClient).findSubAccount(offenderId, subAccountReference)
-    verify(apiClient).createSubAccount(parentId, subAccountReference)
-  }
-
-  @Test
-  fun `should throw RetryAfterConflictException when second get fails after conflict 409 on parent account`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 1501
-    val transactionType = "CANT"
-
-    whenever(apiClient.findAccountByReference(prisonId))
-      .thenReturn(null)
-      .thenReturn(null)
-
-    whenever(apiClient.createAccount(prisonId))
-      .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
-
-    val cache = InMemoryAccountCache()
-
-    assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
     }
 
-    verify(apiClient, times(2)).findAccountByReference(prisonId)
-    verify(apiClient).createAccount(prisonId)
-  }
+    @Test
+    fun `should try to get parent account again when create account throws exception 409`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 1501
+      val transactionType = "CANT"
 
-  @Test
-  fun `should throw RetryAfterConflictException when get fails after conflict 409 on sub account`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 2101
-    val transactionType = "CANT"
-    val subAccountReference = "CASH"
+      val parentId = UUID.randomUUID()
 
-    val parentId = UUID.randomUUID()
+      whenever(apiClient.findAccountByReference(prisonId))
+        .thenReturn(null)
+        .thenReturn(
+          AccountResponse(
+            id = parentId,
+            reference = offenderId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+            subAccounts = emptyList(),
+          ),
+        )
 
-    whenever(apiClient.findAccountByReference(offenderId))
-      .thenReturn(
-        AccountResponse(
-          id = parentId,
-          reference = offenderId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-          subAccounts = emptyList(),
-        ),
-      )
+      whenever(apiClient.createAccount(prisonId))
+        .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
 
-    whenever(apiClient.createSubAccount(eq(parentId), any()))
-      .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
+      whenever(apiClient.createSubAccount(eq(parentId), any()))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = "CASH",
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
 
-    whenever(apiClient.findSubAccount(offenderId, subAccountReference))
-      .thenReturn(null)
+      val cache = InMemoryAccountCache()
 
-    val cache = InMemoryAccountCache()
-
-    assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+
+      verify(apiClient, times(2)).findAccountByReference(prisonId)
+      verify(apiClient).createAccount(prisonId)
     }
 
-    verify(apiClient).findAccountByReference(offenderId)
-    verify(apiClient).findSubAccount(offenderId, subAccountReference)
-    verify(apiClient).createSubAccount(parentId, subAccountReference)
-  }
+    @Test
+    fun `should try to get sub account again when create account throws exception 409`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 2101
+      val transactionType = "CANT"
+      val subAccountReference = "CASH"
 
-  @Test
-  fun `should propagate NOT (409) Conflict HTTP error when POST parent account`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 1501
-    val transactionType = "CANT"
+      val parentId = UUID.randomUUID()
 
-    whenever(apiClient.findAccountByReference(prisonId))
-      .thenReturn(null)
+      whenever(apiClient.findAccountByReference(offenderId))
+        .thenReturn(
+          AccountResponse(
+            id = parentId,
+            reference = offenderId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+            subAccounts = emptyList(),
+          ),
+        )
 
-    whenever(apiClient.createAccount(prisonId))
-      .thenThrow(WebClientResponseException(500, "Server Error", null, null, null))
+      whenever(apiClient.createSubAccount(eq(parentId), any()))
+        .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
 
-    val cache = InMemoryAccountCache()
+      whenever(apiClient.findSubAccount(offenderId, subAccountReference))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = subAccountReference,
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
 
-    assertThrows<WebClientResponseException> {
+      val cache = InMemoryAccountCache()
+
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+
+      verify(apiClient).findAccountByReference(offenderId)
+      verify(apiClient).findSubAccount(offenderId, subAccountReference)
+      verify(apiClient).createSubAccount(parentId, subAccountReference)
     }
 
-    verify(apiClient).findAccountByReference(prisonId)
-    verify(apiClient).createAccount(prisonId)
-  }
+    @Test
+    fun `should throw RetryAfterConflictException when second get fails after conflict 409 on parent account`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 1501
+      val transactionType = "CANT"
 
-  @Test
-  fun `should propagate NOT (409) Conflict HTTP error Exception when POST sub account`() {
-    val prisonId = "MDI"
-    val offenderId = "A1234BC"
-    val entryCode = 2101
-    val transactionType = "CANT"
-    val subAccountReference = "CASH"
+      whenever(apiClient.findAccountByReference(prisonId))
+        .thenReturn(null)
+        .thenReturn(null)
 
-    val parentId = UUID.randomUUID()
+      whenever(apiClient.createAccount(prisonId))
+        .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
 
-    whenever(apiClient.findAccountByReference(offenderId))
-      .thenReturn(
-        AccountResponse(
-          id = parentId,
-          reference = offenderId,
-          createdBy = "test-user",
-          createdAt = Instant.now(),
-          subAccounts = emptyList(),
-        ),
-      )
+      val cache = InMemoryAccountCache()
 
-    whenever(apiClient.createSubAccount(eq(parentId), any()))
-      .thenThrow(WebClientResponseException(500, "Server Error", null, null, null))
+      assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
+        accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+      }
 
-    val cache = InMemoryAccountCache()
-
-    assertThrows<WebClientResponseException> {
-      accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+      verify(apiClient, times(2)).findAccountByReference(prisonId)
+      verify(apiClient).createAccount(prisonId)
     }
 
-    verify(apiClient).findAccountByReference(offenderId)
-    verify(apiClient, never()).findSubAccount(offenderId, subAccountReference)
-    verify(apiClient).createSubAccount(parentId, subAccountReference)
+    @Test
+    fun `should throw RetryAfterConflictException when get fails after conflict 409 on sub account`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 2101
+      val transactionType = "CANT"
+      val subAccountReference = "CASH"
+
+      val parentId = UUID.randomUUID()
+
+      whenever(apiClient.findAccountByReference(offenderId))
+        .thenReturn(
+          AccountResponse(
+            id = parentId,
+            reference = offenderId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+            subAccounts = emptyList(),
+          ),
+        )
+
+      whenever(apiClient.createSubAccount(eq(parentId), any()))
+        .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
+
+      whenever(apiClient.findSubAccount(offenderId, subAccountReference))
+        .thenReturn(null)
+
+      val cache = InMemoryAccountCache()
+
+      assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
+        accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+      }
+
+      verify(apiClient).findAccountByReference(offenderId)
+      verify(apiClient).findSubAccount(offenderId, subAccountReference)
+      verify(apiClient).createSubAccount(parentId, subAccountReference)
+    }
+
+    @Test
+    fun `should propagate NOT (409) Conflict HTTP error when POST parent account`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 1501
+      val transactionType = "CANT"
+
+      whenever(apiClient.findAccountByReference(prisonId))
+        .thenReturn(null)
+
+      whenever(apiClient.createAccount(prisonId))
+        .thenThrow(WebClientResponseException(500, "Server Error", null, null, null))
+
+      val cache = InMemoryAccountCache()
+
+      assertThrows<WebClientResponseException> {
+        accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+      }
+
+      verify(apiClient).findAccountByReference(prisonId)
+      verify(apiClient).createAccount(prisonId)
+    }
+
+    @Test
+    fun `should propagate NOT (409) Conflict HTTP error Exception when POST sub account`() {
+      val prisonId = "MDI"
+      val offenderId = "A1234BC"
+      val entryCode = 2101
+      val transactionType = "CANT"
+      val subAccountReference = "CASH"
+
+      val parentId = UUID.randomUUID()
+
+      whenever(apiClient.findAccountByReference(offenderId))
+        .thenReturn(
+          AccountResponse(
+            id = parentId,
+            reference = offenderId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+            subAccounts = emptyList(),
+          ),
+        )
+
+      whenever(apiClient.createSubAccount(eq(parentId), any()))
+        .thenThrow(WebClientResponseException(500, "Server Error", null, null, null))
+
+      val cache = InMemoryAccountCache()
+
+      assertThrows<WebClientResponseException> {
+        accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
+      }
+
+      verify(apiClient).findAccountByReference(offenderId)
+      verify(apiClient, never()).findSubAccount(offenderId, subAccountReference)
+      verify(apiClient).createSubAccount(parentId, subAccountReference)
+    }
   }
 }
