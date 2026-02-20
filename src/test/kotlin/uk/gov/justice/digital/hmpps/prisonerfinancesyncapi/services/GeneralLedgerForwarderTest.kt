@@ -135,7 +135,7 @@ class GeneralLedgerForwarderTest {
   }
 
   @Test
-  fun `should not call GL for multiple whitelisted prisonerIds`() {
+  fun `should call GL for multiple whitelisted prisonerIds`() {
     val multiplePrisonerIds = listOf("A1234AA", "A1234AB")
     generalLedgerForwarder = GeneralLedgerForwarder(true, multiplePrisonerIds)
 
