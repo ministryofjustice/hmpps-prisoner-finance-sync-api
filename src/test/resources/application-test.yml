@@ -42,10 +42,5 @@ springdoc:
   packages-to-exclude:
      - uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients
 
-feature:
-  general-ledger-api:
-    enabled: true
-    test-prisoner-id: 'TEST'
-
 general-ledger-api:
     url: http://localhost:8091
