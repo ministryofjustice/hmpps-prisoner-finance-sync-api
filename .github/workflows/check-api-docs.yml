@@ -2,6 +2,8 @@ name: Check API docs are up to date
 
 on:
   push:
+    branches:
+      - main
   schedule:
     - cron: "10 7 * * 1-5" # Every weekday at 07:10 UTC
   workflow_dispatch:
