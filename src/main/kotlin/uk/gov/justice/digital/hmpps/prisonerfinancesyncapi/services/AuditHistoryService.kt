@@ -1,8 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadQueryRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.AuditCursor
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.CursorPage
@@ -15,6 +14,7 @@ import java.util.UUID
 @Service
 class AuditHistoryService(
   private val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
+  private val payloadQueryRepository: NomisSyncPayloadQueryRepository,
   private val timeConversionService: TimeConversionService,
 ) {
 
@@ -33,7 +33,7 @@ class AuditHistoryService(
     val startInstant = startDate?.let(timeConversionService::toUtcStartOfDay)
     val endInstant = endDate?.plusDays(1)?.let(timeConversionService::toUtcStartOfDay)
 
-    val items = nomisSyncPayloadRepository.findMatchingPayloads(
+    val items = payloadQueryRepository.findMatchingPayloads(
       prisonId = normalizedPrisonId,
       legacyTransactionId = legacyTransactionId,
       transactionType = transactionType,
@@ -41,15 +41,15 @@ class AuditHistoryService(
       endDate = endInstant,
       cursorTimestamp = cursor?.timestamp,
       cursorId = cursor?.id,
-      pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "timestamp", "id")),
+      limit = size + 1,
     )
 
-    val totalElements = nomisSyncPayloadRepository.countMatchingPayloads(
-      normalizedPrisonId,
-      legacyTransactionId,
-      transactionType,
-      startInstant,
-      endInstant,
+    val totalElements = payloadQueryRepository.countMatchingPayloads(
+      prisonId = normalizedPrisonId,
+      legacyTransactionId = legacyTransactionId,
+      transactionType = transactionType,
+      startDate = startInstant,
+      endDate = endInstant,
     )
 
     return toCursorPage(items, totalElements, size)
