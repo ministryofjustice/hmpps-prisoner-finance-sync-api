@@ -13,7 +13,20 @@ jobs:
   check-api-docs: 
     runs-on: [self-hosted, Linux, X64, hmpps-github-actions-runner]
     steps:
-      - uses: actions/checkout@v4
+      - name: Gen GH API token
+        uses: actions/create-github-app-token@v2
+        id: generate-token
+        with:
+          repositories: ${{ github.event.repository.name }}
+          owner: ministryofjustice
+          # Created by PGP following instructions in https://github.com/peter-evans/create-pull-request/blob/main/docs/concepts-guidelines.md#authenticating-with-github-app-generated-tokens
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
 
       - uses: actions/setup-java@v4
         with:
@@ -55,6 +68,7 @@ jobs:
         if: steps.check-api.outputs.differences == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
+          base: main
           commit-message: "chore: update general ledger openapi spec"
           branch: chore/api-docs-generalledger
           delete-branch: true
@@ -70,11 +84,12 @@ jobs:
           labels: |
             openapi
             automated-pr
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Delete Pull Request
         if: steps.check-api.outputs.differences == 'false'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           echo "No changes detected. Closing any existing open API update PRs..."
           gh pr close chore/api-docs-generalledger --delete-branch || true
