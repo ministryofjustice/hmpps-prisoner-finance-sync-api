@@ -74,6 +74,7 @@ jobs:
         if: steps.check-api.outputs.differences == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
+          base: main
           commit-message: "chore: update general ledger openapi spec"
           branch: chore/api-docs-generalledger
           delete-branch: true
