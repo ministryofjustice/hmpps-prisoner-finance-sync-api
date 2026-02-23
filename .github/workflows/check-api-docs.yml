@@ -52,6 +52,17 @@ jobs:
             echo "differences=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Gen GH API token
+        if: steps.check-api.outputs.differences == 'true'
+        uses: actions/create-github-app-token@v2
+        id: generate-token
+        with:
+          repositories: ${{ github.event.repository.name }}
+          owner: ministryofjustice
+          # Created by PGP following instructions in https://github.com/peter-evans/create-pull-request/blob/main/docs/concepts-guidelines.md#authenticating-with-github-app-generated-tokens
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Create Pull Request
         if: steps.check-api.outputs.differences == 'true'
         uses: peter-evans/create-pull-request@v6
@@ -71,6 +82,7 @@ jobs:
           labels: |
             openapi
             automated-pr
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Delete Pull Request
         if: steps.check-api.outputs.differences == 'false'
