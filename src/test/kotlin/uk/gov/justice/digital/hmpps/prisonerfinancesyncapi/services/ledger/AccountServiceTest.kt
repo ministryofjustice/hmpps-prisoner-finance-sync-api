@@ -97,7 +97,7 @@ class AccountServiceTest {
       whenever(accountRepository.findByPrisonIdAndAccountCodeAndPrisonNumberIsNull(prisonId, accountCodeForPrison))
         .thenReturn(null)
 
-      whenever(accountRepository.save(any()))
+      whenever(accountRepository.save(any<Account>()))
         .thenAnswer { it.arguments[0] as Account }
 
       val result = accountService.resolveAccount(accountCodeForPrison, prisonNumber, prisonId)
@@ -137,7 +137,7 @@ class AccountServiceTest {
       whenever(accountRepository.findByPrisonNumberAndSubAccountType(prisonNumber, subAccountType))
         .thenReturn(null)
 
-      whenever(accountRepository.save(any()))
+      whenever(accountRepository.save(any<Account>()))
         .thenAnswer { it.arguments[0] as Account }
 
       val result = accountService.resolveAccount(accountCode, prisonNumber, prisonId)
