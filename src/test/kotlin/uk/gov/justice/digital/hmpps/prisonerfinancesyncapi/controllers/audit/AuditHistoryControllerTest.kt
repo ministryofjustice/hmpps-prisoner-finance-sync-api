@@ -11,11 +11,10 @@ import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.verify
 import org.springframework.http.HttpStatus
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.CursorPage
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryServiceTest
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -32,7 +31,7 @@ class AuditHistoryControllerTest {
     timestamp: Instant = Instant.now(),
     synchronizedTransactionId: UUID = UUID.randomUUID(),
     requestId: UUID = UUID.randomUUID(),
-  ): NomisSyncPayloadSummary = AuditHistoryServiceTest.TestNomisSyncPayloadSummary(
+  ): NomisSyncPayload = NomisSyncPayload(
     id = 1L,
     timestamp = timestamp,
     legacyTransactionId = legacyTransactionId,
@@ -41,6 +40,7 @@ class AuditHistoryControllerTest {
     requestId = requestId,
     caseloadId = caseloadId,
     requestTypeIdentifier = requestTypeIdentifier,
+    body = "",
     transactionTimestamp = transactionTimestamp,
   )
 

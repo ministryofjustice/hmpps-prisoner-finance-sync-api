@@ -23,9 +23,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATIO
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_MESSAGE_TRANSACTION_TYPE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_PRISON_ID
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.VALIDATION_REGEX_TRANSACTION_TYPE
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.CursorPage
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
@@ -90,7 +90,7 @@ class AuditHistoryController(
     @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate?,
     @RequestParam(required = false) cursor: String?,
     @RequestParam(defaultValue = "20") size: Int,
-  ): ResponseEntity<CursorPage<NomisSyncPayloadSummary>> {
+  ): ResponseEntity<CursorPage<NomisSyncPayload>> {
     val items = auditHistoryService.getMatchingPayloads(
       prisonId,
       legacyTransactionId,

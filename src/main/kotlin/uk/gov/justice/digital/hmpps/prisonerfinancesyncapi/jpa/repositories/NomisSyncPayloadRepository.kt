@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import java.time.Instant
 import java.util.UUID
 
@@ -17,63 +16,6 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   fun findByRequestId(requestId: UUID): NomisSyncPayload?
 
   fun findFirstByLegacyTransactionIdOrderByTimestampDesc(transactionId: Long): NomisSyncPayload?
-
-  @Query(
-    """
-  SELECT 
-    n.id as id,
-    n.legacyTransactionId as legacyTransactionId,
-    n.transactionType as transactionType,
-    n.synchronizedTransactionId as synchronizedTransactionId,
-    n.caseloadId as caseloadId,
-    n.timestamp as timestamp,
-    n.requestTypeIdentifier as requestTypeIdentifier,
-    n.requestId as requestId,
-    n.transactionTimestamp as transactionTimestamp
-  FROM NomisSyncPayload n 
-  WHERE 
-    (:prisonId IS NULL OR n.caseloadId = :prisonId) AND
-    (:legacyTransactionId IS NULL OR n.legacyTransactionId = :legacyTransactionId) AND
-    (:transactionType IS NULL OR n.transactionType = :transactionType) AND
-    (CAST(:startDate AS timestamp) IS NULL OR n.timestamp >= :startDate) AND
-    (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate) AND 
-    (
-      CAST(:cursorTimestamp AS timestamp) IS NULL OR 
-      (n.timestamp < :cursorTimestamp) OR 
-      (n.timestamp = :cursorTimestamp AND n.id < :cursorId)
-    )
-  ORDER BY n.timestamp DESC, n.id DESC
-  """,
-    nativeQuery = false,
-  )
-  fun findMatchingPayloads(
-    @Param("prisonId") prisonId: String?,
-    @Param("legacyTransactionId") legacyTransactionId: Long?,
-    @Param("transactionType") transactionType: String?,
-    @Param("startDate") startDate: Instant?,
-    @Param("endDate") endDate: Instant?,
-    @Param("cursorTimestamp") cursorTimestamp: Instant?,
-    @Param("cursorId") cursorId: Long?,
-    pageable: Pageable,
-  ): List<NomisSyncPayloadSummary>
-
-  @Query(
-    """
-  SELECT count(n) FROM NomisSyncPayload n 
-  WHERE (:prisonId IS NULL OR n.caseloadId = :prisonId)
-  AND (:legacyTransactionId IS NULL OR n.legacyTransactionId = :legacyTransactionId)
-  AND (:transactionType IS NULL OR n.transactionType = :transactionType)
-  AND (CAST(:startDate AS timestamp) IS NULL OR n.timestamp >= :startDate)
-  AND (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate)
-  """,
-  )
-  fun countMatchingPayloads(
-    @Param("prisonId") prisonId: String?,
-    @Param("legacyTransactionId") legacyTransactionId: Long?,
-    @Param("transactionType") transactionType: String?,
-    @Param("startDate") startDate: Instant?,
-    @Param("endDate") endDate: Instant?,
-  ): Long
 
   @Query(
     """

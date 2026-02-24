@@ -7,19 +7,26 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager
+import org.springframework.context.annotation.Import
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.RepositoryTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadCustomRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+@DataJpaTest
+@Import(NomisSyncPayloadCustomRepository::class)
 class NomisSyncPayloadRepositoryTest(
   @param:Autowired val entityManager: TestEntityManager,
+  @param:Autowired val nomisSyncPayloadCustomRepository: NomisSyncPayloadCustomRepository,
   @param:Autowired val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
+
 ) : RepositoryTestBase() {
 
   private val requestType1 = "SyncOffenderTransaction"
@@ -116,7 +123,7 @@ class NomisSyncPayloadRepositoryTest(
 
       val pageable = PageRequest.of(0, 10)
 
-      val initialResults = nomisSyncPayloadRepository.findMatchingPayloads(
+      val initialResults = nomisSyncPayloadCustomRepository.findMatchingPayloads(
         "MDI",
         null,
         null,
@@ -128,7 +135,7 @@ class NomisSyncPayloadRepositoryTest(
       )
       assertThat(initialResults.map { it.requestId }).containsSubsequence(pHigh.requestId, pLow.requestId)
 
-      val cursorResults = nomisSyncPayloadRepository.findMatchingPayloads(
+      val cursorResults = nomisSyncPayloadCustomRepository.findMatchingPayloads(
         "MDI",
         null,
         null,
@@ -147,7 +154,7 @@ class NomisSyncPayloadRepositoryTest(
       val transactionType = payload5.transactionType
       val pageable = PageRequest.of(0, 10)
 
-      val results = nomisSyncPayloadRepository.findMatchingPayloads(null, null, transactionType, null, null, null, null, pageable)
+      val results = nomisSyncPayloadCustomRepository.findMatchingPayloads(null, null, transactionType, null, null, null, null, pageable)
 
       assertThat(results).hasSize(1)
       assertThat(results[0].transactionType).isEqualTo(transactionType)
@@ -159,7 +166,7 @@ class NomisSyncPayloadRepositoryTest(
       val end = Instant.now().plus(1, ChronoUnit.HOURS)
       val pageable = PageRequest.of(0, 10)
 
-      val results = nomisSyncPayloadRepository.findMatchingPayloads("LEI", null, null, start, end, null, null, pageable)
+      val results = nomisSyncPayloadCustomRepository.findMatchingPayloads("LEI", null, null, start, end, null, null, pageable)
 
       assertThat(results).hasSize(1)
       assertThat(results[0].caseloadId).isEqualTo("LEI")
@@ -167,7 +174,7 @@ class NomisSyncPayloadRepositoryTest(
 
     @Test
     fun `should count results without applying cursor logic`() {
-      val count = nomisSyncPayloadRepository.countMatchingPayloads("MDI", null, null, null, null)
+      val count = nomisSyncPayloadCustomRepository.countMatchingPayloads("MDI", null, null, null, null)
       assertThat(count).isEqualTo(4)
     }
   }
