@@ -77,7 +77,7 @@ class PrisonServiceTest {
       val savedPrisonId = 999L
       val dummyPrisonId: String = "CCC"
 
-      whenever(prisonRepository.save(any())).thenAnswer { invocation ->
+      whenever(prisonRepository.save(any<Prison>())).thenAnswer { invocation ->
         val prisonResult = invocation.getArgument<Prison>(0)
         prisonResult.copy(id = savedPrisonId)
       }
