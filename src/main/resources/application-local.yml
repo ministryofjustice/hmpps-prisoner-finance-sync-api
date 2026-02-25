@@ -31,3 +31,8 @@ general-ledger-api:
   client:
     id: hmpps-prisoner-finance-general-ledger-api
     secret: clientsecret
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE

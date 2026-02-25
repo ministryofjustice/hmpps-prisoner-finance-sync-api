@@ -2,78 +2,24 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadSummary
 import java.time.Instant
 import java.util.UUID
 
 @Repository
-interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
+interface NomisSyncPayloadRepository :
+  JpaRepository<NomisSyncPayload, Long>,
+  JpaSpecificationExecutor<NomisSyncPayload> {
 
   fun findByRequestId(requestId: UUID): NomisSyncPayload?
 
   fun findFirstByLegacyTransactionIdOrderByTimestampDesc(transactionId: Long): NomisSyncPayload?
-
-  @Query(
-    """
-  SELECT 
-    n.id as id,
-    n.legacyTransactionId as legacyTransactionId,
-    n.transactionType as transactionType,
-    n.synchronizedTransactionId as synchronizedTransactionId,
-    n.caseloadId as caseloadId,
-    n.timestamp as timestamp,
-    n.requestTypeIdentifier as requestTypeIdentifier,
-    n.requestId as requestId,
-    n.transactionTimestamp as transactionTimestamp
-  FROM NomisSyncPayload n 
-  WHERE 
-    (:prisonId IS NULL OR n.caseloadId = :prisonId) AND
-    (:legacyTransactionId IS NULL OR n.legacyTransactionId = :legacyTransactionId) AND
-    (:transactionType IS NULL OR n.transactionType = :transactionType) AND
-    (CAST(:startDate AS timestamp) IS NULL OR n.timestamp >= :startDate) AND
-    (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate) AND 
-    (
-      CAST(:cursorTimestamp AS timestamp) IS NULL OR 
-      (n.timestamp < :cursorTimestamp) OR 
-      (n.timestamp = :cursorTimestamp AND n.id < :cursorId)
-    )
-  ORDER BY n.timestamp DESC, n.id DESC
-  """,
-    nativeQuery = false,
-  )
-  fun findMatchingPayloads(
-    @Param("prisonId") prisonId: String?,
-    @Param("legacyTransactionId") legacyTransactionId: Long?,
-    @Param("transactionType") transactionType: String?,
-    @Param("startDate") startDate: Instant?,
-    @Param("endDate") endDate: Instant?,
-    @Param("cursorTimestamp") cursorTimestamp: Instant?,
-    @Param("cursorId") cursorId: Long?,
-    pageable: Pageable,
-  ): List<NomisSyncPayloadSummary>
-
-  @Query(
-    """
-  SELECT count(n) FROM NomisSyncPayload n 
-  WHERE (:prisonId IS NULL OR n.caseloadId = :prisonId)
-  AND (:legacyTransactionId IS NULL OR n.legacyTransactionId = :legacyTransactionId)
-  AND (:transactionType IS NULL OR n.transactionType = :transactionType)
-  AND (CAST(:startDate AS timestamp) IS NULL OR n.timestamp >= :startDate)
-  AND (CAST(:endDate AS timestamp) IS NULL OR n.timestamp < :endDate)
-  """,
-  )
-  fun countMatchingPayloads(
-    @Param("prisonId") prisonId: String?,
-    @Param("legacyTransactionId") legacyTransactionId: Long?,
-    @Param("transactionType") transactionType: String?,
-    @Param("startDate") startDate: Instant?,
-    @Param("endDate") endDate: Instant?,
-  ): Long
 
   @Query(
     """
@@ -96,4 +42,39 @@ interface NomisSyncPayloadRepository : JpaRepository<NomisSyncPayload, Long> {
   ): Page<NomisSyncPayload>
 
   fun findFirstBySynchronizedTransactionIdOrderByTimestampDesc(synchronizedTransactionId: UUID): NomisSyncPayload?
+}
+
+object NomisSyncPayloadSpecs {
+
+  fun hasCaseloadId(prisonId: String?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
+    prisonId?.let { cb.equal(root.get<String>("caseloadId"), it) }
+  }
+
+  fun hasLegacyTransactionId(legacyId: Long?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
+    legacyId?.let { cb.equal(root.get<Long>("legacyTransactionId"), it) }
+  }
+
+  fun hasTransactionType(type: String?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
+    type?.let { cb.equal(root.get<String>("transactionType"), it) }
+  }
+
+  fun isAfterOrEqual(startDate: Instant?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
+    startDate?.let { cb.greaterThanOrEqualTo(root.get("timestamp"), it) }
+  }
+
+  fun isBefore(endDate: Instant?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
+    endDate?.let { cb.lessThan(root.get("timestamp"), it) }
+  }
+
+  fun applyCursor(cursorTimestamp: Instant?, cursorId: Long?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
+    if (cursorTimestamp == null || cursorId == null) return@Specification null
+
+    val beforeCursor = cb.lessThan(root.get("timestamp"), cursorTimestamp)
+    val sameTimestampSmallerId = cb.and(
+      cb.equal(root.get<Instant>("timestamp"), cursorTimestamp),
+      cb.lessThan(root.get("id"), cursorId),
+    )
+
+    cb.or(beforeCursor, sameTimestampSmallerId)
+  }
 }
