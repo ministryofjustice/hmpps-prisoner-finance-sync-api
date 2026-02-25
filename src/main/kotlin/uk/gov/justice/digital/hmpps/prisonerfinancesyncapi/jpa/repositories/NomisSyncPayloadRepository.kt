@@ -46,17 +46,13 @@ interface NomisSyncPayloadRepository :
 
 object NomisSyncPayloadSpecs {
 
-  fun hasCaseloadId(prisonId: String?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
-    prisonId?.let { cb.equal(root.get<String>("caseloadId"), it) }
+  private fun <T> hasParam(param: T?, fieldName: String): Specification<NomisSyncPayload> = Specification { root, _, cb ->
+    param?.let { cb.equal(root.get<T>(fieldName), it) }
   }
 
-  fun hasLegacyTransactionId(legacyId: Long?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
-    legacyId?.let { cb.equal(root.get<Long>("legacyTransactionId"), it) }
-  }
-
-  fun hasTransactionType(type: String?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
-    type?.let { cb.equal(root.get<String>("transactionType"), it) }
-  }
+  fun hasCaseloadId(prisonId: String?) = hasParam(prisonId, "caseloadId")
+  fun hasLegacyTransactionId(legacyId: Long?) = hasParam(legacyId, "legacyTransactionId")
+  fun hasTransactionType(type: String?) = hasParam(type, "transactionType")
 
   fun isAfterOrEqual(startDate: Instant?): Specification<NomisSyncPayload> = Specification { root, _, cb ->
     startDate?.let { cb.greaterThanOrEqualTo(root.get("timestamp"), it) }
