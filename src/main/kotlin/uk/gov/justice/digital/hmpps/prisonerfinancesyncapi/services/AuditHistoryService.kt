@@ -1,9 +1,12 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
+import org.springframework.data.repository.query.FluentQuery
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadSpecs
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.AuditCursor
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.CursorPage
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyncPayloadDetail
@@ -33,26 +36,24 @@ class AuditHistoryService(
     val startInstant = startDate?.let(timeConversionService::toUtcStartOfDay)
     val endInstant = endDate?.plusDays(1)?.let(timeConversionService::toUtcStartOfDay)
 
-    val items = nomisSyncPayloadRepository.findMatchingPayloads(
-      prisonId = normalizedPrisonId,
-      legacyTransactionId = legacyTransactionId,
-      transactionType = transactionType,
-      startDate = startInstant,
-      endDate = endInstant,
-      cursorTimestamp = cursor?.timestamp,
-      cursorId = cursor?.id,
-      pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "timestamp", "id")),
-    )
+    val searchSpec = Specification.where(NomisSyncPayloadSpecs.hasCaseloadId(normalizedPrisonId))
+      .and(NomisSyncPayloadSpecs.hasLegacyTransactionId(legacyTransactionId))
+      .and(NomisSyncPayloadSpecs.hasTransactionType(transactionType))
+      .and(NomisSyncPayloadSpecs.isAfterOrEqual(startInstant))
+      .and(NomisSyncPayloadSpecs.isBefore(endInstant))
 
-    val totalElements = nomisSyncPayloadRepository.countMatchingPayloads(
-      normalizedPrisonId,
-      legacyTransactionId,
-      transactionType,
-      startInstant,
-      endInstant,
-    )
+    val searchSpecWithCursor = searchSpec.and(NomisSyncPayloadSpecs.applyCursor(cursor?.timestamp, cursor?.id))
 
-    return toCursorPage(items, totalElements, size)
+    val items = nomisSyncPayloadRepository.findBy(searchSpecWithCursor) { query: FluentQuery.FetchableFluentQuery<NomisSyncPayload> ->
+      query.`as`(NomisSyncPayloadSummary::class.java)
+        .sortBy(Sort.by(Sort.Direction.DESC, "timestamp", "id"))
+        .limit(size + 1)
+        .all()
+    }
+
+    val totalElements = nomisSyncPayloadRepository.count(searchSpec)
+
+    return toCursorPage(items.toList(), totalElements, size)
   }
 
   fun getPayloadBodyByRequestId(requestId: UUID): NomisSyncPayloadDetail? = nomisSyncPayloadRepository.findByRequestId(requestId)?.toDetail()

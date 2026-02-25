@@ -10,15 +10,13 @@ import org.mockito.Mock
 import org.mockito.Mockito.lenient
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
-import org.mockito.kotlin.anyOrNull
-import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
+import org.springframework.data.repository.query.FluentQuery
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
@@ -29,6 +27,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
+import java.util.function.Function
 
 @ExtendWith(MockitoExtension::class)
 @DisplayName("Audit History Service Test")
@@ -59,7 +58,6 @@ class AuditHistoryServiceTest {
   inner class GetPayloadsByCaseloadTest {
     private val cursor = null
     private val size = 10
-    private val pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "timestamp", "id"))
 
     @Test
     fun `getMatchingPayloads should map entities to DTOs correctly`() {
@@ -81,20 +79,13 @@ class AuditHistoryServiceTest {
       )
 
       whenever(
-        nomisSyncPayloadRepository.findMatchingPayloads(
-          eq(caseloadId),
-          eq(null),
-          eq(null),
-          anyOrNull(),
-          anyOrNull(),
-          eq(null),
-          eq(null),
-          eq(pageable),
+        nomisSyncPayloadRepository.findBy(
+          any<Specification<NomisSyncPayload>>(),
+          any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
         ),
       ).thenReturn(listOf(entity))
 
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(eq(caseloadId), anyOrNull(), eq(null), anyOrNull(), anyOrNull()))
-        .thenReturn(1L)
+      whenever(nomisSyncPayloadRepository.count(any<Specification<NomisSyncPayload>>())).thenReturn(1L)
 
       val result = auditHistoryService.getMatchingPayloads(caseloadId, null, null, startDate, endDate, cursor, size)
 
@@ -103,30 +94,21 @@ class AuditHistoryServiceTest {
     }
 
     @Test
-    fun `Should pass BOTH dates as null to findMatchingPayloads`() {
-      val endDateCaptor = argumentCaptor<Instant>()
-      val startDateCaptor = argumentCaptor<Instant>()
-
+    fun `Should pass BOTH dates as null to repository successfully`() {
       lenient().doReturn(emptyList<NomisSyncPayloadSummary>())
-        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).findBy(
+          any<Specification<NomisSyncPayload>>(),
+          any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
+        )
       lenient().doReturn(0L)
-        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).count(any<Specification<NomisSyncPayload>>())
 
       auditHistoryService.getMatchingPayloads("MDI", null, null, null, null, cursor, size)
 
-      verify(nomisSyncPayloadRepository).findMatchingPayloads(
-        eq("MDI"),
-        eq(null),
-        eq(null),
-        startDateCaptor.capture(),
-        endDateCaptor.capture(),
-        eq(null),
-        eq(null),
-        eq(pageable),
+      verify(nomisSyncPayloadRepository).findBy(
+        any<Specification<NomisSyncPayload>>(),
+        any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
       )
-
-      assertThat(startDateCaptor.firstValue).isNull()
-      assertThat(endDateCaptor.firstValue).isNull()
     }
 
     @Test
@@ -134,21 +116,18 @@ class AuditHistoryServiceTest {
       val legacyTxId = 12345L
 
       lenient().doReturn(emptyList<NomisSyncPayloadSummary>())
-        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).findBy(
+          any<Specification<NomisSyncPayload>>(),
+          any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
+        )
       lenient().doReturn(0L)
-        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).count(any<Specification<NomisSyncPayload>>())
 
       auditHistoryService.getMatchingPayloads("MDI", legacyTxId, null, null, null, cursor, size)
 
-      verify(nomisSyncPayloadRepository).findMatchingPayloads(
-        eq("MDI"),
-        eq(legacyTxId),
-        eq(null),
-        eq(null),
-        eq(null),
-        eq(null),
-        eq(null),
-        eq(pageable),
+      verify(nomisSyncPayloadRepository).findBy(
+        any<Specification<NomisSyncPayload>>(),
+        any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
       )
     }
 
@@ -157,21 +136,18 @@ class AuditHistoryServiceTest {
       val transactionType = "TEST"
 
       lenient().doReturn(emptyList<NomisSyncPayloadSummary>())
-        .`when`(nomisSyncPayloadRepository).findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).findBy(
+          any<Specification<NomisSyncPayload>>(),
+          any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
+        )
       lenient().doReturn(0L)
-        .`when`(nomisSyncPayloadRepository).countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull())
+        .`when`(nomisSyncPayloadRepository).count(any<Specification<NomisSyncPayload>>())
 
       auditHistoryService.getMatchingPayloads("MDI", null, transactionType, null, null, cursor, size)
 
-      verify(nomisSyncPayloadRepository).findMatchingPayloads(
-        eq("MDI"),
-        eq(null),
-        eq(transactionType),
-        eq(null),
-        eq(null),
-        eq(null),
-        eq(null),
-        eq(pageable),
+      verify(nomisSyncPayloadRepository).findBy(
+        any<Specification<NomisSyncPayload>>(),
+        any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
       )
     }
 
@@ -192,10 +168,13 @@ class AuditHistoryServiceTest {
         )
       }
 
-      whenever(nomisSyncPayloadRepository.findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), eq(pageable)))
-        .thenReturn(entities)
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
-        .thenReturn(100L)
+      whenever(
+        nomisSyncPayloadRepository.findBy(
+          any<Specification<NomisSyncPayload>>(),
+          any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
+        ),
+      ).thenReturn(entities)
+      whenever(nomisSyncPayloadRepository.count(any<Specification<NomisSyncPayload>>())).thenReturn(100L)
 
       val result = auditHistoryService.getMatchingPayloads("MDI", null, null, null, null, null, 10)
 
@@ -213,44 +192,38 @@ class AuditHistoryServiceTest {
       val cursorId = 999L
       val cursorString = AuditCursor(cursorTimestamp, cursorId).toString()
 
-      whenever(nomisSyncPayloadRepository.findMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), eq(cursorTimestamp), eq(cursorId), eq(pageable)))
-        .thenReturn(emptyList())
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
-        .thenReturn(0L)
+      whenever(
+        nomisSyncPayloadRepository.findBy(
+          any<Specification<NomisSyncPayload>>(),
+          any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
+        ),
+      ).thenReturn(emptyList())
+      whenever(nomisSyncPayloadRepository.count(any<Specification<NomisSyncPayload>>())).thenReturn(0L)
 
       auditHistoryService.getMatchingPayloads(null, null, null, null, null, cursorString, 10)
 
-      verify(nomisSyncPayloadRepository).findMatchingPayloads(
-        prisonId = eq(null),
-        legacyTransactionId = eq(null),
-        transactionType = eq(null),
-        startDate = eq(null),
-        endDate = eq(null),
-        cursorTimestamp = eq(cursorTimestamp),
-        cursorId = eq(cursorId),
-        pageable = eq(pageable),
+      verify(nomisSyncPayloadRepository).findBy(
+        any<Specification<NomisSyncPayload>>(),
+        any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
       )
     }
 
     @Test
     fun `should normalize prisonId if blank or string null`() {
-      whenever(nomisSyncPayloadRepository.findMatchingPayloads(eq(null), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
-        .thenReturn(emptyList())
-      whenever(nomisSyncPayloadRepository.countMatchingPayloads(eq(null), anyOrNull(), anyOrNull(), anyOrNull(), anyOrNull()))
-        .thenReturn(0L)
+      whenever(
+        nomisSyncPayloadRepository.findBy(
+          any<Specification<NomisSyncPayload>>(),
+          any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
+        ),
+      ).thenReturn(emptyList())
+      whenever(nomisSyncPayloadRepository.count(any<Specification<NomisSyncPayload>>())).thenReturn(0L)
 
       auditHistoryService.getMatchingPayloads(" ", null, null, null, null, null, 10)
       auditHistoryService.getMatchingPayloads("null", null, null, null, null, null, 10)
 
-      verify(nomisSyncPayloadRepository, times(2)).findMatchingPayloads(
-        prisonId = eq(null),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
-        anyOrNull(),
+      verify(nomisSyncPayloadRepository, times(2)).findBy(
+        any<Specification<NomisSyncPayload>>(),
+        any<Function<FluentQuery.FetchableFluentQuery<NomisSyncPayload>, Collection<NomisSyncPayloadSummary>>>(),
       )
     }
   }

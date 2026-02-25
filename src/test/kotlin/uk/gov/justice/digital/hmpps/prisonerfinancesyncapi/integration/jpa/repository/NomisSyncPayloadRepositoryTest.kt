@@ -10,9 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
+import org.springframework.data.repository.query.FluentQuery
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.RepositoryTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadSpecs
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -116,7 +120,7 @@ class NomisSyncPayloadRepositoryTest(
 
       val pageable = PageRequest.of(0, 10)
 
-      val initialResults = nomisSyncPayloadRepository.findMatchingPayloads(
+      val initialResults = findMatchingPayloads(
         "MDI",
         null,
         null,
@@ -128,7 +132,7 @@ class NomisSyncPayloadRepositoryTest(
       )
       assertThat(initialResults.map { it.requestId }).containsSubsequence(pHigh.requestId, pLow.requestId)
 
-      val cursorResults = nomisSyncPayloadRepository.findMatchingPayloads(
+      val cursorResults = findMatchingPayloads(
         "MDI",
         null,
         null,
@@ -147,7 +151,7 @@ class NomisSyncPayloadRepositoryTest(
       val transactionType = payload5.transactionType
       val pageable = PageRequest.of(0, 10)
 
-      val results = nomisSyncPayloadRepository.findMatchingPayloads(null, null, transactionType, null, null, null, null, pageable)
+      val results = findMatchingPayloads(null, null, transactionType, null, null, null, null, pageable)
 
       assertThat(results).hasSize(1)
       assertThat(results[0].transactionType).isEqualTo(transactionType)
@@ -159,7 +163,7 @@ class NomisSyncPayloadRepositoryTest(
       val end = Instant.now().plus(1, ChronoUnit.HOURS)
       val pageable = PageRequest.of(0, 10)
 
-      val results = nomisSyncPayloadRepository.findMatchingPayloads("LEI", null, null, start, end, null, null, pageable)
+      val results = findMatchingPayloads("LEI", null, null, start, end, null, null, pageable)
 
       assertThat(results).hasSize(1)
       assertThat(results[0].caseloadId).isEqualTo("LEI")
@@ -167,8 +171,48 @@ class NomisSyncPayloadRepositoryTest(
 
     @Test
     fun `should count results without applying cursor logic`() {
-      val count = nomisSyncPayloadRepository.countMatchingPayloads("MDI", null, null, null, null)
+      val count = countMatchingPayloads("MDI", null, null, null, null)
       assertThat(count).isEqualTo(4)
+    }
+
+    private fun findMatchingPayloads(
+      prisonId: String?,
+      legacyTransactionId: Long?,
+      transactionType: String?,
+      startDate: Instant?,
+      endDate: Instant?,
+      cursorTimestamp: Instant?,
+      cursorId: Long?,
+      pageable: Pageable,
+    ): List<NomisSyncPayload> {
+      val spec = Specification.where(NomisSyncPayloadSpecs.hasCaseloadId(prisonId))
+        .and(NomisSyncPayloadSpecs.hasLegacyTransactionId(legacyTransactionId))
+        .and(NomisSyncPayloadSpecs.hasTransactionType(transactionType))
+        .and(NomisSyncPayloadSpecs.isAfterOrEqual(startDate))
+        .and(NomisSyncPayloadSpecs.isBefore(endDate))
+        .and(NomisSyncPayloadSpecs.applyCursor(cursorTimestamp, cursorId))
+
+      val sort = Sort.by(Sort.Direction.DESC, "timestamp", "id")
+
+      return nomisSyncPayloadRepository.findBy(spec) { query: FluentQuery.FetchableFluentQuery<NomisSyncPayload> ->
+        query.sortBy(sort).limit(pageable.pageSize).all()
+      }.toList()
+    }
+
+    private fun countMatchingPayloads(
+      prisonId: String?,
+      legacyTransactionId: Long?,
+      transactionType: String?,
+      startDate: Instant?,
+      endDate: Instant?,
+    ): Long {
+      val spec = Specification.where(NomisSyncPayloadSpecs.hasCaseloadId(prisonId))
+        .and(NomisSyncPayloadSpecs.hasLegacyTransactionId(legacyTransactionId))
+        .and(NomisSyncPayloadSpecs.hasTransactionType(transactionType))
+        .and(NomisSyncPayloadSpecs.isAfterOrEqual(startDate))
+        .and(NomisSyncPayloadSpecs.isBefore(endDate))
+
+      return nomisSyncPayloadRepository.count(spec)
     }
   }
 
