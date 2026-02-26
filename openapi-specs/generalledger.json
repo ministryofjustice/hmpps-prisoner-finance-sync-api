@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-02-13.217.94c155f"
+    "version" : "2026-02-25.236.fb49fbf"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -294,7 +294,7 @@
         "tags" : [ "Account Controller" ],
         "summary" : "Find accounts using query parameters",
         "description" : "At least one query parameter is required for this endpoint.",
-        "operationId" : "getAccount",
+        "operationId" : "getAccounts",
         "parameters" : [ {
           "name" : "reference",
           "in" : "query",
@@ -419,6 +419,16 @@
               }
             }
           },
+          "409" : {
+            "description" : "Conflict - account already exists",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500" : {
             "description" : "Internal Server Error - An unexpected error occurred.",
             "content" : {
@@ -503,6 +513,16 @@
           },
           "404" : {
             "description" : "Resource not found - Parent account not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Conflict - sub-account already exists",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -814,7 +834,7 @@
       "get" : {
         "tags" : [ "Account Controller" ],
         "summary" : "Get an account by UUID",
-        "operationId" : "getAccount_1",
+        "operationId" : "getAccount",
         "parameters" : [ {
           "name" : "accountUUID",
           "in" : "path",
