@@ -189,17 +189,17 @@ class GeneralLedgerApiClientTest {
         subAccounts = emptyList(),
       )
 
-      whenever(accountApi.getAccount(ref)).thenReturn(Mono.just(listOf(expectedResponse)))
+      whenever(accountApi.getAccounts(ref)).thenReturn(Mono.just(listOf(expectedResponse)))
 
       val result = apiClient.findAccountByReference(ref)
 
       assertThat(result).isEqualTo(expectedResponse)
-      verify(accountApi).getAccount(ref)
+      verify(accountApi).getAccounts(ref)
     }
 
     @Test
     fun `should return null when list is empty (Not Found)`() {
-      whenever(accountApi.getAccount("UNKNOWN")).thenReturn(Mono.just(emptyList()))
+      whenever(accountApi.getAccounts("UNKNOWN")).thenReturn(Mono.just(emptyList()))
 
       val result = apiClient.findAccountByReference("UNKNOWN")
 
@@ -208,7 +208,7 @@ class GeneralLedgerApiClientTest {
 
     @Test
     fun `should return null if response body is null`() {
-      whenever(accountApi.getAccount("A1234AA")).thenReturn(Mono.empty())
+      whenever(accountApi.getAccounts("A1234AA")).thenReturn(Mono.empty())
 
       assertThat(apiClient.findAccountByReference("A1234AA")).isNull()
     }

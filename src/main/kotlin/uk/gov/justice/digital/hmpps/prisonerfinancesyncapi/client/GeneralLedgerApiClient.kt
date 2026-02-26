@@ -31,7 +31,7 @@ class GeneralLedgerApiClient(
     .block() ?: throw IllegalStateException("Received null response when migrating sub-account $subAccountID")
 
   // GET /accounts?reference={reference}
-  fun findAccountByReference(reference: String): AccountResponse? = accountApi.getAccount(reference)
+  fun findAccountByReference(reference: String): AccountResponse? = accountApi.getAccounts(reference)
     .block()
     ?.firstOrNull()
 
