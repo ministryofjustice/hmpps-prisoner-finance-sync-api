@@ -20,6 +20,7 @@ import org.mockito.kotlin.whenever
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import java.time.Instant
 import java.util.UUID
@@ -54,6 +55,7 @@ class GeneralLedgerAccountResolverTest {
         createdBy = "test-user",
         createdAt = Instant.now(),
         subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISONER,
       )
 
       val createdSub = SubAccountResponse(
@@ -89,6 +91,7 @@ class GeneralLedgerAccountResolverTest {
         createdBy = "test-user",
         createdAt = Instant.now(),
         subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISONER,
       )
 
       whenever(apiClient.findAccountByReference(offenderId)).thenReturn(parent)
@@ -108,7 +111,7 @@ class GeneralLedgerAccountResolverTest {
       accountResolver.resolvePrisonerSubAccount(offenderId, accountCode, cache)
 
       verify(apiClient).findAccountByReference(offenderId)
-      verify(apiClient, never()).createAccount(any())
+      verify(apiClient, never()).createAccount(any(), any())
     }
 
     @Test
@@ -119,7 +122,7 @@ class GeneralLedgerAccountResolverTest {
       val parentId = UUID.randomUUID()
 
       whenever(apiClient.findAccountByReference(offenderId)).thenReturn(null)
-      whenever(apiClient.createAccount(offenderId))
+      whenever(apiClient.createAccount(offenderId, CreateAccountRequest.Type.PRISONER))
         .thenReturn(
           AccountResponse(
             id = parentId,
@@ -127,6 +130,7 @@ class GeneralLedgerAccountResolverTest {
             createdBy = "test-user",
             createdAt = Instant.now(),
             subAccounts = emptyList(),
+            type = AccountResponse.Type.PRISONER,
           ),
         )
 
@@ -146,7 +150,7 @@ class GeneralLedgerAccountResolverTest {
       accountResolver.resolvePrisonerSubAccount(offenderId, accountCode, cache)
 
       verify(apiClient).findAccountByReference(offenderId)
-      verify(apiClient).createAccount(offenderId)
+      verify(apiClient).createAccount(offenderId, CreateAccountRequest.Type.PRISONER)
     }
   }
 
@@ -177,6 +181,7 @@ class GeneralLedgerAccountResolverTest {
         createdBy = "test-user",
         createdAt = Instant.now(),
         subAccounts = listOf(existingSub),
+        type = AccountResponse.Type.PRISONER,
       )
 
       val cache = InMemoryAccountCache().apply {
@@ -206,6 +211,7 @@ class GeneralLedgerAccountResolverTest {
         createdBy = "test-user",
         createdAt = Instant.now(),
         subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISONER,
       )
 
       val createdSub = SubAccountResponse(
@@ -243,6 +249,7 @@ class GeneralLedgerAccountResolverTest {
         createdBy = "test-user",
         createdAt = Instant.now(),
         subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISONER,
       )
 
       whenever(apiClient.findAccountByReference(offenderId)).thenReturn(parent)
@@ -262,7 +269,7 @@ class GeneralLedgerAccountResolverTest {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
 
       verify(apiClient).findAccountByReference(offenderId)
-      verify(apiClient, never()).createAccount(any())
+      verify(apiClient, never()).createAccount(any(), any())
     }
 
     @Test
@@ -275,7 +282,7 @@ class GeneralLedgerAccountResolverTest {
       val parentId = UUID.randomUUID()
 
       whenever(apiClient.findAccountByReference(offenderId)).thenReturn(null)
-      whenever(apiClient.createAccount(offenderId))
+      whenever(apiClient.createAccount(offenderId, CreateAccountRequest.Type.PRISONER))
         .thenReturn(
           AccountResponse(
             id = parentId,
@@ -283,6 +290,7 @@ class GeneralLedgerAccountResolverTest {
             createdBy = "test-user",
             createdAt = Instant.now(),
             subAccounts = emptyList(),
+            type = AccountResponse.Type.PRISONER,
           ),
         )
 
@@ -302,7 +310,7 @@ class GeneralLedgerAccountResolverTest {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
 
       verify(apiClient).findAccountByReference(offenderId)
-      verify(apiClient).createAccount(offenderId)
+      verify(apiClient).createAccount(offenderId, CreateAccountRequest.Type.PRISONER)
     }
 
     @Test
@@ -322,6 +330,7 @@ class GeneralLedgerAccountResolverTest {
         createdBy = "test-user",
         createdAt = Instant.now(),
         subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISON,
       )
 
       whenever(apiClient.findAccountByReference(prisonId)).thenReturn(parent)
@@ -359,10 +368,11 @@ class GeneralLedgerAccountResolverTest {
             createdBy = "test-user",
             createdAt = Instant.now(),
             subAccounts = emptyList(),
+            type = AccountResponse.Type.PRISON,
           ),
         )
 
-      whenever(apiClient.createAccount(prisonId))
+      whenever(apiClient.createAccount(prisonId, CreateAccountRequest.Type.PRISON))
         .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
 
       whenever(apiClient.createSubAccount(eq(parentId), any()))
@@ -381,7 +391,7 @@ class GeneralLedgerAccountResolverTest {
       accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
 
       verify(apiClient, times(2)).findAccountByReference(prisonId)
-      verify(apiClient).createAccount(prisonId)
+      verify(apiClient).createAccount(prisonId, CreateAccountRequest.Type.PRISON)
     }
 
     @Test
@@ -402,6 +412,7 @@ class GeneralLedgerAccountResolverTest {
             createdBy = "test-user",
             createdAt = Instant.now(),
             subAccounts = emptyList(),
+            type = AccountResponse.Type.PRISONER,
           ),
         )
 
@@ -439,7 +450,7 @@ class GeneralLedgerAccountResolverTest {
         .thenReturn(null)
         .thenReturn(null)
 
-      whenever(apiClient.createAccount(prisonId))
+      whenever(apiClient.createAccount(prisonId, CreateAccountRequest.Type.PRISON))
         .thenThrow(WebClientResponseException(409, "Duplicate account reference: $offenderId", null, null, null))
 
       val cache = InMemoryAccountCache()
@@ -449,7 +460,7 @@ class GeneralLedgerAccountResolverTest {
       }
 
       verify(apiClient, times(2)).findAccountByReference(prisonId)
-      verify(apiClient).createAccount(prisonId)
+      verify(apiClient).createAccount(prisonId, CreateAccountRequest.Type.PRISON)
     }
 
     @Test
@@ -470,6 +481,7 @@ class GeneralLedgerAccountResolverTest {
             createdBy = "test-user",
             createdAt = Instant.now(),
             subAccounts = emptyList(),
+            type = AccountResponse.Type.PRISONER,
           ),
         )
 
@@ -500,7 +512,7 @@ class GeneralLedgerAccountResolverTest {
       whenever(apiClient.findAccountByReference(prisonId))
         .thenReturn(null)
 
-      whenever(apiClient.createAccount(prisonId))
+      whenever(apiClient.createAccount(prisonId, CreateAccountRequest.Type.PRISON))
         .thenThrow(WebClientResponseException(500, "Server Error", null, null, null))
 
       val cache = InMemoryAccountCache()
@@ -510,7 +522,7 @@ class GeneralLedgerAccountResolverTest {
       }
 
       verify(apiClient).findAccountByReference(prisonId)
-      verify(apiClient).createAccount(prisonId)
+      verify(apiClient).createAccount(prisonId, CreateAccountRequest.Type.PRISON)
     }
 
     @Test
@@ -531,6 +543,7 @@ class GeneralLedgerAccountResolverTest {
             createdBy = "test-user",
             createdAt = Instant.now(),
             subAccounts = emptyList(),
+            type = AccountResponse.Type.PRISONER,
           ),
         )
 

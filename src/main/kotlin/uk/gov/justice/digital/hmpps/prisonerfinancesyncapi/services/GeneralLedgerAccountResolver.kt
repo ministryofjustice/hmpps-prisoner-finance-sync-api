@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import java.util.UUID
 
@@ -23,7 +24,7 @@ class GeneralLedgerAccountResolver(
   fun resolvePrisonerSubAccount(offenderId: String, accountCode: Int, parentCache: InMemoryAccountCache): UUID {
     val subRef = mapping.mapPrisonerSubAccount(accountCode)
 
-    return getOrCreateSubAccount(offenderId, subRef, parentCache)
+    return getOrCreateSubAccount(offenderId, subRef, parentCache, isPrisoner = true)
   }
 
   fun resolveSubAccount(
@@ -43,17 +44,18 @@ class GeneralLedgerAccountResolver(
       mapping.mapPrisonSubAccount(accountCode, transactionType)
     }
 
-    return getOrCreateSubAccount(parentRef, subRef, parentCache)
+    return getOrCreateSubAccount(parentRef, subRef, parentCache, isPrisoner)
   }
 
-  private fun findOrCreateParent(reference: String): AccountResponse {
+  private fun findOrCreateParent(reference: String, isPrisoner: Boolean): AccountResponse {
     val response = apiClient.findAccountByReference(reference)
     if (response != null) {
       return response
     } else {
       log.info("General Ledger account not found for '$reference'. Creating new account.")
+
       try {
-        return apiClient.createAccount(reference)
+        return apiClient.createAccount(reference, if (isPrisoner) CreateAccountRequest.Type.PRISONER else CreateAccountRequest.Type.PRISON)
       } catch (e: WebClientResponseException) {
         if (e.statusCode == HttpStatus.CONFLICT) {
           return apiClient.findAccountByReference(reference)
@@ -69,9 +71,10 @@ class GeneralLedgerAccountResolver(
     parentRef: String,
     subRef: String,
     parentCache: InMemoryAccountCache,
+    isPrisoner: Boolean,
   ): UUID {
     val parent = parentCache.getOrPut(parentRef) {
-      findOrCreateParent(parentRef)
+      findOrCreateParent(parentRef, isPrisoner)
     }
 
     parent.subAccounts

@@ -126,12 +126,14 @@ class GeneralLedgerApiMockServer :
     scenarioState: String = STARTED,
     nextState: String = "SECOND_CALL",
   ) {
+    val type = if (reference.length > 3) AccountResponse.Type.PRISONER else AccountResponse.Type.PRISON
     val response = AccountResponse(
       id = returnUuid,
       reference = reference,
       createdAt = Instant.now(),
       createdBy = "MOCK_USER",
       subAccounts = subAccounts,
+      type = type,
     )
 
     stubFor(
@@ -271,12 +273,15 @@ class GeneralLedgerApiMockServer :
 
   // POST /accounts -> Returns Single AccountResponse
   fun stubCreateAccount(reference: String, returnUuid: UUID = UUID.randomUUID()) {
+    val type = if (reference.length > 3) AccountResponse.Type.PRISONER else AccountResponse.Type.PRISON
+
     val response = AccountResponse(
       id = returnUuid,
       reference = reference,
       createdAt = Instant.now(),
       createdBy = "MOCK_USER",
       subAccounts = emptyList(),
+      type = type,
     )
 
     stubFor(

@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-02-25.236.fb49fbf"
+    "version" : "2026-02-27.259.75e6012"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1198,9 +1198,15 @@
           "accountReference" : {
             "type" : "string",
             "description" : "A unique reference to identify an account, example LEI or 123456"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "A account type to signify if the account is a PRISONER or PRISON",
+            "enum" : [ "PRISONER", "PRISON" ],
+            "example" : "PRISONER"
           }
         },
-        "required" : [ "accountReference" ]
+        "required" : [ "accountReference", "type" ]
       },
       "AccountResponse" : {
         "type" : "object",
@@ -1224,6 +1230,12 @@
             "format" : "date-time",
             "description" : "The date/time of when the account was created in UTC/Instant format"
           },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of account (PRISONER or PRISON)",
+            "enum" : [ "PRISONER", "PRISON" ],
+            "example" : "PRISONER"
+          },
           "subAccounts" : {
             "type" : "array",
             "description" : "The collection of sub-accounts within the account",
@@ -1232,7 +1244,7 @@
             }
           }
         },
-        "required" : [ "createdAt", "createdBy", "id", "reference", "subAccounts" ]
+        "required" : [ "createdAt", "createdBy", "id", "reference", "subAccounts", "type" ]
       },
       "SubAccountResponse" : {
         "type" : "object",
