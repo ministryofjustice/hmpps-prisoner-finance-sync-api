@@ -56,10 +56,10 @@ class GeneralLedgerApiClient(
   }
 
   // POST /accounts
-  fun createAccount(reference: String): AccountResponse {
+  fun createAccount(reference: String, type: CreateAccountRequest.Type): AccountResponse {
     log.info("Creating Account for ref: $reference")
 
-    val request = CreateAccountRequest(accountReference = reference)
+    val request = CreateAccountRequest(accountReference = reference, type = type)
 
     return accountApi.createAccount(request)
       .block()

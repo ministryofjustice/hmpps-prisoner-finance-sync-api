@@ -81,12 +81,15 @@ class GeneralLedgerServiceTest {
   private val offenderDisplayId = "A1234AA"
 
   fun mockAccount(reference: String, accountUUID: UUID = UUID.randomUUID(), subAccounts: List<SubAccountResponse> = emptyList()): AccountResponse {
+    val type = if (reference.length > 3) AccountResponse.Type.PRISONER else AccountResponse.Type.PRISON
+
     val accountResponse = AccountResponse(
       id = accountUUID,
       reference = reference,
       createdBy = "OMS_OWNER",
       createdAt = Instant.now(),
       subAccounts = subAccounts,
+      type = type,
     )
     whenever(generalLedgerApiClient.findAccountByReference(reference))
       .thenReturn(accountResponse)

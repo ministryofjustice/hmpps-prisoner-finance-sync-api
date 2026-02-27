@@ -187,6 +187,7 @@ class GeneralLedgerApiClientTest {
         createdAt = Instant.now(),
         createdBy = "user",
         subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISONER,
       )
 
       whenever(accountApi.getAccounts(ref)).thenReturn(Mono.just(listOf(expectedResponse)))
@@ -225,13 +226,14 @@ class GeneralLedgerApiClientTest {
         createdAt = Instant.now(),
         createdBy = "user",
         subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISONER,
       )
 
-      val expectedRequest = CreateAccountRequest(accountReference = ref)
+      val expectedRequest = CreateAccountRequest(accountReference = ref, type = CreateAccountRequest.Type.PRISONER)
 
       whenever(accountApi.createAccount(expectedRequest)).thenReturn(Mono.just(expectedResponse))
 
-      val result = apiClient.createAccount(ref)
+      val result = apiClient.createAccount(ref, CreateAccountRequest.Type.PRISONER)
 
       assertThat(result).isEqualTo(expectedResponse)
       verify(accountApi).createAccount(expectedRequest)
@@ -243,7 +245,7 @@ class GeneralLedgerApiClientTest {
       whenever(accountApi.createAccount(any())).thenReturn(Mono.error(badRequestEx))
 
       assertThatThrownBy {
-        apiClient.createAccount("A1234AA")
+        apiClient.createAccount("A1234AA", CreateAccountRequest.Type.PRISONER)
       }.isInstanceOf(WebClientResponseException::class.java)
     }
 
@@ -251,7 +253,7 @@ class GeneralLedgerApiClientTest {
     fun `should throw IllegalStateException if response body is null`() {
       whenever(accountApi.createAccount(any())).thenReturn(Mono.empty())
 
-      assertThatThrownBy { apiClient.createAccount("A1234AA") }
+      assertThatThrownBy { apiClient.createAccount("A1234AA", CreateAccountRequest.Type.PRISONER) }
         .isInstanceOf(IllegalStateException::class.java)
     }
   }
