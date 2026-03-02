@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-02-27.280.878a3ce"
+    "version" : "2026-03-02.295.b031cab"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -931,7 +931,10 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/AccountBalanceResponse"
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PrisonerTransactionListResponse"
+                  }
                 }
               }
             }
@@ -978,7 +981,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO" ]
         } ]
       }
     },
@@ -1379,6 +1382,97 @@
           }
         },
         "required" : [ "amount", "balanceDateTime", "subAccountId" ]
+      },
+      "ParentAccountListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the parent account"
+          },
+          "reference" : {
+            "type" : "string",
+            "description" : "A reference to identify the parent account"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of parent account, either Prison or Prisoner (TODO rebase)",
+            "enum" : [ "PRISONER", "PRISON" ]
+          }
+        },
+        "required" : [ "id", "reference", "type" ]
+      },
+      "PrisonerPostingListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the posting"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "Enumeration of PostingType either CR or DR",
+            "enum" : [ "CR", "DR" ]
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The posting monetary amount in pence"
+          },
+          "subAccount" : {
+            "$ref" : "#/components/schemas/SubAccountListResponse",
+            "description" : "The sub account associated with the posting"
+          }
+        },
+        "required" : [ "amount", "id", "subAccount", "type" ]
+      },
+      "PrisonerTransactionListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the transaction"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "A description for the transaction"
+          },
+          "timestamp" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The time of when the transaction is created in UTC/Instant format"
+          },
+          "postings" : {
+            "type" : "array",
+            "description" : "A collection of postings for the transaction",
+            "items" : {
+              "$ref" : "#/components/schemas/PrisonerPostingListResponse"
+            }
+          }
+        },
+        "required" : [ "description", "id", "postings", "timestamp" ]
+      },
+      "SubAccountListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the sub-account"
+          },
+          "subAccountReference" : {
+            "type" : "string",
+            "description" : "A reference to identify the sub-account"
+          },
+          "parentAccount" : {
+            "$ref" : "#/components/schemas/ParentAccountListResponse",
+            "description" : "The parent account associated with the sub-account"
+          }
+        },
+        "required" : [ "id", "parentAccount", "subAccountReference" ]
       },
       "AccountBalanceResponse" : {
         "type" : "object",
