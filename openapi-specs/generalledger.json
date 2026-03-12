@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-03-06.303.2bac0da"
+    "version" : "2026-03-11.311.c7e1b9c"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -196,7 +196,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       },
       "post" : {
@@ -360,7 +360,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       },
       "post" : {
@@ -624,7 +624,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       }
     },
@@ -707,7 +707,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       }
     },
@@ -778,7 +778,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       }
     },
@@ -826,7 +826,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       }
     },
@@ -907,7 +907,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       }
     },
@@ -991,7 +991,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       }
     },
@@ -1069,7 +1069,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
         } ]
       }
     }
