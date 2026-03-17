@@ -8,7 +8,7 @@ import java.nio.file.Files
 
 plugins {
   id("uk.gov.justice.hmpps.gradle-spring-boot") version "10.0.5"
-  kotlin("plugin.spring") version "2.3.10"
+  kotlin("plugin.spring") version "2.3.20"
   id("org.jetbrains.kotlin.plugin.noarg") version "2.3.10"
   id("org.openapi.generator") version "7.20.0"
   id("jacoco")
