@@ -76,7 +76,7 @@ services:
     depends_on:
       hmpps-auth:
         condition: service_started
-      hmpps-prisoner-finance-sync-db:
+      hmpps-prisoner-finance-general-ledger-db:
         condition: service_healthy
         restart: true
 
