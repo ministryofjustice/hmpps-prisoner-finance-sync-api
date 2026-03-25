@@ -28,23 +28,6 @@ class LedgerBalanceService(
   private val holdTransactionTypes = holdCreditTransactionTypes + holdDebitTransactionTypes + biDirectionalHoldTransactionTypes
 
   /**
-   * Calculates the total and hold balances for a prisoner's account by aggregating
-   * per-establishment balances.
-   */
-  fun calculatePrisonerAccountBalances(account: Account): Pair<BigDecimal, BigDecimal> {
-    val establishmentBalances = calculatePrisonerBalancesByEstablishment(account)
-
-    if (establishmentBalances.isEmpty()) {
-      return Pair(BigDecimal.ZERO, BigDecimal.ZERO)
-    }
-
-    val aggregatedTotalBalance = establishmentBalances.sumOf { it.totalBalance }
-    val aggregatedHoldBalance = establishmentBalances.sumOf { it.holdBalance }
-
-    return Pair(aggregatedTotalBalance, aggregatedHoldBalance)
-  }
-
-  /**
    * Calculates the balance for a General Ledger account.
    * Uses aggregated data for prisoner sub-accounts, otherwise calculates from transaction entries.
    */
