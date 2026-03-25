@@ -10,15 +10,11 @@ import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountCodeLookupRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.PrisonRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerBalanceService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.TransactionDetailsMapper
 import java.math.BigDecimal
 
 @ExtendWith(MockitoExtension::class)
@@ -28,17 +24,7 @@ class LegacyQueryServiceTest {
 
   @Mock private lateinit var accountRepository: AccountRepository
 
-  @Mock private lateinit var transactionRepository: TransactionRepository
-
-  @Mock private lateinit var transactionEntryRepository: TransactionEntryRepository
-
-  @Mock private lateinit var accountCodeLookupRepository: AccountCodeLookupRepository
-
-  @Mock private lateinit var transactionDetailsMapper: TransactionDetailsMapper
-
   @Mock private lateinit var ledgerBalanceService: LedgerBalanceService
-
-  @Mock private lateinit var timeConversionService: TimeConversionService
 
   @Spy
   @InjectMocks private lateinit var ledgerQueryService: LedgerQueryService

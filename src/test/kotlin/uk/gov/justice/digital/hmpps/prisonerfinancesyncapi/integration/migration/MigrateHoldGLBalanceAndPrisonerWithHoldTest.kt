@@ -7,7 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
@@ -49,12 +49,12 @@ class MigrateHoldGLBalanceAndPrisonerWithHoldTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, holdsGLAccountCode)
+      .uri("/reconcile/general-ledger-balances/{prisonId}", prisonId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(generalLedgerHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $holdsGLAccountCode)].balance").isSumMoneyEqual(generalLedgerHoldBalance)
 
     val prisonerAvailableBalance = BigDecimal("10.00")
     val prisonerHoldBalance = BigDecimal("10.00")
@@ -83,21 +83,21 @@ class MigrateHoldGLBalanceAndPrisonerWithHoldTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, privateCashAccountCode)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(prisonerAvailableBalance)
-      .jsonPath("$.holdBalance").isMoneyEqual(prisonerHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].totalBalance").isSumMoneyEqual(prisonerAvailableBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].holdBalance").isSumMoneyEqual(prisonerHoldBalance)
 
     webTestClient
       .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, holdsGLAccountCode)
+      .uri("/reconcile/general-ledger-balances/{prisonId}", prisonId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(generalLedgerHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $holdsGLAccountCode)].balance").isSumMoneyEqual(generalLedgerHoldBalance)
   }
 }

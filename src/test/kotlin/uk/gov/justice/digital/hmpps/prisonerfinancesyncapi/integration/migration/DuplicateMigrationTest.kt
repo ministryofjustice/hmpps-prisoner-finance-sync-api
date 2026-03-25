@@ -7,7 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -49,7 +49,6 @@ class DuplicateMigrationTest : IntegrationTestBase() {
       ),
     )
 
-    // Initial Migration (Superseded)
     webTestClient
       .post()
       .uri("/migrate/prisoner-balances/{prisonNumber}", prisonNumber)
@@ -59,7 +58,6 @@ class DuplicateMigrationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
 
-    // Run Duplicate Migration (Latest)
     webTestClient
       .post()
       .uri("/migrate/prisoner-balances/{prisonNumber}", prisonNumber)
@@ -92,13 +90,13 @@ class DuplicateMigrationTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, privateCashAccountCode)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber, privateCashAccountCode)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(expectedFinalBalance)
-      .jsonPath("$.holdBalance").isMoneyEqual(expectedFinalHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].totalBalance").isSumMoneyEqual(expectedFinalBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].holdBalance").isSumMoneyEqual(expectedFinalHoldBalance)
   }
 
   private fun postSyncTransaction(syncRequest: SyncOffenderTransactionRequest) {

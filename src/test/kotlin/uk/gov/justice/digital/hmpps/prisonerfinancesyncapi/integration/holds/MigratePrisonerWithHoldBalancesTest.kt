@@ -7,7 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -62,13 +62,13 @@ class MigratePrisonerWithHoldBalancesTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, privateCashAccountCode)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(initialAvailableBalance)
-      .jsonPath("$.holdBalance").isMoneyEqual(initialHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].totalBalance").isSumMoneyEqual(initialAvailableBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].holdBalance").isSumMoneyEqual(initialHoldBalance)
 
     val addHoldRequest = SyncOffenderTransactionRequest(
       transactionId = Random.nextLong(),
@@ -125,12 +125,12 @@ class MigratePrisonerWithHoldBalancesTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, privateCashAccountCode)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(expectedFinalAvailableBalance)
-      .jsonPath("$.holdBalance").isMoneyEqual(expectedFinalHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].totalBalance").isSumMoneyEqual(expectedFinalAvailableBalance)
+      .jsonPath("$.items[?(@.accountCode == $privateCashAccountCode)].holdBalance").isSumMoneyEqual(expectedFinalHoldBalance)
   }
 }

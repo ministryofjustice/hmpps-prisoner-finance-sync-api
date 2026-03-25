@@ -7,7 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -52,21 +52,13 @@ class MigrateInitialBalanceAndRecordTransactionTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, earningsAccountCode)
+      .uri("/reconcile/general-ledger-balances/{prisonId}", prisonId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(initialEarningsBalance)
-
-    webTestClient
-      .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, spendsAccountCode)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(initialSpendsBalance)
+      .jsonPath("$.items[?(@.accountCode == $earningsAccountCode)].balance").isSumMoneyEqual(initialEarningsBalance)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].balance").isSumMoneyEqual(initialSpendsBalance)
 
     val prisonNumber = uniquePrisonNumber()
 
@@ -119,20 +111,20 @@ class MigrateInitialBalanceAndRecordTransactionTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, earningsAccountCode)
+      .uri("/reconcile/general-ledger-balances/{prisonId}", prisonId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(expectedFinalBalance)
+      .jsonPath("$.items[?(@.accountCode == $earningsAccountCode)].balance").isSumMoneyEqual(expectedFinalBalance)
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{offenderAccountCode}", prisonNumber, spendsAccountCode)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(transactionAmount)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].totalBalance").isSumMoneyEqual(transactionAmount)
   }
 }

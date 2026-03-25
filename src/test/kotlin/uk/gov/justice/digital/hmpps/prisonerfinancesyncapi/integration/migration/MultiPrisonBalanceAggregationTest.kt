@@ -7,7 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import java.math.BigDecimal
@@ -85,22 +85,14 @@ class MultiPrisonBalanceAggregationTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, spendsAccountCode)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(expectedTotalSpendsBalance)
-      .jsonPath("$.holdBalance").isMoneyEqual(expectedTotalSpendsHoldBalance)
-
-    webTestClient
-      .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, savingsAccountCode)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(expectedTotalSavingsBalance)
-      .jsonPath("$.holdBalance").isMoneyEqual(expectedTotalSavingsHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].totalBalance").isSumMoneyEqual(expectedTotalSpendsBalance)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].holdBalance").isSumMoneyEqual(expectedTotalSpendsHoldBalance)
+      .jsonPath("$.items[?(@.accountCode == $savingsAccountCode)].totalBalance").isSumMoneyEqual(expectedTotalSavingsBalance)
+      .jsonPath("$.items[?(@.accountCode == $savingsAccountCode)].holdBalance").isSumMoneyEqual(expectedTotalSavingsHoldBalance)
   }
 }
