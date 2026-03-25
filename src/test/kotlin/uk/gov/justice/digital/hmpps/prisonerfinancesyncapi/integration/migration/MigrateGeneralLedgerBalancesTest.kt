@@ -1,22 +1,17 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.migration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.MIGRATION_CLEARING_ACCOUNT
 import java.math.BigDecimal
-import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
@@ -54,10 +49,6 @@ class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
     val localDateTime1 = LocalDateTime.now().minusDays(1)
     val localDateTime2 = LocalDateTime.now()
 
-    val zoneId = ZoneId.of("Europe/London")
-    val expectedDate1 = localDateTime1.atZone(zoneId).toInstant()
-    val expectedDate2 = localDateTime2.atZone(zoneId).toInstant()
-
     val requestBody = GeneralLedgerBalancesSyncRequest(
       accountBalances = listOf(
         GeneralLedgerPointInTimeBalance(accountCode = accountCode1, balance = balance1, asOfTimestamp = localDateTime1),
@@ -76,51 +67,13 @@ class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, accountCode1)
+      .uri("/reconcile/general-ledger-balances/{prisonId}", prisonId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(balance1)
-      .jsonPath("$.code").isEqualTo(accountCode1)
-      .jsonPath("$.name").isEqualTo("Receivable For Earnings")
-
-    webTestClient
-      .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, accountCode2)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(balance2)
-      .jsonPath("$.code").isEqualTo(accountCode2)
-      .jsonPath("$.name").isEqualTo("Canteen Payable")
-
-    webTestClient
-      .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}/transactions", prisonId, accountCode1)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.items.length()").isEqualTo(1)
-      .jsonPath("$.items[0].date").value<String> { actualDateString ->
-        assertThat(Instant.parse(actualDateString))
-          .isCloseTo(expectedDate1, within(500, ChronoUnit.MILLIS))
-      }
-
-    webTestClient
-      .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}/transactions", prisonId, accountCode2)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.items.length()").isEqualTo(1)
-      .jsonPath("$.items[0].date").value<String> { actualDateString ->
-        assertThat(Instant.parse(actualDateString))
-          .isCloseTo(expectedDate2, within(500, ChronoUnit.MILLIS))
-      }
+      .jsonPath("$.items[?(@.accountCode == $accountCode1)].balance").isSumMoneyEqual(balance1)
+      .jsonPath("$.items[?(@.accountCode == $accountCode2)].balance").isSumMoneyEqual(balance2)
   }
 
   @Test
@@ -155,9 +108,9 @@ class MigrateGeneralLedgerBalancesTest : IntegrationTestBase() {
       .expectStatus().isOk
       .expectBody()
       .jsonPath("$.items[?(@.accountCode == ${MIGRATION_CLEARING_ACCOUNT})]").isEmpty
-      .jsonPath("$.items[?(@.accountCode == 1505)].balance").isMoneyEqual(BigDecimal("10587.23"))
-      .jsonPath("$.items[?(@.accountCode == 2505)].balance").isMoneyEqual(BigDecimal("1554565.40"))
-      .jsonPath("$.items[?(@.accountCode == 1103)].balance").isMoneyEqual(BigDecimal("-906347.40"))
-      .jsonPath("$.items[?(@.accountCode == 2100)].balance").isMoneyEqual(BigDecimal("0.00"))
+      .jsonPath("$.items[?(@.accountCode == 1505)].balance").isSumMoneyEqual(BigDecimal("10587.23"))
+      .jsonPath("$.items[?(@.accountCode == 2505)].balance").isSumMoneyEqual(BigDecimal("1554565.40"))
+      .jsonPath("$.items[?(@.accountCode == 1103)].balance").isSumMoneyEqual(BigDecimal("-906347.40"))
+      .jsonPath("$.items[?(@.accountCode == 2100)].balance").isSumMoneyEqual(BigDecimal("0.00"))
   }
 }

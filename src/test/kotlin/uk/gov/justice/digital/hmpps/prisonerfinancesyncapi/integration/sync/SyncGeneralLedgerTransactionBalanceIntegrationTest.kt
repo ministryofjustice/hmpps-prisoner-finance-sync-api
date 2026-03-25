@@ -1,11 +1,10 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync
 
-import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PrisonAccountDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -191,21 +190,14 @@ class SyncGeneralLedgerTransactionBalanceIntegrationTest : IntegrationTestBase()
       .expectBody()
       .jsonPath("$.action").isEqualTo("CREATED")
 
-    // Step 3: Verify the final balances
-    val finalDebitBalance = getAccountDetails(prisonId, debitAccountCode)?.balance
-    val finalCreditBalance = getAccountDetails(prisonId, creditAccountCode)?.balance
-
-    assertThat(finalDebitBalance).isEqualTo(expectedFinalDebitBalance)
-    assertThat(finalCreditBalance).isEqualTo(expectedFinalCreditBalance)
+    webTestClient
+      .get()
+      .uri("/reconcile/general-ledger-balances/{prisonId}", prisonId)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.items[?(@.accountCode == $debitAccountCode)].balance").isSumMoneyEqual(expectedFinalDebitBalance)
+      .jsonPath("$.items[?(@.accountCode == $creditAccountCode)].balance").isSumMoneyEqual(expectedFinalCreditBalance)
   }
-
-  // Helper function to get account details, including balance
-  private fun getAccountDetails(prisonId: String, accountCode: Int): PrisonAccountDetails? = webTestClient
-    .get()
-    .uri("/prisons/$prisonId/accounts/$accountCode")
-    .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-    .exchange()
-    .expectBody(PrisonAccountDetails::class.java)
-    .returnResult()
-    .responseBody
 }

@@ -7,6 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -44,21 +45,21 @@ class SyncOffenderTransactionBalanceIntegrationTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/$prisonNumber/accounts/$offenderAccountCode")
+      .uri("/reconcile/prisoner-balances/$prisonNumber")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(2.95)
+      .jsonPath("$.items[?(@.accountCode == $offenderAccountCode)].totalBalance").isSumMoneyEqual(BigDecimal("2.95"))
 
     webTestClient
       .get()
-      .uri("/prisons/$prisonId/accounts/$prisonAccountCode")
+      .uri("/reconcile/general-ledger-balances/$prisonId")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(2.95)
+      .jsonPath("$.items[?(@.accountCode == $prisonAccountCode)].balance").isSumMoneyEqual(BigDecimal("2.95"))
   }
 
   @Test
@@ -85,88 +86,30 @@ class SyncOffenderTransactionBalanceIntegrationTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/$offender1DisplayId/accounts/$offenderAccountCode")
+      .uri("/reconcile/prisoner-balances/$offender1DisplayId")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(-1.40)
+      .jsonPath("$.items[?(@.accountCode == $offenderAccountCode)].totalBalance").isSumMoneyEqual(BigDecimal("-1.40"))
 
     webTestClient
       .get()
-      .uri("/prisoners/$offender2DisplayId/accounts/$offenderAccountCode")
+      .uri("/reconcile/prisoner-balances/$offender2DisplayId")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(-2.20)
+      .jsonPath("$.items[?(@.accountCode == $offenderAccountCode)].totalBalance").isSumMoneyEqual(BigDecimal("-2.20"))
 
     webTestClient
       .get()
-      .uri("/prisons/$prisonId/accounts/$prisonAccountCode")
+      .uri("/reconcile/general-ledger-balances/$prisonId")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isEqualTo(3.60)
-  }
-
-  @Test
-  fun `given a prisoner with accounts, the account and transaction endpoints should return the correct data`() {
-    val prisonNumber = uniquePrisonNumber()
-
-    val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
-    val offenderAccountCode = 2102
-
-    val transactionRequest = createSingleOffenderTransaction(prisonNumber, prisonId)
-
-    webTestClient
-      .post()
-      .uri("/sync/offender-transactions")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .bodyValue(transactionRequest)
-      .exchange()
-      .expectStatus().isCreated
-
-    webTestClient
-      .get()
-      .uri("/prisoners/$prisonNumber/accounts/$offenderAccountCode")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.code").isEqualTo(offenderAccountCode)
-      .jsonPath("$.prisonNumber").isEqualTo(prisonNumber)
-      .jsonPath("$.name").isEqualTo("Spends")
-      .jsonPath("$.balance").isEqualTo(2.95)
-
-    webTestClient
-      .get()
-      .uri("/prisoners/$prisonNumber/accounts")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.items.length()").isEqualTo(1)
-      .jsonPath("$.items[0].code").isEqualTo(offenderAccountCode)
-      .jsonPath("$.items[0].prisonNumber").isEqualTo(prisonNumber)
-      .jsonPath("$.items[0].name").isEqualTo("Spends")
-      .jsonPath("$.items[0].balance").isEqualTo(2.95)
-
-    webTestClient
-      .get()
-      .uri("/prisoners/$prisonNumber/accounts/$offenderAccountCode/transactions")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.items.length()").isEqualTo(1)
-      .jsonPath("$.items[0].id").exists()
-      .jsonPath("$.items[0].type").isEqualTo("A_EARN")
-      .jsonPath("$.items[0].description").isEqualTo("Offender Payroll From:01/06/2025 To:01/06/2025")
-      .jsonPath("$.items[0].postings.length()").isEqualTo(1)
-      .jsonPath("$.items[0].postings[0].account.code").isEqualTo(offenderAccountCode)
-      .jsonPath("$.items[0].postings[0].amount").isEqualTo(2.95)
+      .jsonPath("$.items[?(@.accountCode == $prisonAccountCode)].balance").isSumMoneyEqual(BigDecimal("3.60"))
   }
 
   private fun createSingleOffenderTransaction(prisonNumber: String, caseloadId: String): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(

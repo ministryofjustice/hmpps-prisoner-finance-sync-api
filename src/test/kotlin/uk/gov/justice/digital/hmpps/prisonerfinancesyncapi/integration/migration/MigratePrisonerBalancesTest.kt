@@ -7,7 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import java.math.BigDecimal
@@ -68,73 +68,27 @@ class MigratePrisonerBalancesTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, cashAccountCode)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(cashBalance)
-      .jsonPath("$.code").isEqualTo(cashAccountCode)
-      .jsonPath("$.name").isEqualTo("Cash")
-      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
-
-    webTestClient
-      .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, spendsAccountCode)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(spendsBalance)
-      .jsonPath("$.code").isEqualTo(spendsAccountCode)
-      .jsonPath("$.name").isEqualTo("Spends")
-      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
-
-    webTestClient
-      .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, savingsAccountCode)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(savingsBalance)
-      .jsonPath("$.code").isEqualTo(savingsAccountCode)
-      .jsonPath("$.name").isEqualTo("Savings")
-      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
-
-    webTestClient
-      .get()
       .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
       .jsonPath("$.items.length()").isEqualTo(3)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].totalBalance").isMoneyEqual(cashBalance)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].holdBalance").isMoneyEqual(BigDecimal.ZERO)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].totalBalance").isMoneyEqual(spendsBalance)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].holdBalance").isMoneyEqual(BigDecimal.ZERO)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].totalBalance").isMoneyEqual(savingsBalance)
-      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].holdBalance").isMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].totalBalance").isSumMoneyEqual(cashBalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $cashAccountCode)].holdBalance").isSumMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].totalBalance").isSumMoneyEqual(spendsBalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $spendsAccountCode)].holdBalance").isSumMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].totalBalance").isSumMoneyEqual(savingsBalance)
+      .jsonPath("$.items[?(@.prisonId == '$prisonId' && @.accountCode == $savingsAccountCode)].holdBalance").isSumMoneyEqual(BigDecimal.ZERO)
 
     webTestClient
       .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, spendsAccountCode)
+      .uri("/reconcile/general-ledger-balances/{prisonId}", prisonId)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(BigDecimal.ZERO)
-      .jsonPath("$.name").isEqualTo("Spends")
-
-    webTestClient
-      .get()
-      .uri("/prisons/{prisonId}/accounts/{accountCode}", prisonId, savingsAccountCode)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(BigDecimal.ZERO)
-      .jsonPath("$.name").isEqualTo("Savings")
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].balance").isSumMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.accountCode == $savingsAccountCode)].balance").isSumMoneyEqual(BigDecimal.ZERO)
   }
 }

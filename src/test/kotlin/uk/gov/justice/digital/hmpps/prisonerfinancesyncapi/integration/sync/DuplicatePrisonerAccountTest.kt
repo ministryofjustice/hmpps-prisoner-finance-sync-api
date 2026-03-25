@@ -115,21 +115,28 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts", prisonNumber)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.items[*].code")
-      .value<List<Int>> { codes ->
-        val duplicates = codes.groupBy { it }.filter { it.value.size > 1 }
+      .jsonPath("$.items.length()").isEqualTo(6)
+      .jsonPath("$.items[*]")
+      .value<List<Map<String, Any>>> { items ->
+        val uniqueAccountKeys = items.map { "${it["prisonId"]}-${it["accountCode"]}" }
+        val duplicates = uniqueAccountKeys.groupBy { it }.filter { it.value.size > 1 }
         assertThat(duplicates)
-          .withFailMessage("Duplicate account codes found: $duplicates")
+          .withFailMessage("Duplicate prisoner accounts found for the same establishment: $duplicates")
           .isEmpty()
-        assertThat(codes).containsExactlyInAnyOrder(2101, 2102, 2103)
+        assertThat(uniqueAccountKeys).containsExactlyInAnyOrder(
+          "MDI-2101",
+          "MDI-2102",
+          "MDI-2103",
+          "KMI-2101",
+          "KMI-2102",
+          "KMI-2103",
+        )
       }
-      .jsonPath("$.items.length()")
-      .isEqualTo(3)
   }
 
   /**

@@ -7,7 +7,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isMoneyEqual
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.utils.isSumMoneyEqual
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -88,20 +88,18 @@ class StaggeredMigrationBalanceAggregationTest : IntegrationTestBase() {
     postSyncTransaction(betweenTransactionRequest)
 
     val finalBalanceAV2 = initialBalanceA.add(transactionBetweenMigrations)
-
     val finalBalanceBV2 = initialBalanceB
-
     val expectedAggregatedBalanceV2 = finalBalanceAV2.add(finalBalanceBV2)
 
     webTestClient
       .get()
-      .uri("/prisoners/{prisonNumber}/accounts/{accountCode}", prisonNumber, spendsAccountCode)
+      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody()
-      .jsonPath("$.balance").isMoneyEqual(expectedAggregatedBalanceV2)
-      .jsonPath("$.holdBalance").isMoneyEqual(BigDecimal.ZERO)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].totalBalance").isSumMoneyEqual(expectedAggregatedBalanceV2)
+      .jsonPath("$.items[?(@.accountCode == $spendsAccountCode)].holdBalance").isSumMoneyEqual(BigDecimal.ZERO)
   }
 
   private fun postSyncTransaction(syncRequest: SyncOffenderTransactionRequest) {
