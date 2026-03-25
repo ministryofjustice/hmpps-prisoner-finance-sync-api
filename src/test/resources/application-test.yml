@@ -37,15 +37,15 @@ hmpps:
       domainevents:
         arn: arn:aws:sns:eu-west-2:000000000000:11111111-2222-3333-4444-555555555555
 
+general-ledger-api:
+    url: http://localhost:8091
+
 springdoc:
   packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi
   packages-to-exclude:
-     - uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients
-
-general-ledger-api:
-    url: http://localhost:8091
-springdoc:
+    - uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients
   api-docs:
     enabled: true
   swagger-ui:
+    version: 5.32.1
     enabled: true
