@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-03-11.311.c7e1b9c"
+    "version" : "2026-03-24.337.e0eb929"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -995,6 +995,91 @@
         } ]
       }
     },
+    "/accounts/{accountId}/statement" : {
+      "get" : {
+        "tags" : [ "Statement Controller" ],
+        "summary" : "Return Statement Entries list for the account",
+        "description" : "Returns all statement entries (postings) for the account.",
+        "operationId" : "getStatementForAccountId",
+        "parameters" : [ {
+          "name" : "accountId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Return Statement Entries list for the account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/StatementEntryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found - Account not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
     "/accounts/{accountId}/balance" : {
       "get" : {
         "tags" : [ "Account Controller" ],
@@ -1393,7 +1478,7 @@
         },
         "required" : [ "amount", "balanceDateTime", "subAccountId" ]
       },
-      "ParentAccountListResponse" : {
+      "ParentAccountResponse" : {
         "type" : "object",
         "properties" : {
           "id" : {
@@ -1478,11 +1563,153 @@
             "description" : "A reference to identify the sub-account"
           },
           "parentAccount" : {
-            "$ref" : "#/components/schemas/ParentAccountListResponse",
+            "$ref" : "#/components/schemas/ParentAccountResponse",
             "description" : "The parent account associated with the sub-account"
           }
         },
         "required" : [ "id", "parentAccount", "subAccountReference" ]
+      },
+      "StatementEntryAccountResponse" : {
+        "type" : "object",
+        "description" : "An account within the general ledger",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The unique ID for the account"
+          },
+          "reference" : {
+            "type" : "string",
+            "description" : "The unique reference for the account"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The principal users name when the account was created"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date/time of when the account was created in UTC/Instant format"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of account (PRISONER or PRISON)",
+            "enum" : [ "PRISONER", "PRISON" ],
+            "example" : "PRISONER"
+          }
+        },
+        "required" : [ "createdAt", "createdBy", "id", "reference", "type" ]
+      },
+      "StatementEntryOppositePostingsResponse" : {
+        "type" : "object",
+        "description" : "Posting response of statement entry",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the posting"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The user who created the transaction"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date/time of when the posting was created in UTC/Instant format"
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "Enumeration of PostingType either CR or DR",
+            "enum" : [ "CR", "DR" ]
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The posting monetary amount in pence"
+          },
+          "subAccount" : {
+            "$ref" : "#/components/schemas/SubAccountWithParentResponse",
+            "description" : "The sub-account with parent associated with the posting"
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "id", "subAccount", "type" ]
+      },
+      "StatementEntryResponse" : {
+        "type" : "object",
+        "description" : "A posting with enriched information",
+        "properties" : {
+          "transactionId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "A unique ID for the posting"
+          },
+          "postingCreatedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date/time of when the posting was created in UTC/Instant format"
+          },
+          "transactionTimestamp" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The transaction timestamp in UTC/Instant format"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "The description of the transaction"
+          },
+          "oppositePostings" : {
+            "type" : "array",
+            "description" : "This is the opposite postings from the statement entry",
+            "items" : {
+              "$ref" : "#/components/schemas/StatementEntryOppositePostingsResponse"
+            }
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "This is amount of the statement entry"
+          },
+          "postingType" : {
+            "type" : "string",
+            "description" : "The posting type of the statement entry",
+            "enum" : [ "CR", "DR" ]
+          },
+          "subAccount" : {
+            "$ref" : "#/components/schemas/SubAccountWithParentResponse",
+            "description" : "The sub account of the statement entry"
+          }
+        },
+        "required" : [ "amount", "description", "oppositePostings", "postingCreatedAt", "postingType", "subAccount", "transactionId", "transactionTimestamp" ]
+      },
+      "SubAccountWithParentResponse" : {
+        "type" : "object",
+        "description" : "A sub-account of an account",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The unique ID for the sub-account"
+          },
+          "reference" : {
+            "type" : "string",
+            "description" : "The reference of the sub-account this is unique within the parent account"
+          },
+          "parentAccount" : {
+            "$ref" : "#/components/schemas/StatementEntryAccountResponse",
+            "description" : "The parent account"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The principal users name when the sub-account was created"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date/time when the sub-account was created in UTC/Instant format"
+          }
+        },
+        "required" : [ "createdAt", "createdBy", "id", "parentAccount", "reference" ]
       },
       "AccountBalanceResponse" : {
         "type" : "object",
