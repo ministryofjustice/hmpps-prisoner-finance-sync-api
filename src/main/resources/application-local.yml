@@ -36,3 +36,9 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
