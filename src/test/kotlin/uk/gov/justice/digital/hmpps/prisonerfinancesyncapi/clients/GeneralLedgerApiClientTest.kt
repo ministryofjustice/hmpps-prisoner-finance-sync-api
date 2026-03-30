@@ -271,6 +271,7 @@ class GeneralLedgerApiClientTest {
         timestamp = Instant.now(),
         amount = 100L,
         postings = emptyList(),
+        entrySequence = 1,
       )
 
       val response = TransactionResponse(
@@ -302,6 +303,7 @@ class GeneralLedgerApiClientTest {
         timestamp = Instant.now(),
         amount = 100L,
         postings = emptyList(),
+        entrySequence = 1,
       )
 
       whenever(transactionApi.postTransaction(any(), any())).thenReturn(Mono.empty())

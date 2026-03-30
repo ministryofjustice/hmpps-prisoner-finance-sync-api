@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-03-30.355.2523586"
+    "version" : "2026-03-30.357.8703fc8"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1230,6 +1230,11 @@
             "format" : "int64",
             "description" : "The non-negative amount in pence of the transaction, this is the total of all money moved with postings in this transaction"
           },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The entry sequence number of the transaction, this is used to ensure that the transaction is ordered correctly, if not provided defaulted to zero"
+          },
           "postings" : {
             "type" : "array",
             "description" : "A collection of postings for the transaction, there must be at least 1 Credit (CR) and 1 Debit (DR) posting supplied.\n\nWe accept one to one postings (1DR to 1CR).\n\nWe accept one to many postings (1DR to many CR or 1CR to many DR).\n\nWe do not accept many to many postings (2 DR to 2CR).\n\nThe sum of all credit in the transaction must equal the sum of all debits in the transaction.\n",
@@ -1240,7 +1245,7 @@
             "minItems" : 2
           }
         },
-        "required" : [ "amount", "description", "postings", "reference", "timestamp" ]
+        "required" : [ "amount", "description", "entrySequence", "postings", "reference", "timestamp" ]
       },
       "PostingResponse" : {
         "type" : "object",

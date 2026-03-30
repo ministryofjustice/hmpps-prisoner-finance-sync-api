@@ -62,6 +62,7 @@ class GeneralLedgerService(
 
       val glRequest = CreateTransactionRequest(
         reference = transaction.reference ?: "",
+        entrySequence = transaction.entrySequence.toLong(),
         description = transaction.description,
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = transaction.amount.toPence(),
