@@ -55,6 +55,7 @@ class GeneralLedgerService(
         return@map CreatePostingRequest(
           subAccountUuid,
           type = CreatePostingRequest.Type.valueOf(entry.postingType),
+          entrySequence = entry.entrySequence.toLong(),
           amount = entry.amount.toPence(),
         )
       }

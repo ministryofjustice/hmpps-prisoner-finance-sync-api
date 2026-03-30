@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-03-26.348.c4be570"
+    "version" : "2026-03-30.355.2523586"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1004,23 +1004,23 @@
         "parameters" : [ {
           "name" : "startDate",
           "in" : "query",
-          "description" : "Filter statements from start date (inclusive) in a dd/MM/yyyy format",
+          "description" : "Filter statements from start date (inclusive) in a yyyy-MM-dd format",
           "required" : false,
           "schema" : {
             "type" : "string",
             "format" : "date"
           },
-          "example" : "24/12/2025"
+          "example" : "2025-12-24"
         }, {
           "name" : "endDate",
           "in" : "query",
-          "description" : "Filter statements to end date (inclusive) in a dd/MM/yyyy format",
+          "description" : "Filter statements to end date (inclusive) in a yyyy-MM-dd format",
           "required" : false,
           "schema" : {
             "type" : "string",
             "format" : "date"
           },
-          "example" : "25/12/2025"
+          "example" : "2025-12-25"
         }, {
           "name" : "accountId",
           "in" : "path",
@@ -1199,9 +1199,14 @@
             "type" : "integer",
             "format" : "int64",
             "description" : "The non-negative posting amount"
+          },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The entry sequence number of the posting, this is used to ensure that the posting is created in the correct order, if not provided defaulted to zero"
           }
         },
-        "required" : [ "amount", "subAccountId", "type" ]
+        "required" : [ "amount", "entrySequence", "subAccountId", "type" ]
       },
       "CreateTransactionRequest" : {
         "type" : "object",
