@@ -55,12 +55,14 @@ class GeneralLedgerService(
         return@map CreatePostingRequest(
           subAccountUuid,
           type = CreatePostingRequest.Type.valueOf(entry.postingType),
+          entrySequence = entry.entrySequence.toLong(),
           amount = entry.amount.toPence(),
         )
       }
 
       val glRequest = CreateTransactionRequest(
         reference = transaction.reference ?: "",
+        entrySequence = transaction.entrySequence.toLong(),
         description = transaction.description,
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = transaction.amount.toPence(),

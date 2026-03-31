@@ -857,7 +857,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verifyCreateAccount(prisonId)
       generalLedgerApi.verifyCreateSubAccount(prisonParentUuid.toString(), prisonSubRef)
 
-      generalLedgerApi.verifyTransactionPosted()
+      generalLedgerApi.verifyTransactionPosted(1, debtorSubAccountUuid = prisonSubUuid, creditorSubAccountUuid = prisonerSubUuid)
     }
 
     @Disabled("Impossible to trigger as the internal sync service fails first")

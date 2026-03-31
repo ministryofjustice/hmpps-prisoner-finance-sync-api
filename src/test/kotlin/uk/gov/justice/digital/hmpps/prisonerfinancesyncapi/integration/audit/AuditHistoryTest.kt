@@ -17,6 +17,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuild
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -26,6 +27,8 @@ import kotlin.random.Random
 class AuditHistoryTest(
   @param:Autowired val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
 ) : IntegrationTestBase() {
+
+  val timeConversionService = TimeConversionService()
 
   fun makeNomisSyncPayload(
     caseloadId: String,
@@ -180,7 +183,7 @@ class AuditHistoryTest(
       .jsonPath("$.content[0].legacyTransactionId").isEqualTo(request.transactionId.toString())
       .jsonPath("$.content[0].caseloadId").isEqualTo(request.caseloadId)
       .jsonPath("$.content[0].transactionTimestamp").value<String> {
-        assertThat(it).startsWith(request.transactionTimestamp.toString().substring(0, 19))
+        assertThat(it).startsWith(timeConversionService.toUtcInstant(request.transactionTimestamp).toString().substring(0, 19))
       }
       .jsonPath("$.content[0].requestTypeIdentifier").isEqualTo("SyncOffenderTransactionRequest")
       .jsonPath("$.content[0].requestId").exists()

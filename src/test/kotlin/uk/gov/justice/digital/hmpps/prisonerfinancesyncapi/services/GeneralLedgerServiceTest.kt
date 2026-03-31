@@ -124,6 +124,7 @@ class GeneralLedgerServiceTest {
       description = request.offenderTransactions[0].description,
       timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
       amount = request.offenderTransactions[0].amount.toPence(),
+      entrySequence = 1,
       postings = postingsGL,
     )
 
@@ -616,9 +617,10 @@ class GeneralLedgerServiceTest {
         description = request.offenderTransactions[0].description,
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = amount.toPence(),
+        entrySequence = 1,
         postings = listOf(
-          CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-1"), type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
-          CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-2"), type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-1"), type = CreatePostingRequest.Type.CR, entrySequence = 1, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-2"), type = CreatePostingRequest.Type.DR, entrySequence = 2, amount = amount.toPence()),
         ),
       )
       val expectedUUID = UUID.randomUUID()
@@ -684,8 +686,8 @@ class GeneralLedgerServiceTest {
             amount = amount,
             reference = "REF-$transactionId",
             generalLedgerEntries = listOf(
-              GeneralLedgerEntry(1, prisonAccountCode, "CR", amount),
-              GeneralLedgerEntry(2, prisonerAccountCode, "DR", amount),
+              GeneralLedgerEntry(3, prisonAccountCode, "CR", amount),
+              GeneralLedgerEntry(4, prisonerAccountCode, "DR", amount),
             ),
           ),
         ),
@@ -698,9 +700,10 @@ class GeneralLedgerServiceTest {
         description = requestTransactionWithMultiplePrisoners.offenderTransactions[0].description,
         timestamp = timeConversionService.toUtcInstant(requestTransactionWithMultiplePrisoners.transactionTimestamp),
         amount = amount.toPence(),
+        entrySequence = 1,
         postings = listOf(
-          CreatePostingRequest(subAccountId = mapUUID.getValue("0-1"), type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
-          CreatePostingRequest(subAccountId = mapUUID.getValue("0-2"), type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("0-1"), type = CreatePostingRequest.Type.CR, entrySequence = 1, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("0-2"), type = CreatePostingRequest.Type.DR, entrySequence = 2, amount = amount.toPence()),
         ),
       )
 
@@ -709,9 +712,10 @@ class GeneralLedgerServiceTest {
         description = requestTransactionWithMultiplePrisoners.offenderTransactions[1].description,
         timestamp = timeConversionService.toUtcInstant(requestTransactionWithMultiplePrisoners.transactionTimestamp),
         amount = amount.toPence(),
+        entrySequence = 2,
         postings = listOf(
-          CreatePostingRequest(subAccountId = mapUUID.getValue("1-1"), type = CreatePostingRequest.Type.CR, amount = amount.toPence()),
-          CreatePostingRequest(subAccountId = mapUUID.getValue("1-2"), type = CreatePostingRequest.Type.DR, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("1-3"), type = CreatePostingRequest.Type.CR, entrySequence = 3, amount = amount.toPence()),
+          CreatePostingRequest(subAccountId = mapUUID.getValue("1-4"), type = CreatePostingRequest.Type.DR, entrySequence = 4, amount = amount.toPence()),
         ),
       )
       whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner1), any())).thenReturn(UUID.randomUUID())
