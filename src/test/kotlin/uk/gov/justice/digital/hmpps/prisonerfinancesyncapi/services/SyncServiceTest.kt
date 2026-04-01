@@ -25,6 +25,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.TransactionSyncStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerSyncService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncStatusResolver
 import java.math.BigDecimal
 import java.time.Instant
@@ -38,7 +39,7 @@ class SyncServiceTest {
   private lateinit var ledgerSyncService: LedgerSyncService
 
   @Mock
-  private lateinit var requestCaptureService: RequestCaptureService
+  private lateinit var syncPayloadCaptureService: SyncPayloadCaptureService
 
   @Mock
   private lateinit var syncStatusResolver: SyncStatusResolver
@@ -126,7 +127,7 @@ class SyncServiceTest {
     fun `should return CREATED if neither requestId nor transactionId exists`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(ledgerSyncService.syncGeneralLedgerTransaction(any())).thenReturn(syncId)
-      whenever(requestCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
 
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
@@ -142,7 +143,7 @@ class SyncServiceTest {
       whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
         .thenThrow(DataIntegrityViolationException("Race condition"))
         .thenReturn(syncId)
-      whenever(requestCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
 
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
@@ -187,12 +188,12 @@ class SyncServiceTest {
     @Test
     fun `should return UPDATED if the body JSON is different to existing transaction`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.Updated(syncId))
-      whenever(requestCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
 
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
       assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.UPDATED)
-      verify(requestCaptureService).captureAndStoreRequest(any(), eq(syncId))
+      verify(syncPayloadCaptureService).captureAndStoreRequest(any(), eq(syncId))
     }
 
     @Test
@@ -202,12 +203,12 @@ class SyncServiceTest {
       whenever(ledgerSyncService.syncOffenderTransaction(any())).thenReturn(listOf(transactionUuid1))
 
       val storedPayload = dummyStoredPayload.copy(synchronizedTransactionId = transactionUuid1)
-      whenever(requestCaptureService.captureAndStoreRequest(any(), eq(transactionUuid1))).thenReturn(storedPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(transactionUuid1))).thenReturn(storedPayload)
 
       val result = syncService.syncTransaction(dummyOffenderTransactionRequest)
 
       assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
-      verify(requestCaptureService).captureAndStoreRequest(any(), eq(transactionUuid1))
+      verify(syncPayloadCaptureService).captureAndStoreRequest(any(), eq(transactionUuid1))
       assertThat(result.synchronizedTransactionId).isEqualTo(transactionUuid1)
     }
   }

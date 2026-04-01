@@ -9,13 +9,14 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.TransactionSyncStatus
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncStatusResolver
 import java.util.UUID
 
 @Service
 class SyncService(
   private val ledgerSyncService: LedgerService,
-  private val requestCaptureService: RequestCaptureService,
+  private val syncPayloadCaptureService: SyncPayloadCaptureService,
   private val syncStatusResolver: SyncStatusResolver,
   private val objectMapper: ObjectMapper,
 ) {
@@ -39,7 +40,7 @@ class SyncService(
       }
 
       is TransactionSyncStatus.Updated -> {
-        val newPayload = requestCaptureService.captureAndStoreRequest(request, status.synchronizedTransactionId)
+        val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, status.synchronizedTransactionId)
         SyncTransactionReceipt(
           requestId = request.requestId,
           synchronizedTransactionId = newPayload.synchronizedTransactionId,
@@ -71,7 +72,7 @@ class SyncService(
       throw e
     }
 
-    val newPayload = requestCaptureService.captureAndStoreRequest(request, synchronizedTransactionId)
+    val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, synchronizedTransactionId)
     return SyncTransactionReceipt(
       requestId = request.requestId,
       synchronizedTransactionId = newPayload.synchronizedTransactionId,
