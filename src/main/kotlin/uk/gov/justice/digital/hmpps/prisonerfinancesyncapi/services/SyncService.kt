@@ -1,6 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
@@ -18,7 +18,7 @@ class SyncService(
   private val ledgerSyncService: LedgerService,
   private val syncPayloadCaptureService: SyncPayloadCaptureService,
   private val syncStatusResolver: SyncStatusResolver,
-  private val objectMapper: ObjectMapper,
+  private val telemetryClient: TelemetryClient,
 ) {
 
   private companion object {
@@ -30,7 +30,7 @@ class SyncService(
   ): SyncTransactionReceipt {
     val status = syncStatusResolver.check(request)
 
-    val receipt = when (status) {
+    return when (status) {
       is TransactionSyncStatus.Duplicate -> {
         SyncTransactionReceipt(
           requestId = request.requestId,
@@ -52,8 +52,6 @@ class SyncService(
         processNewTransaction(request)
       }
     }
-
-    return receipt
   }
 
   private fun processNewTransaction(request: SyncRequest): SyncTransactionReceipt {
@@ -93,11 +91,24 @@ class SyncService(
   }
 
   private fun logRequestAsError(request: SyncRequest, exception: Exception) {
-    val requestJson = try {
-      objectMapper.writeValueAsString(request)
-    } catch (e: Exception) {
-      "Could not serialize request body to JSON for error logging: ${e.message}"
+    val properties = mutableMapOf(
+      "requestId" to request.requestId.toString(),
+      "transactionId" to request.transactionId.toString(),
+      "requestType" to (request::class.simpleName ?: "UnknownRequest"),
+    )
+
+    val transactionType = when (request) {
+      is SyncOffenderTransactionRequest -> request.offenderTransactions.firstOrNull()?.type
+      is SyncGeneralLedgerTransactionRequest -> request.transactionType
+      else -> null
     }
-    log.error("Error processing sync transaction with requestId: ${request.requestId}, transactionId: ${request.transactionId}. Request body: $requestJson", exception)
+
+    if (!transactionType.isNullOrBlank()) {
+      properties["transactionType"] = transactionType
+    }
+
+    log.error("Error processing sync transaction: $properties", exception)
+
+    telemetryClient.trackException(exception, properties, null)
   }
 }
