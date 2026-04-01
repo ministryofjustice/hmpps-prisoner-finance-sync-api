@@ -526,6 +526,50 @@ class GeneralLedgerServiceTest {
         },
       )
     }
+
+    @Test
+    fun `should log exception and send to appInsights when fails to forward transaction general ledger`() {
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 12345L,
+        caseloadId = "TEST",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction for Balance Check",
+            amount = BigDecimal("10.00"),
+            reference = "REF-54322L",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+        ),
+      )
+
+      makeMockSubAccountResolver(request)
+
+      val glException = RuntimeException("Validation failed for transaction")
+
+      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenThrow(glException)
+
+      generalLedgerService.syncOffenderTransaction(request)
+
+      verify(telemetryClient, times(1)).trackException(glException)
+    }
   }
 
   @Nested

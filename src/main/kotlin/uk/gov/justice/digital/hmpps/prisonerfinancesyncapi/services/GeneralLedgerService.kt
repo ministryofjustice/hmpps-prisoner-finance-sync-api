@@ -10,6 +10,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -39,7 +40,7 @@ class GeneralLedgerService(
     val transactionGLUUIDs = mutableListOf<UUID>()
     val requestCache = InMemoryAccountCache()
 
-    request.offenderTransactions.map { transaction ->
+    request.offenderTransactions.forEach { transaction ->
       val offenderId = transaction.offenderDisplayId
 
       val postings = transaction.generalLedgerEntries.map { entry ->
@@ -69,23 +70,27 @@ class GeneralLedgerService(
         postings = postings,
       )
 
-      val transactionGLUUID = generalLedgerApiClient.postTransaction(
-        glRequest,
-        idempotencyService.genTransactionIdempotencyKey(
-          request.transactionId,
-          transaction.entrySequence,
-        ),
-      )
+      try {
+        val transactionGLUUID = generalLedgerApiClient.postTransaction(
+          glRequest,
+          idempotencyService.genTransactionIdempotencyKey(
+            request.transactionId,
+            transaction.entrySequence,
+          ),
+        )
 
-      ledgerTransactionMappingRepository.save(
-        GeneralLedgerTransactionMapping(
-          legacyTransactionId = request.transactionId,
-          entrySequence = transaction.entrySequence,
-          glTransactionUuid = transactionGLUUID,
-        ),
-      )
+        ledgerTransactionMappingRepository.save(
+          GeneralLedgerTransactionMapping(
+            legacyTransactionId = request.transactionId,
+            entrySequence = transaction.entrySequence,
+            glTransactionUuid = transactionGLUUID,
+          ),
+        )
 
-      transactionGLUUIDs.add(transactionGLUUID)
+        transactionGLUUIDs.add(transactionGLUUID)
+      } catch (e: Exception) {
+        logRequestAsError(request.requestId, request.transactionId, transaction, e)
+      }
     }
 
     if (transactionGLUUIDs.isEmpty()) {
@@ -93,6 +98,19 @@ class GeneralLedgerService(
     }
 
     return transactionGLUUIDs
+  }
+
+  private fun logRequestAsError(requestId: UUID, transactionId: Long, offenderTransaction: OffenderTransaction, exception: Exception) {
+    val properties = mutableMapOf(
+      "requestId" to requestId.toString(),
+      "transactionId" to transactionId.toString(),
+      "transactionType" to offenderTransaction.type,
+      "entrySequence" to offenderTransaction.entrySequence.toString(),
+    )
+
+    log.error("Failed to forward transaction to General Ledger $properties", exception)
+
+    telemetryClient.trackException(exception, properties, null)
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
