@@ -1,6 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.microsoft.applicationinsights.TelemetryClient
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
@@ -8,18 +8,22 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentCaptor
+import org.mockito.Captor
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
@@ -45,10 +49,13 @@ class SyncServiceTest {
   private lateinit var syncStatusResolver: SyncStatusResolver
 
   @Mock
-  private lateinit var objectMapper: ObjectMapper
+  private lateinit var telemetryClient: TelemetryClient
 
   @InjectMocks
   private lateinit var syncService: SyncService
+
+  @Captor
+  private lateinit var telemetryPropertiesCaptor: ArgumentCaptor<Map<String, String>>
 
   private lateinit var dummyGeneralLedgerTransactionRequest: SyncGeneralLedgerTransactionRequest
   private lateinit var dummyOffenderTransactionRequest: SyncOffenderTransactionRequest
@@ -83,7 +90,21 @@ class SyncServiceTest {
       transactionId = 999L,
       requestId = UUID.randomUUID(),
       caseloadId = "MDI",
-      offenderTransactions = emptyList(),
+      offenderTransactions = listOf(
+        OffenderTransaction(
+          entrySequence = 1,
+          offenderId = 12345L,
+          offenderDisplayId = "A1234AA",
+          offenderBookingId = 54321L,
+          subAccountType = "REG",
+          postingType = "CR",
+          type = "TIR",
+          description = "Transfer In Regular from LEI",
+          amount = BigDecimal("10.00"),
+          reference = null,
+          generalLedgerEntries = emptyList(),
+        ),
+      ),
       transactionTimestamp = now,
       createdAt = now,
       createdBy = "JD12346",
@@ -152,23 +173,50 @@ class SyncServiceTest {
     }
 
     @Test
-    fun `should fail and log error if retry also fails`() {
+    fun `should fail and send specific GL properties to App Insights if retry also fails`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
         .thenThrow(DataIntegrityViolationException("Race condition"))
         .thenThrow(RuntimeException("Retry failed"))
-      whenever(objectMapper.writeValueAsString(any())).thenReturn("{}")
 
       assertThrows(RuntimeException::class.java) {
         syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
       }
-      verify(ledgerSyncService, times(2)).syncGeneralLedgerTransaction(any())
+
+      verify(telemetryClient, times(1)).trackException(any(), telemetryPropertiesCaptor.capture(), isNull())
+
+      val capturedProperties = telemetryPropertiesCaptor.value
+      assertThat(capturedProperties).containsEntry("requestId", dummyGeneralLedgerTransactionRequest.requestId.toString())
+      assertThat(capturedProperties).containsEntry("transactionId", dummyGeneralLedgerTransactionRequest.transactionId.toString())
+      assertThat(capturedProperties).containsEntry("requestType", "SyncGeneralLedgerTransactionRequest")
+      assertThat(capturedProperties).containsEntry("transactionType", "GJ")
+    }
+
+    @Test
+    fun `should fail and send specific Offender properties to App Insights on standard exception`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
+      whenever(ledgerSyncService.syncOffenderTransaction(any()))
+        .thenThrow(RuntimeException("Boom!"))
+
+      assertThrows(RuntimeException::class.java) {
+        syncService.syncTransaction(dummyOffenderTransactionRequest)
+      }
+
+      verify(telemetryClient, times(1)).trackException(any(), telemetryPropertiesCaptor.capture(), isNull())
+
+      val capturedProperties = telemetryPropertiesCaptor.value
+      assertThat(capturedProperties).containsEntry("requestId", dummyOffenderTransactionRequest.requestId.toString())
+      assertThat(capturedProperties).containsEntry("transactionId", dummyOffenderTransactionRequest.transactionId.toString())
+      assertThat(capturedProperties).containsEntry("requestType", "SyncOffenderTransactionRequest")
+      assertThat(capturedProperties).containsEntry("transactionType", "TIR")
     }
 
     @Test
     fun `should throw IllegalArgumentException for unknown request types`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       val unknownRequest = Mockito.mock(uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest::class.java)
+      whenever(unknownRequest.requestId).thenReturn(UUID.randomUUID())
+      whenever(unknownRequest.transactionId).thenReturn(1L)
 
       assertThrows(IllegalArgumentException::class.java) {
         syncService.syncTransaction(unknownRequest)
