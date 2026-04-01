@@ -6,7 +6,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Account
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.RequestCaptureService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.AccountService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.MIGRATION_CLEARING_ACCOUNT
@@ -21,12 +20,12 @@ open class LegacyMigrationService(
   private val accountService: AccountService,
   private val transactionService: TransactionService,
   private val timeConversionService: TimeConversionService,
-  private val requestCaptureService: RequestCaptureService,
+  private val migrationPayloadCaptureService: MigrationPayloadCaptureService,
 ) : MigrationService {
 
   @Transactional
   override fun migrateGeneralLedgerBalances(prisonId: String, request: GeneralLedgerBalancesSyncRequest) {
-    requestCaptureService.captureGeneralLedgerMigrationRequest(prisonId, request)
+    migrationPayloadCaptureService.captureGeneralLedgerMigrationRequest(prisonId, request)
 
     val migrationBatchTime = Instant.now()
 
@@ -96,7 +95,7 @@ open class LegacyMigrationService(
 
   @Transactional
   override fun migratePrisonerBalances(prisonNumber: String, request: PrisonerBalancesSyncRequest) {
-    requestCaptureService.capturePrisonerMigrationRequest(prisonNumber, request)
+    migrationPayloadCaptureService.capturePrisonerMigrationRequest(prisonNumber, request)
 
     val migrationBatchTime = Instant.now()
 

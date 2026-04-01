@@ -1,29 +1,22 @@
-package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
+package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.MigratedGeneralLedgerBalancePayload
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.MigratedPrisonerBalancePayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.MigratedGeneralLedgerBalancePayloadRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.MigratedPrisonerBalancePayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import java.time.Instant
 import java.util.UUID
 
 @Service
-class RequestCaptureService(
+class SyncPayloadCaptureService(
   private val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
   private val objectMapper: ObjectMapper,
   private val timeConversionService: TimeConversionService,
-  private val generalLedgerPayloadRepository: MigratedGeneralLedgerBalancePayloadRepository,
-  private val prisonerBalancePayloadRepository: MigratedPrisonerBalancePayloadRepository,
 ) {
 
   private companion object {
@@ -72,34 +65,6 @@ class RequestCaptureService(
       transactionTimestamp = transactionInstant,
     )
     return nomisSyncPayloadRepository.save(payload)
-  }
-
-  fun captureGeneralLedgerMigrationRequest(
-    prisonId: String,
-    request: GeneralLedgerBalancesSyncRequest,
-  ): MigratedGeneralLedgerBalancePayload {
-    val rawBodyJson = safeSerializeRequest(request)
-
-    val payload = MigratedGeneralLedgerBalancePayload(
-      prisonId = prisonId,
-      timestamp = Instant.now(),
-      body = rawBodyJson,
-    )
-    return generalLedgerPayloadRepository.save(payload)
-  }
-
-  fun capturePrisonerMigrationRequest(
-    prisonNumber: String,
-    request: PrisonerBalancesSyncRequest,
-  ): MigratedPrisonerBalancePayload {
-    val rawBodyJson = safeSerializeRequest(request)
-
-    val payload = MigratedPrisonerBalancePayload(
-      prisonNumber = prisonNumber,
-      timestamp = Instant.now(),
-      body = rawBodyJson,
-    )
-    return prisonerBalancePayloadRepository.save(payload)
   }
 
   private fun safeSerializeRequest(requestBodyObject: Any): String = try {
