@@ -8,14 +8,15 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGener
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.TransactionSyncStatus
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncStatusResolver
 import java.util.UUID
 
 @Service
 class SyncService(
   private val ledgerSyncService: LedgerService,
   private val requestCaptureService: RequestCaptureService,
-  private val syncQueryService: SyncQueryService,
-  private val jsonComparator: JsonComparator,
+  private val syncStatusResolver: SyncStatusResolver,
   private val objectMapper: ObjectMapper,
 ) {
 
@@ -26,51 +27,38 @@ class SyncService(
   fun <T : SyncRequest> syncTransaction(
     request: T,
   ): SyncTransactionReceipt {
-    val existingPayloadByRequestId = syncQueryService.findByRequestId(request.requestId)
-    if (existingPayloadByRequestId != null) {
-      return SyncTransactionReceipt(
-        requestId = request.requestId,
-        synchronizedTransactionId = existingPayloadByRequestId.synchronizedTransactionId,
-        action = SyncTransactionReceipt.Action.PROCESSED,
-      )
-    }
+    val status = syncStatusResolver.check(request)
 
-    val existingPayloadByTransactionId = syncQueryService.findByLegacyTransactionId(request.transactionId)
-    if (existingPayloadByTransactionId != null) {
-      val newBodyJson = try {
-        objectMapper.writeValueAsString(request)
-      } catch (e: Exception) {
-        log.error("Could not serialize new request body to JSON", e)
-        "{}"
-      }
-
-      val isBodyIdentical = jsonComparator.areJsonBodiesEqual(
-        storedJson = existingPayloadByTransactionId.body,
-        newJson = newBodyJson,
-      )
-
-      if (isBodyIdentical) {
-        return SyncTransactionReceipt(
+    val receipt = when (status) {
+      is TransactionSyncStatus.Duplicate -> {
+        SyncTransactionReceipt(
           requestId = request.requestId,
-          synchronizedTransactionId = existingPayloadByTransactionId.synchronizedTransactionId,
+          synchronizedTransactionId = status.synchronizedTransactionId,
           action = SyncTransactionReceipt.Action.PROCESSED,
         )
-      } else {
-        val newPayload = requestCaptureService.captureAndStoreRequest(
-          request,
-          existingPayloadByTransactionId.synchronizedTransactionId,
-        )
-        return SyncTransactionReceipt(
+      }
+
+      is TransactionSyncStatus.Updated -> {
+        val newPayload = requestCaptureService.captureAndStoreRequest(request, status.synchronizedTransactionId)
+        SyncTransactionReceipt(
           requestId = request.requestId,
           synchronizedTransactionId = newPayload.synchronizedTransactionId,
           action = SyncTransactionReceipt.Action.UPDATED,
         )
       }
+
+      is TransactionSyncStatus.New -> {
+        processNewTransaction(request)
+      }
     }
 
+    return receipt
+  }
+
+  private fun processNewTransaction(request: SyncRequest): SyncTransactionReceipt {
     val synchronizedTransactionId: UUID = try {
       processLedgerRequest(request)
-    } catch (e: DataIntegrityViolationException) {
+    } catch (_: DataIntegrityViolationException) {
       log.warn("Race condition detected for transactionId: ${request.transactionId}. Retrying operation...")
       try {
         processLedgerRequest(request)
