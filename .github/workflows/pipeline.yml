@@ -83,7 +83,7 @@ jobs:
           path: build
 
       - name: Publish Coverage Report
-        uses: madrapps/jacoco-report@v1.7.1
+        uses: madrapps/jacoco-report@7c362aca34caf958e7b1c03464bd8781db9f8da7 #1.7.1
         with:
           paths: |
             build/reports/jacoco/integration/jacoco.xml

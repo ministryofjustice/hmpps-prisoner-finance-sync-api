@@ -14,6 +14,10 @@ plugins {
   id("jacoco")
 }
 
+configure<JacocoPluginExtension> {
+  toolVersion = "0.8.14"
+}
+
 dependencies {
   implementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter:2.1.0")
   implementation("org.springframework.boot:spring-boot-starter-webflux")

@@ -10,11 +10,11 @@ permissions:
   pull-requests: write
 
 jobs:
-  check-api-docs: 
+  check-api-docs:
     runs-on: [self-hosted, Linux, X64, hmpps-github-actions-runner]
     steps:
       - name: Gen GH API token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@064492a9a1762067169d50c792a7dc02bc3d1254 #v2
         id: generate-token
         with:
           repositories: ${{ github.event.repository.name }}
@@ -24,18 +24,18 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #v5
         with:
           token: ${{ steps.generate-token.outputs.token }}
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93 #v4
         with:
           distribution: 'temurin'
           java-version: '25'
           cache: 'gradle'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@ec92e829475ac0c2315ea8f9eced72db85bb337a #v3
 
       - name: Generate and Check API Specs
         id: check-api
@@ -45,7 +45,7 @@ jobs:
           
           # Check if git detects ANY changes
           if [[ -n $(git status --porcelain openapi-specs/generalledger.json) ]]; then
-            
+          
             # Filter the changes to see if they are meaningful.            
             REAL_CHANGES=$(git diff -U0 openapi-specs/generalledger.json | grep '^[+-]' | grep -v '^[+-]\{3\}' | grep -v '"version" :' | wc -l)
 
@@ -66,7 +66,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.check-api.outputs.differences == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@67f9e1be23d8e8265191f0c42c877a5f28be83ae # v6.0.0
         with:
           base: main
           commit-message: "chore: update general ledger openapi spec"
