@@ -10,7 +10,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -41,8 +40,8 @@ class GeneralLedgerService(
     val requestCache = InMemoryAccountCache()
 
     request.offenderTransactions.forEach { transaction ->
-      val offenderId = transaction.offenderDisplayId
 
+      val offenderId = transaction.offenderDisplayId
       val postings = transaction.generalLedgerEntries.map { entry ->
 
         val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
@@ -89,25 +88,34 @@ class GeneralLedgerService(
 
         transactionGLUUIDs.add(transactionGLUUID)
       } catch (e: Exception) {
-        logRequestAsError(request.requestId, request.transactionId, transaction, e)
+        val properties = mapOf(
+          "requestId" to request.requestId.toString(),
+          "transactionId" to request.transactionId.toString(),
+          "transactionType" to transaction.type,
+          "entrySequence" to transaction.entrySequence.toString(),
+        )
+
+        logRequestAsError(properties, e)
       }
     }
 
     if (transactionGLUUIDs.isEmpty()) {
-      throw IllegalStateException("No General Ledger Transaction returned")
+      val illegalStateException = IllegalStateException("No General Ledger Transaction returned")
+
+      val properties = mapOf(
+        "requestId" to request.requestId.toString(),
+        "transactionId" to request.transactionId.toString(),
+      )
+
+      logRequestAsError(properties, illegalStateException)
+
+      throw illegalStateException
     }
 
     return transactionGLUUIDs
   }
 
-  private fun logRequestAsError(requestId: UUID, transactionId: Long, offenderTransaction: OffenderTransaction, exception: Exception) {
-    val properties = mutableMapOf(
-      "requestId" to requestId.toString(),
-      "transactionId" to transactionId.toString(),
-      "transactionType" to offenderTransaction.type,
-      "entrySequence" to offenderTransaction.entrySequence.toString(),
-    )
-
+  private fun logRequestAsError(properties: Map<String, String>, exception: Exception) {
     log.error("Failed to forward transaction to General Ledger $properties", exception)
 
     telemetryClient.trackException(exception, properties, null)

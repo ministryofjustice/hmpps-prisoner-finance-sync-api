@@ -11,12 +11,14 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -116,21 +118,6 @@ class GeneralLedgerServiceTest {
       }
     }
     return mapUUID
-  }
-
-  fun mockPostTransaction(request: SyncOffenderTransactionRequest, postingsGL: List<CreatePostingRequest>, returnUUID: UUID = UUID.randomUUID()): CreateTransactionRequest {
-    val requestGL = CreateTransactionRequest(
-      reference = request.offenderTransactions[0].reference!!,
-      description = request.offenderTransactions[0].description,
-      timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
-      amount = request.offenderTransactions[0].amount.toPence(),
-      entrySequence = 1,
-      postings = postingsGL,
-    )
-
-    whenever(generalLedgerApiClient.postTransaction(eq(requestGL), any())).thenReturn(returnUUID)
-
-    return requestGL
   }
 
   @BeforeEach
@@ -566,9 +553,12 @@ class GeneralLedgerServiceTest {
 
       whenever(generalLedgerApiClient.postTransaction(any(), any())).thenThrow(glException)
 
-      generalLedgerService.syncOffenderTransaction(request)
+      assertThrows<IllegalStateException> {
+        generalLedgerService.syncOffenderTransaction(request)
+      }
 
-      verify(telemetryClient, times(1)).trackException(glException)
+      verify(telemetryClient, times(1)).trackException(eq(glException), any(), eq(null))
+      verify(telemetryClient, times(1)).trackException(argThat { e -> e.message == "No General Ledger Transaction returned" }, any(), eq(null))
     }
   }
 
