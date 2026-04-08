@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -93,18 +94,24 @@ class GeneralLedgerService(
           "transactionId" to request.transactionId.toString(),
           "transactionType" to transaction.type,
           "entrySequence" to transaction.entrySequence.toString(),
+          "exceptionMessage" to if (e is WebClientResponseException) {
+            "${e.responseBodyAsString}\n${e.message}"
+          } else {
+            e.message.toString()
+          },
         )
 
         logRequestAsError(properties, e)
       }
     }
 
-    if (transactionGLUUIDs.isEmpty()) {
-      val illegalStateException = IllegalStateException("No General Ledger Transaction returned")
+    if (request.offenderTransactions.isEmpty() || transactionGLUUIDs.count() != request.offenderTransactions.count()) {
+      val illegalStateException = IllegalStateException("Not All General Ledger Transaction were resolved")
 
       val properties = mapOf(
         "requestId" to request.requestId.toString(),
         "transactionId" to request.transactionId.toString(),
+        "glTransactionsResolved" to transactionGLUUIDs.toString(),
       )
 
       logRequestAsError(properties, illegalStateException)
