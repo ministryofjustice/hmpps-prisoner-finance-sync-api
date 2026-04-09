@@ -11,12 +11,14 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -24,6 +26,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
@@ -116,21 +119,6 @@ class GeneralLedgerServiceTest {
       }
     }
     return mapUUID
-  }
-
-  fun mockPostTransaction(request: SyncOffenderTransactionRequest, postingsGL: List<CreatePostingRequest>, returnUUID: UUID = UUID.randomUUID()): CreateTransactionRequest {
-    val requestGL = CreateTransactionRequest(
-      reference = request.offenderTransactions[0].reference!!,
-      description = request.offenderTransactions[0].description,
-      timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
-      amount = request.offenderTransactions[0].amount.toPence(),
-      entrySequence = 1,
-      postings = postingsGL,
-    )
-
-    whenever(generalLedgerApiClient.postTransaction(eq(requestGL), any())).thenReturn(returnUUID)
-
-    return requestGL
   }
 
   @BeforeEach
@@ -525,6 +513,146 @@ class GeneralLedgerServiceTest {
           assertThat(it.legacyTransactionId).isEqualTo(request.transactionId)
         },
       )
+    }
+
+    @Test
+    fun `should log exception and send to appInsights when fails to forward transaction general ledger`() {
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 12345L,
+        caseloadId = "TEST",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction for Balance Check",
+            amount = BigDecimal("10.00"),
+            reference = "REF-54322L",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+        ),
+      )
+
+      makeMockSubAccountResolver(request)
+
+      val glException = RuntimeException("Validation failed for transaction")
+
+      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenThrow(glException)
+
+      assertThrows<IllegalStateException> {
+        generalLedgerService.syncOffenderTransaction(request)
+      }
+
+      val propertiesGlException = mapOf(
+        "requestId" to request.requestId.toString(),
+        "transactionId" to request.transactionId.toString(),
+        "transactionType" to request.offenderTransactions[0].type,
+        "entrySequence" to request.offenderTransactions[0].entrySequence.toString(),
+        "exceptionMessage" to glException.message.toString(),
+      )
+      verify(telemetryClient, times(1)).trackException(eq(glException), eq(propertiesGlException), eq(null))
+
+      val propertiesNoTransactions = mapOf(
+        "requestId" to request.requestId.toString(),
+        "transactionId" to request.transactionId.toString(),
+        "glTransactionsResolved" to emptyList<UUID>().toString(),
+      )
+      verify(telemetryClient, times(1)).trackException(argThat { e -> e.message == "Not All General Ledger Transaction were resolved" }, eq(propertiesNoTransactions), eq(null))
+    }
+
+    @Test
+    fun `should log exception and resolved transaction to appInsights when fails to forward transaction general ledger`() {
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 12345L,
+        caseloadId = "TEST",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "ADV",
+            description = "Test Transaction Success",
+            amount = BigDecimal("10.00"),
+            reference = "REF-1",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+          OffenderTransaction(
+            entrySequence = 2,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction Failure",
+            amount = BigDecimal("10.00"),
+            reference = "REF-2",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+        ),
+      )
+
+      makeMockSubAccountResolver(request)
+
+      val glException = WebClientResponseException(500, "Test 500 message", null, "Test 500 body".toByteArray(), null)
+
+      val resolvedGlTransactionUUID = UUID.randomUUID()
+
+      whenever(generalLedgerApiClient.postTransaction(any(), any()))
+        .thenReturn(resolvedGlTransactionUUID)
+        .thenThrow(glException)
+
+      assertThrows<IllegalStateException> {
+        generalLedgerService.syncOffenderTransaction(request)
+      }
+
+      val propertiesGlException = mapOf(
+        "requestId" to request.requestId.toString(),
+        "transactionId" to request.transactionId.toString(),
+        "transactionType" to request.offenderTransactions[1].type,
+        "entrySequence" to request.offenderTransactions[1].entrySequence.toString(),
+        "exceptionMessage" to "${glException.responseBodyAsString}\n${glException.message}",
+      )
+      verify(telemetryClient, times(1)).trackException(eq(glException), eq(propertiesGlException), eq(null))
+
+      val propertiesMissingTransactions = mapOf(
+        "requestId" to request.requestId.toString(),
+        "transactionId" to request.transactionId.toString(),
+        "glTransactionsResolved" to listOf(resolvedGlTransactionUUID).toString(),
+      )
+      verify(telemetryClient, times(1)).trackException(argThat { e -> e.message == "Not All General Ledger Transaction were resolved" }, eq(propertiesMissingTransactions), eq(null))
     }
   }
 

@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -39,9 +40,9 @@ class GeneralLedgerService(
     val transactionGLUUIDs = mutableListOf<UUID>()
     val requestCache = InMemoryAccountCache()
 
-    request.offenderTransactions.map { transaction ->
-      val offenderId = transaction.offenderDisplayId
+    request.offenderTransactions.forEach { transaction ->
 
+      val offenderId = transaction.offenderDisplayId
       val postings = transaction.generalLedgerEntries.map { entry ->
 
         val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
@@ -69,30 +70,62 @@ class GeneralLedgerService(
         postings = postings,
       )
 
-      val transactionGLUUID = generalLedgerApiClient.postTransaction(
-        glRequest,
-        idempotencyService.genTransactionIdempotencyKey(
-          request.transactionId,
-          transaction.entrySequence,
-        ),
-      )
+      try {
+        val transactionGLUUID = generalLedgerApiClient.postTransaction(
+          glRequest,
+          idempotencyService.genTransactionIdempotencyKey(
+            request.transactionId,
+            transaction.entrySequence,
+          ),
+        )
 
-      ledgerTransactionMappingRepository.save(
-        GeneralLedgerTransactionMapping(
-          legacyTransactionId = request.transactionId,
-          entrySequence = transaction.entrySequence,
-          glTransactionUuid = transactionGLUUID,
-        ),
-      )
+        ledgerTransactionMappingRepository.save(
+          GeneralLedgerTransactionMapping(
+            legacyTransactionId = request.transactionId,
+            entrySequence = transaction.entrySequence,
+            glTransactionUuid = transactionGLUUID,
+          ),
+        )
 
-      transactionGLUUIDs.add(transactionGLUUID)
+        transactionGLUUIDs.add(transactionGLUUID)
+      } catch (e: Exception) {
+        val properties = mapOf(
+          "requestId" to request.requestId.toString(),
+          "transactionId" to request.transactionId.toString(),
+          "transactionType" to transaction.type,
+          "entrySequence" to transaction.entrySequence.toString(),
+          "exceptionMessage" to if (e is WebClientResponseException) {
+            "${e.responseBodyAsString}\n${e.message}"
+          } else {
+            e.message.toString()
+          },
+        )
+
+        logRequestAsError(properties, e)
+      }
     }
 
-    if (transactionGLUUIDs.isEmpty()) {
-      throw IllegalStateException("No General Ledger Transaction returned")
+    if (request.offenderTransactions.isEmpty() || transactionGLUUIDs.count() != request.offenderTransactions.count()) {
+      val illegalStateException = IllegalStateException("Not All General Ledger Transaction were resolved")
+
+      val properties = mapOf(
+        "requestId" to request.requestId.toString(),
+        "transactionId" to request.transactionId.toString(),
+        "glTransactionsResolved" to transactionGLUUIDs.toString(),
+      )
+
+      logRequestAsError(properties, illegalStateException)
+
+      throw illegalStateException
     }
 
     return transactionGLUUIDs
+  }
+
+  private fun logRequestAsError(properties: Map<String, String>, exception: Exception) {
+    log.error("Failed to forward transaction to General Ledger $properties", exception)
+
+    telemetryClient.trackException(exception, properties, null)
   }
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
