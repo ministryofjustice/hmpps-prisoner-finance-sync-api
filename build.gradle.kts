@@ -26,7 +26,7 @@ dependencies {
   implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.0.0")
   implementation("com.google.code.gson:gson:2.13.2")
 
-  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
   implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.0.5")
   implementation("org.springframework.boot:spring-boot-starter-validation")
