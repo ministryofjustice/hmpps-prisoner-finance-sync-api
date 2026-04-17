@@ -9,8 +9,8 @@ data class PrisonerAccountPointInTimeAggregatedBalance(
   val accountCode: Int,
 
   @field:Schema(description = "The account balance at the specified time.")
-  val balance: Int,
+  val balance: Long,
 
   @field:Schema(description = "The amount on hold for the sub-account.")
-  var holdBalance: Int,
+  var holdBalance: Long,
 )

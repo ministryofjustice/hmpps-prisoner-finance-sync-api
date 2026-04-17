@@ -97,7 +97,7 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
-  private fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceResponse> {
+  fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceResponse> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
 
     if (parentAccount == null) {

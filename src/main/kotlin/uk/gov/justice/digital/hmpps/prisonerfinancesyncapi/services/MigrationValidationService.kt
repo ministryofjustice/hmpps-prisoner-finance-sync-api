@@ -4,9 +4,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.Pris
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import java.math.BigDecimal
 
-class MigrationValidationService {
+class MigrationValidationService(val generalLedgerService: GeneralLedgerService) {
 
-  internal fun convertToPence(balance: BigDecimal): Int = (balance * BigDecimal.valueOf(100)).toInt()
+  internal fun convertToPence(balance: BigDecimal): Long = (balance * BigDecimal.valueOf(100)).toLong()
 
   fun aggregateBalances(accountBalances: List<PrisonerAccountPointInTimeBalance>): List<PrisonerAccountPointInTimeAggregatedBalance> {
     val aggregatedBalances = mutableMapOf<Int, PrisonerAccountPointInTimeAggregatedBalance>()
@@ -28,5 +28,26 @@ class MigrationValidationService {
       }
     }
     return aggregatedBalances.values.toList()
+  }
+
+  val prisonerSubAccounts = mapOf(2101 to "CASH", 2102 to "SPENDS", 2103 to "SAVINGS")
+
+  fun validatePrisonerBalances(prisonNumber: String, accountBalances: List<PrisonerAccountPointInTimeBalance>): Boolean {
+    val subAccountBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
+    val aggregatedBalances = aggregateBalances(accountBalances)
+
+    var validated = true
+
+    aggregatedBalances.forEach { aggregatedBalance ->
+
+      val subAccountRef = prisonerSubAccounts[aggregatedBalance.accountCode]
+      val glBalance = subAccountBalances[subAccountRef]?.amount
+
+      if (glBalance != aggregatedBalance.balance) {
+        validated = false
+      }
+    }
+
+    return validated
   }
 }
