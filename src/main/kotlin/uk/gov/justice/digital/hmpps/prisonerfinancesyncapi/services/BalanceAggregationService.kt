@@ -5,7 +5,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.Pris
 import kotlin.collections.forEach
 
 class BalanceAggregationService {
-  fun aggregateBalances(accountBalances: List<PrisonerAccountPointInTimeBalance>): List<PrisonerAccountPointInTimeAggregatedBalance> {
+  fun aggregateBalances(accountBalances: List<PrisonerAccountPointInTimeBalance>): Map<Int, PrisonerAccountPointInTimeAggregatedBalance> {
     val aggregatedBalances = mutableMapOf<Int, PrisonerAccountPointInTimeAggregatedBalance>()
 
     accountBalances.forEach {
@@ -32,6 +32,6 @@ class BalanceAggregationService {
         )
       }
     }
-    return aggregatedBalances.values.toList()
+    return aggregatedBalances
   }
 }

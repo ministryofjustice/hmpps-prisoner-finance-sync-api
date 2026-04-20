@@ -15,9 +15,9 @@ class MigrationValidationService(val generalLedgerService: GeneralLedgerService)
 
     var validated = true
 
-    aggregatedBalances.forEach { aggregatedBalance ->
+    aggregatedBalances.forEach { (accountCode, aggregatedBalance) ->
 
-      val subAccountRef = prisonerSubAccounts[aggregatedBalance.accountCode]
+      val subAccountRef = prisonerSubAccounts[accountCode]
       val glBalance = subAccountBalances[subAccountRef]?.amount
 
       if (glBalance != aggregatedBalance.balance.toPence()) {
