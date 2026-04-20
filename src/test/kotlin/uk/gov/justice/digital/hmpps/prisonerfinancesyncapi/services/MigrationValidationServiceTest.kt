@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import com.microsoft.applicationinsights.TelemetryClient
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -8,9 +9,12 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.MigrationBalanceValidationMismatchEvent
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import java.math.BigDecimal
 import java.time.Instant
@@ -22,6 +26,9 @@ class MigrationValidationServiceTest {
 
   @Mock
   private lateinit var generalLedgerService: GeneralLedgerService
+
+  @Mock
+  private lateinit var telemetryClient: TelemetryClient
 
   @InjectMocks
   lateinit var migrationValidationService: MigrationValidationService
@@ -78,10 +85,12 @@ class MigrationValidationServiceTest {
       val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, mockedNomisAccountBalances)
 
       assertThat(result).isTrue()
+
+      verify(telemetryClient, times(0)).trackEvent(any(), any(), any())
     }
 
     @Test
-    fun `should return false if unable to reconcile account balances with general ledger balances`() {
+    fun `should return false and send telemetry event if unable to reconcile account balances with general ledger balances`() {
       val nomisBalances = listOf(
         createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
         createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
@@ -97,11 +106,22 @@ class MigrationValidationServiceTest {
         "SAVINGS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 2000),
       )
 
+      val aggregatedNomisBalances = BalanceAggregator.aggregateBalances(nomisBalances)
+
+      val mismatchEvent = MigrationBalanceValidationMismatchEvent(
+        prisonNumber = mockedPrisonNumber,
+        nomisBalances = nomisBalances,
+        generalLedgerBalances = generalLedgerBalances,
+        aggregatedNomisBalances = aggregatedNomisBalances,
+      )
+
       whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
 
       val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
 
       assertThat(result).isFalse()
+
+      verify(telemetryClient).trackEvent(mismatchEvent.eventName, mismatchEvent.toStringMap(), null)
     }
   }
 }
