@@ -11,9 +11,7 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @ExtendWith(MockitoExtension::class)
-class BalanceAggregationServiceTest {
-
-  val balanceAggregationService = BalanceAggregationService()
+class BalanceAggregatorTest {
 
   @Nested
   @DisplayName("aggregateNomisBalances")
@@ -30,7 +28,7 @@ class BalanceAggregationServiceTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val results = balanceAggregationService.aggregateBalances(listOf(nomisBalances))
+      val results = BalanceAggregator.aggregateBalances(listOf(nomisBalances))
 
       val account = results[2101]!!
       assertThat(results).hasSize(1)
@@ -68,7 +66,7 @@ class BalanceAggregationServiceTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val results = balanceAggregationService.aggregateBalances(
+      val results = BalanceAggregator.aggregateBalances(
         listOf(nomisBalances1, nomisBalances2, nomisBalances3),
       )
 
@@ -128,7 +126,7 @@ class BalanceAggregationServiceTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val results = balanceAggregationService.aggregateBalances(
+      val results = BalanceAggregator.aggregateBalances(
         listOf(nomisBalances1, nomisBalances2, nomisBalances3, nomisBalances4),
       )
 
@@ -183,7 +181,7 @@ class BalanceAggregationServiceTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val results = balanceAggregationService.aggregateBalances(
+      val results = BalanceAggregator.aggregateBalances(
         listOf(nomisBalances1, nomisBalances2, nomisBalances3, nomisBalances4),
       )
       val cash = results[2101]!!

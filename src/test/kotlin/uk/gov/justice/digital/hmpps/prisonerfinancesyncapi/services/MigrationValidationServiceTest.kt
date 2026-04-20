@@ -21,7 +21,7 @@ import java.util.UUID
 class MigrationValidationServiceTest {
 
   @Mock
-  lateinit var generalLedgerService: GeneralLedgerService
+  private lateinit var generalLedgerService: GeneralLedgerService
 
   @InjectMocks
   lateinit var migrationValidationService: MigrationValidationService
