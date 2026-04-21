@@ -303,6 +303,7 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  // GET /sub-accounts
   fun stubGetSubAccount(
     parentReference: String,
     subAccountReference: String,
@@ -334,6 +335,7 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  // GET /sub-accounts
   fun stubGetSubAccountNotFound(parentReference: String, subAccountReference: String) {
     stubFor(
       get(urlPathEqualTo("/sub-accounts"))
@@ -437,6 +439,7 @@ class GeneralLedgerApiMockServer :
     stubFor(mapping)
   }
 
+  // GET /sub-accounts/$accountId/balance
   fun stubGetSubAccountBalance(accountId: UUID, amount: Long): SubAccountBalanceResponse {
     val response = SubAccountBalanceResponse(
       subAccountId = accountId,
