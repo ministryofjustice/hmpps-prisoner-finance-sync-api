@@ -30,7 +30,7 @@ class MigrationValidationTest : IntegrationTestBase() {
     asOfTimestamp = LocalDateTime.now(),
   )
 
-  fun stubForGetAccount(prisonNumber: String): Map<String, Any?> {
+  fun stubForGetAccount(prisonNumber: String): List<SubAccountResponse> {
     val accountId = UUID.randomUUID()
 
     val cashSubAccountId = UUID.randomUUID()
@@ -67,52 +67,53 @@ class MigrationValidationTest : IntegrationTestBase() {
       subAccounts = subAccounts,
     )
 
-    return mapOf(
-      "reference" to prisonNumber,
-      "accountId" to accountId,
-      "subAccounts" to subAccounts,
-    )
+    return subAccounts
   }
 
-  private fun stubForGetGLSubAccountBalances(subAccounts: List<SubAccountResponse>) {
+  private fun stubForGetGLSubAccountBalances(subAccounts: List<SubAccountResponse>, cashBalance: Long, spendsBalance: Long, savingsBalance: Long) {
     generalLedgerApi.stubGetSubAccountBalance(
       accountId = subAccounts[0].id,
-      amount = 1L,
+      amount = cashBalance,
     )
 
     generalLedgerApi.stubGetSubAccountBalance(
       accountId = subAccounts[1].id,
-      amount = 1L,
+      amount = spendsBalance,
     )
 
     generalLedgerApi.stubGetSubAccountBalance(
       accountId = subAccounts[2].id,
-      amount = 1L,
+      amount = savingsBalance,
     )
   }
 
+  // @ParameterizedTest
+  // @CsvSource("200, 200, 200", "1, 20, 6") // first test will validate, second test will not
   @Test
-  fun `should return 200 when the payload is valid and prisoner exists`() {
+  fun `should return 200 when the payload is valid and prisoner exists regardless of whether the balance is validated`() {
     val prisonNumber = uniquePrisonNumber()
 
+    val cashBalance = 200L
+    val spendsBalance = 200L
+    val savingsBalance = 200L
+
     val mockedNomisAccountBalances = listOf(
-      createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
-      createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
-      createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(10.00)),
-      createMockedNomisAccountBalances("MDI", 2101, BigDecimal.valueOf(2.50)),
-      createMockedNomisAccountBalances("MDI", 2102, BigDecimal.valueOf(5.00)),
-      createMockedNomisAccountBalances("MDI", 2103, BigDecimal.valueOf(10.00)),
+      createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("MDI", 2101, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("MDI", 2102, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("MDI", 2103, BigDecimal.valueOf(1)),
     )
 
     val prisonerBalancesSyncRequest = PrisonerBalancesSyncRequest(
       accountBalances = mockedNomisAccountBalances,
     )
 
-    val accountResponse = stubForGetAccount(prisonNumber)
+    val subAccounts = stubForGetAccount(prisonNumber)
 
     // stub account balances (from service test)
-    val subAccounts = accountResponse["subAccounts"] as List<SubAccountResponse>
-    stubForGetGLSubAccountBalances(subAccounts)
+    stubForGetGLSubAccountBalances(subAccounts = subAccounts, cashBalance = cashBalance, spendsBalance = spendsBalance, savingsBalance = savingsBalance)
 
     // call the end point expect 200
     webTestClient.post()
