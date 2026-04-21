@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -23,7 +24,7 @@ import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
-class MigrationValidationController(private val migrationValidationService: MigrationValidationService) {
+class MigrationValidationController(@Autowired private val migrationValidationService: MigrationValidationService) {
   @Operation(
     summary = "Validate a prisoners balances",
     description = "Validate a prisoners sub-accounts (e.g., Spends, Private Cash) to a given balance from a legacy system.",

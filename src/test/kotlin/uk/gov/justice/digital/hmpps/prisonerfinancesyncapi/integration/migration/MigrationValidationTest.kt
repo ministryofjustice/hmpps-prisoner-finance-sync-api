@@ -1,13 +1,16 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.migration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
@@ -20,6 +23,12 @@ class MigrationValidationTest : IntegrationTestBase() {
 
   @Autowired
   private lateinit var objectMapper: ObjectMapper
+
+  @BeforeEach
+  fun setup() {
+    generalLedgerApi.resetAll()
+    hmppsAuth.stubGrantToken()
+  }
 
   fun createMockedNomisAccountBalances(prisonId: String, accountCode: Int, balance: BigDecimal) = PrisonerAccountPointInTimeBalance(
     prisonId = prisonId,
@@ -87,15 +96,10 @@ class MigrationValidationTest : IntegrationTestBase() {
     )
   }
 
-  // @ParameterizedTest
-  // @CsvSource("200, 200, 200", "1, 20, 6") // first test will validate, second test will not
-  @Test
-  fun `should return 200 when the payload is valid and prisoner exists regardless of whether the balance is validated`() {
+   @ParameterizedTest
+   @CsvSource("200, 200, 200", "1, 20, 6") // first test will validate, second test will not
+  fun `should return 200 when the payload is valid and prisoner exists regardless of whether the balance is validated`(cashBalance: Long, spendsBalance: Long, savingsBalance: Long) {
     val prisonNumber = uniquePrisonNumber()
-
-    val cashBalance = 200L
-    val spendsBalance = 200L
-    val savingsBalance = 200L
 
     val mockedNomisAccountBalances = listOf(
       createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(1)),
@@ -112,10 +116,8 @@ class MigrationValidationTest : IntegrationTestBase() {
 
     val subAccounts = stubForGetAccount(prisonNumber)
 
-    // stub account balances (from service test)
     stubForGetGLSubAccountBalances(subAccounts = subAccounts, cashBalance = cashBalance, spendsBalance = spendsBalance, savingsBalance = savingsBalance)
 
-    // call the end point expect 200
     webTestClient.post()
       .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
