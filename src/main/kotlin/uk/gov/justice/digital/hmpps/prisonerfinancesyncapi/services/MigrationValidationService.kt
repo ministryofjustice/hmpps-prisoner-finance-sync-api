@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.GeneralLedgerAccountNotFoundException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.MigrationBalanceValidationMismatchEvent
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
@@ -16,8 +17,6 @@ class MigrationValidationService(
   private companion object {
     private val log = LoggerFactory.getLogger(MigrationValidationService::class.java)
   }
-
-  class GeneralLedgerAccountNotFoundException(message: String) : Exception(message)
 
   val prisonerSubAccounts = mapOf(2101 to "CASH", 2102 to "SPENDS", 2103 to "SAVINGS")
 

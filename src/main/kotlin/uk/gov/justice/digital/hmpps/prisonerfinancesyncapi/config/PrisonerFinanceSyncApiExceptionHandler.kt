@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.MigrationValidationService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.GeneralLedgerAccountNotFoundException
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @RestControllerAdvice
 class PrisonerFinanceSyncApiExceptionHandler {
 
-  @ExceptionHandler(MigrationValidationService.GeneralLedgerAccountNotFoundException::class)
-  fun handleGeneralLedgerAccountNotFoundException(e: MigrationValidationService.GeneralLedgerAccountNotFoundException): ResponseEntity<ErrorResponse> {
+  @ExceptionHandler(GeneralLedgerAccountNotFoundException::class)
+  fun handleGeneralLedgerAccountNotFoundException(e: GeneralLedgerAccountNotFoundException): ResponseEntity<ErrorResponse> {
     val userMessage = "Not Found: " + e.message
     val developerMessage = "Not Found " + e.message
     return ResponseEntity
