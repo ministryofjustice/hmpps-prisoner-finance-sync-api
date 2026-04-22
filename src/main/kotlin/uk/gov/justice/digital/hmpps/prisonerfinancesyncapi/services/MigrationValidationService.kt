@@ -18,7 +18,7 @@ class MigrationValidationService(
     private val log = LoggerFactory.getLogger(MigrationValidationService::class.java)
   }
 
-  val prisonerSubAccounts = mapOf(2101 to "CASH", 2102 to "SPENDS", 2103 to "SAVINGS")
+  val prisonerSubAccounts = mapOf("CASH" to 2101, "SPENDS" to 2102, "SAVINGS" to 2103)
 
   fun validatePrisonerBalances(prisonNumber: String, accountBalances: List<PrisonerAccountPointInTimeBalance>): Boolean {
     val aggregatedBalances = BalanceAggregator.aggregateBalances(accountBalances)
@@ -30,12 +30,19 @@ class MigrationValidationService(
 
     var validated = true
 
-    aggregatedBalances.forEach { (accountCode, aggregatedBalance) ->
+    subAccountBalances.forEach { (subAccountRef, glBalance) ->
 
-      val subAccountRef = prisonerSubAccounts[accountCode]
-      val glBalance = subAccountBalances[subAccountRef]?.amount
+      val subAccountCode = prisonerSubAccounts[subAccountRef]
+      val nomisBalance = aggregatedBalances[subAccountCode]?.balance?.toPence()
 
-      if (glBalance != aggregatedBalance.balance.toPence()) {
+      val accountNotInNomisData = nomisBalance == null
+      val glSubAccountHasNoBalanceInformation = glBalance.amount == 0L
+
+      if (accountNotInNomisData && glSubAccountHasNoBalanceInformation) {
+        return@forEach
+      }
+
+      if (nomisBalance != glBalance.amount) {
         validated = false
       }
     }
