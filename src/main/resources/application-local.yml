@@ -29,7 +29,7 @@ feature:
 general-ledger-api:
   url: http://localhost:8084
   client:
-    id: hmpps-prisoner-finance-general-ledger-api
+    id: hmpps-prisoner-finance-sync-api-1
     secret: clientsecret
 
 logging:
