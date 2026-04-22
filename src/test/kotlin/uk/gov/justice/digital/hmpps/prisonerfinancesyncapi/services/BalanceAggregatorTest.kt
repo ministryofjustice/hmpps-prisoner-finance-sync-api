@@ -19,7 +19,7 @@ class BalanceAggregatorTest {
 
     @Test
     fun `should return aggregate balance object for a single balance`() {
-      val nomisBalances = PrisonerAccountPointInTimeBalance(
+      val cashBalance = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2101,
         balance = BigDecimal.valueOf(1.23),
@@ -28,7 +28,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val results = BalanceAggregator.aggregateBalances(listOf(nomisBalances))
+      val results = BalanceAggregator.aggregateBalances(listOf(cashBalance))
 
       val account = results[2101]!!
       assertThat(results).hasSize(1)
@@ -39,7 +39,7 @@ class BalanceAggregatorTest {
 
     @Test
     fun `should return aggregate balances object for a multiple balances for the same prison Id`() {
-      val nomisBalances1 = PrisonerAccountPointInTimeBalance(
+      val cashBalance = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2101,
         balance = BigDecimal.valueOf(1.11),
@@ -48,7 +48,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val nomisBalances2 = PrisonerAccountPointInTimeBalance(
+      val spendsBalance = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2102,
         balance = BigDecimal.valueOf(2.22),
@@ -57,7 +57,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val nomisBalances3 = PrisonerAccountPointInTimeBalance(
+      val savingsBalance = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2103,
         balance = BigDecimal.valueOf(3.33),
@@ -67,7 +67,7 @@ class BalanceAggregatorTest {
       )
 
       val results = BalanceAggregator.aggregateBalances(
-        listOf(nomisBalances1, nomisBalances2, nomisBalances3),
+        listOf(cashBalance, spendsBalance, savingsBalance),
       )
 
       val cash = results[2101]!!
@@ -90,7 +90,7 @@ class BalanceAggregatorTest {
 
     @Test
     fun `should return aggregate balances object for a multiple balances for the same account across multiple prisons`() {
-      val nomisBalances1 = PrisonerAccountPointInTimeBalance(
+      val cashBalanceLEI = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2101,
         balance = BigDecimal.valueOf(1.11),
@@ -99,7 +99,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val nomisBalances2 = PrisonerAccountPointInTimeBalance(
+      val spendsBalanceLEI = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2102,
         balance = BigDecimal.valueOf(2.22),
@@ -108,7 +108,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val nomisBalances3 = PrisonerAccountPointInTimeBalance(
+      val cashBalanceMDI = PrisonerAccountPointInTimeBalance(
         prisonId = "MDI",
         accountCode = 2101,
         balance = BigDecimal.valueOf(3.33),
@@ -117,7 +117,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val nomisBalances4 = PrisonerAccountPointInTimeBalance(
+      val spendsBalanceMDI = PrisonerAccountPointInTimeBalance(
         prisonId = "MDI",
         accountCode = 2102,
         balance = BigDecimal.valueOf(4.44),
@@ -127,7 +127,7 @@ class BalanceAggregatorTest {
       )
 
       val results = BalanceAggregator.aggregateBalances(
-        listOf(nomisBalances1, nomisBalances2, nomisBalances3, nomisBalances4),
+        listOf(cashBalanceLEI, spendsBalanceLEI, cashBalanceMDI, spendsBalanceMDI),
       )
 
       val cash = results[2101]!!
