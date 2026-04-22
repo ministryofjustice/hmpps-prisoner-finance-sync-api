@@ -21,7 +21,7 @@ import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 class PrisonerFinanceSyncApiExceptionHandler {
 
   @ExceptionHandler(MigrationValidationService.GeneralLedgerAccountNotFoundException::class)
-  fun handleGeneralLedgerAccountNotFoundException(e: Exception): ResponseEntity<ErrorResponse> {
+  fun handleGeneralLedgerAccountNotFoundException(e: MigrationValidationService.GeneralLedgerAccountNotFoundException): ResponseEntity<ErrorResponse> {
     val userMessage = "Not Found: " + e.message
     val developerMessage = "Not Found " + e.message
     return ResponseEntity
