@@ -37,7 +37,7 @@ class MigrationValidationController(@Autowired private val migrationValidationSe
     value = [
       ApiResponse(
         responseCode = "200",
-        description = "Prisoner balances validation request recieved successfully.",
+        description = "Prisoner balances validation request received successfully.",
       ),
       ApiResponse(
         responseCode = "400",
@@ -55,6 +55,11 @@ class MigrationValidationController(@Autowired private val migrationValidationSe
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
+        responseCode = "404",
+        description = "Not Found - Prison Number not found",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "500",
         description = "Internal Server Error - An unexpected error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -63,7 +68,7 @@ class MigrationValidationController(@Autowired private val migrationValidationSe
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC}')")
-  fun migratePrisonerBalances(
+  fun validatePrisonerBalances(
     @PathVariable prisonNumber: String,
     @RequestBody @Valid request: PrisonerBalancesSyncRequest,
   ): ResponseEntity<Void> {

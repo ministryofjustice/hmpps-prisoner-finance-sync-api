@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.MigrationBalanceValidationMismatchEvent
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
@@ -11,6 +12,10 @@ class MigrationValidationService(
   private val generalLedgerService: GeneralLedgerService,
   private val telemetryClient: TelemetryClient,
 ) {
+
+  private companion object {
+    private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
+  }
 
   class GeneralLedgerAccountNotFoundException(message: String) : Exception(message)
 
@@ -45,6 +50,8 @@ class MigrationValidationService(
       )
 
       telemetryClient.trackEvent(mismatchEvent.eventName, mismatchEvent.toStringMap(), null)
+
+      log.error("Migration balance validation mismatch for prisoner $prisonNumber: ${mismatchEvent.toStringMap()}")
     }
 
     return validated
