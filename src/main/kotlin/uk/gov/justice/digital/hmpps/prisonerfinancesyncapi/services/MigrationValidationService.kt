@@ -12,11 +12,17 @@ class MigrationValidationService(
   private val telemetryClient: TelemetryClient,
 ) {
 
+  class GeneralLedgerAccountNotFoundException(message: String) : Exception(message)
+
   val prisonerSubAccounts = mapOf(2101 to "CASH", 2102 to "SPENDS", 2103 to "SAVINGS")
 
   fun validatePrisonerBalances(prisonNumber: String, accountBalances: List<PrisonerAccountPointInTimeBalance>): Boolean {
     val aggregatedBalances = BalanceAggregator.aggregateBalances(accountBalances)
     val subAccountBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
+
+    if (subAccountBalances.isEmpty()) {
+      throw GeneralLedgerAccountNotFoundException("Prisoner $prisonNumber not found")
+    }
 
     var validated = true
 

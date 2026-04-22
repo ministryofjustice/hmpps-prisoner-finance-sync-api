@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.migratio
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
@@ -96,8 +97,8 @@ class MigrationValidationTest : IntegrationTestBase() {
     )
   }
 
-   @ParameterizedTest
-   @CsvSource("200, 200, 200", "1, 20, 6") // first test will validate, second test will not
+  @ParameterizedTest
+  @CsvSource("200, 200, 200", "1, 20, 6") // first test will validate, second test will not
   fun `should return 200 when the payload is valid and prisoner exists regardless of whether the balance is validated`(cashBalance: Long, spendsBalance: Long, savingsBalance: Long) {
     val prisonNumber = uniquePrisonNumber()
 
@@ -125,5 +126,53 @@ class MigrationValidationTest : IntegrationTestBase() {
       .bodyValue(objectMapper.writeValueAsString(prisonerBalancesSyncRequest))
       .exchange()
       .expectStatus().isOk
+  }
+
+  @Test
+  fun `should throw 400 Bad request when amount has more than 2 decimal places`() {
+    val prisonNumber = uniquePrisonNumber()
+    val prisonerMigrationRequestBody = PrisonerBalancesSyncRequest(
+      accountBalances = listOf(
+        PrisonerAccountPointInTimeBalance(prisonId = "TEST", accountCode = 2101, balance = BigDecimal("10.001"), holdBalance = BigDecimal.ZERO, asOfTimestamp = LocalDateTime.now(), transactionId = 1234L),
+      ),
+    )
+
+    webTestClient
+      .post()
+      .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(prisonerMigrationRequestBody))
+      .exchange()
+      .expectStatus().isBadRequest
+  }
+
+  @Test
+  fun `should throw 404 Not Found when prisoner not found in General Ledger`() {
+    val prisonNumber = uniquePrisonNumber()
+    val prisonerMigrationRequestBody = PrisonerBalancesSyncRequest(
+      accountBalances = listOf(
+        PrisonerAccountPointInTimeBalance(
+          prisonId = "TEST",
+          accountCode = 2101,
+          balance = BigDecimal("10.00"),
+          holdBalance = BigDecimal.ZERO,
+          asOfTimestamp = LocalDateTime.now(),
+          transactionId =
+          1234L,
+        ),
+      ),
+    )
+
+    generalLedgerApi.stubGetAccountNotFound(prisonNumber)
+
+    webTestClient
+      .post()
+      .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(prisonerMigrationRequestBody))
+      .exchange()
+      .expectStatus().isNotFound
   }
 }
