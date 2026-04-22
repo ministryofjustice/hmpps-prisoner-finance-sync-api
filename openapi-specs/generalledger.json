@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-03-30.357.8703fc8"
+    "version" : "2026-04-21.404.f7254b6"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1022,6 +1022,51 @@
           },
           "example" : "2025-12-25"
         }, {
+          "name" : "pageNumber",
+          "in" : "query",
+          "description" : "Filter statements from page number",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Sets the page size when returning the pages results",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }, {
+          "name" : "subAccountId",
+          "in" : "query",
+          "description" : "Filter statements by sub-account id (UUID format)",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "credit",
+          "in" : "query",
+          "description" : "Filter statements using the PostingType CR",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "name" : "debit",
+          "in" : "query",
+          "description" : "Filter statements using the PostingType DR",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
           "name" : "accountId",
           "in" : "path",
           "required" : true,
@@ -1036,16 +1081,13 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/StatementEntryResponse"
-                  }
+                  "$ref" : "#/components/schemas/PagedResponseStatementEntryResponse"
                 }
               }
             }
           },
           "400" : {
-            "description" : "Bad Request",
+            "description" : "Page requested is out of range",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -1337,16 +1379,16 @@
             "format" : "int32"
           },
           "errorCode" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "userMessage" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "developerMessage" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           },
           "moreInfo" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           }
         },
         "required" : [ "status" ]
@@ -1598,6 +1640,37 @@
           }
         },
         "required" : [ "id", "parentAccount", "subAccountReference" ]
+      },
+      "PagedResponseStatementEntryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StatementEntryResponse"
+            }
+          },
+          "pageNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "isLastPage" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
       },
       "StatementEntryAccountResponse" : {
         "type" : "object",
