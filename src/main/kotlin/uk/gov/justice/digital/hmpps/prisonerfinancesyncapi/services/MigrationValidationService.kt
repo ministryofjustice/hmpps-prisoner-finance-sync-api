@@ -26,7 +26,7 @@ class MigrationValidationService(
     val subAccountBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
 
     if (subAccountBalances.isEmpty()) {
-      throw GeneralLedgerAccountNotFoundException("Prisoner $prisonNumber not found")
+      throw GeneralLedgerAccountNotFoundException("No sub accounts found for prisoner $prisonNumber")
     }
 
     var validated = true
