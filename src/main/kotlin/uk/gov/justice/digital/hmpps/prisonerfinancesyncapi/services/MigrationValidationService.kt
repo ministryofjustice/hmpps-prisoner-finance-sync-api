@@ -14,7 +14,7 @@ class MigrationValidationService(
 ) {
 
   private companion object {
-    private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
+    private val log = LoggerFactory.getLogger(MigrationValidationService::class.java)
   }
 
   class GeneralLedgerAccountNotFoundException(message: String) : Exception(message)
