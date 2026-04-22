@@ -150,7 +150,7 @@ class MigrationValidationTest : IntegrationTestBase() {
   @Test
   fun `should throw 404 Not Found when prisoner not found in General Ledger`() {
     val prisonNumber = uniquePrisonNumber()
-    val prisonerMigrationRequestBody = PrisonerBalancesSyncRequest(
+    val prisonerBalancesValidationRequestBody = PrisonerBalancesSyncRequest(
       accountBalances = listOf(
         PrisonerAccountPointInTimeBalance(
           prisonId = "TEST",
@@ -171,7 +171,7 @@ class MigrationValidationTest : IntegrationTestBase() {
       .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .contentType(MediaType.APPLICATION_JSON)
-      .bodyValue(objectMapper.writeValueAsString(prisonerMigrationRequestBody))
+      .bodyValue(objectMapper.writeValueAsString(prisonerBalancesValidationRequestBody))
       .exchange()
       .expectStatus().isNotFound
   }
