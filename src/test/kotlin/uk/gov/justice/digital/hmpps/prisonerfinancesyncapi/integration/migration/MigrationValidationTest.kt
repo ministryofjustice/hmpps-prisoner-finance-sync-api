@@ -131,7 +131,7 @@ class MigrationValidationTest : IntegrationTestBase() {
   @Test
   fun `should throw 400 Bad request when amount has more than 2 decimal places`() {
     val prisonNumber = uniquePrisonNumber()
-    val prisonerMigrationRequestBody = PrisonerBalancesSyncRequest(
+    val prisonerBalancesSyncRequest = PrisonerBalancesSyncRequest(
       accountBalances = listOf(
         PrisonerAccountPointInTimeBalance(prisonId = "TEST", accountCode = 2101, balance = BigDecimal("10.001"), holdBalance = BigDecimal.ZERO, asOfTimestamp = LocalDateTime.now(), transactionId = 1234L),
       ),
@@ -142,7 +142,7 @@ class MigrationValidationTest : IntegrationTestBase() {
       .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .contentType(MediaType.APPLICATION_JSON)
-      .bodyValue(objectMapper.writeValueAsString(prisonerMigrationRequestBody))
+      .bodyValue(objectMapper.writeValueAsString(prisonerBalancesSyncRequest))
       .exchange()
       .expectStatus().isBadRequest
   }
@@ -150,7 +150,7 @@ class MigrationValidationTest : IntegrationTestBase() {
   @Test
   fun `should throw 404 Not Found when prisoner not found in General Ledger`() {
     val prisonNumber = uniquePrisonNumber()
-    val prisonerBalancesValidationRequestBody = PrisonerBalancesSyncRequest(
+    val prisonerBalancesSyncRequest = PrisonerBalancesSyncRequest(
       accountBalances = listOf(
         PrisonerAccountPointInTimeBalance(
           prisonId = "TEST",
@@ -171,7 +171,7 @@ class MigrationValidationTest : IntegrationTestBase() {
       .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .contentType(MediaType.APPLICATION_JSON)
-      .bodyValue(objectMapper.writeValueAsString(prisonerBalancesValidationRequestBody))
+      .bodyValue(objectMapper.writeValueAsString(prisonerBalancesSyncRequest))
       .exchange()
       .expectStatus().isNotFound
   }
