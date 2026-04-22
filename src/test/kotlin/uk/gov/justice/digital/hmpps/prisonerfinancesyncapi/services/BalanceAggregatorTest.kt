@@ -145,7 +145,7 @@ class BalanceAggregatorTest {
 
     @Test
     fun `should return with the latest timestamp and transaction id for each sub account`() {
-      val nomisBalances1 = PrisonerAccountPointInTimeBalance(
+      val cashBalanceLEI = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2101,
         balance = BigDecimal.valueOf(1.11),
@@ -154,7 +154,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now().minusDays(1),
       )
 
-      val nomisBalances2 = PrisonerAccountPointInTimeBalance(
+      val spendsBalanceLEI = PrisonerAccountPointInTimeBalance(
         prisonId = "LEI",
         accountCode = 2102,
         balance = BigDecimal.valueOf(2.22),
@@ -163,7 +163,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now().minusDays(1),
       )
 
-      val nomisBalances3 = PrisonerAccountPointInTimeBalance(
+      val cashBalanceMDI = PrisonerAccountPointInTimeBalance(
         prisonId = "MDI",
         accountCode = 2101,
         balance = BigDecimal.valueOf(3.33),
@@ -172,7 +172,7 @@ class BalanceAggregatorTest {
         asOfTimestamp = LocalDateTime.now(),
       )
 
-      val nomisBalances4 = PrisonerAccountPointInTimeBalance(
+      val spendsBalanceMDI = PrisonerAccountPointInTimeBalance(
         prisonId = "MDI",
         accountCode = 2102,
         balance = BigDecimal.valueOf(4.44),
@@ -182,18 +182,18 @@ class BalanceAggregatorTest {
       )
 
       val results = BalanceAggregator.aggregateBalances(
-        listOf(nomisBalances1, nomisBalances2, nomisBalances3, nomisBalances4),
+        listOf(cashBalanceLEI, spendsBalanceLEI, cashBalanceMDI, spendsBalanceMDI),
       )
       val cash = results[2101]!!
       val spends = results[2102]!!
       assertThat(results).hasSize(2)
 
       assertThat(cash.accountCode).isEqualTo(2101)
-      assertThat(cash.asOfTimestamp).isEqualTo(nomisBalances3.asOfTimestamp)
+      assertThat(cash.asOfTimestamp).isEqualTo(cashBalanceMDI.asOfTimestamp)
       assertThat(cash.transactionId).isEqualTo(2L)
 
       assertThat(spends.accountCode).isEqualTo(2102)
-      assertThat(spends.asOfTimestamp).isEqualTo(nomisBalances4.asOfTimestamp)
+      assertThat(spends.asOfTimestamp).isEqualTo(spendsBalanceMDI.asOfTimestamp)
       assertThat(spends.transactionId).isEqualTo(2L)
     }
   }
