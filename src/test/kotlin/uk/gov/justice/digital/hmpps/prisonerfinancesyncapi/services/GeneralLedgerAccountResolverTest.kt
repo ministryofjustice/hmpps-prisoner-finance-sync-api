@@ -19,6 +19,7 @@ import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.RetryAfterConflictException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
@@ -455,7 +456,7 @@ class GeneralLedgerAccountResolverTest {
 
       val cache = InMemoryAccountCache()
 
-      assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
+      assertThrows<RetryAfterConflictException> {
         accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
       }
 
@@ -493,7 +494,7 @@ class GeneralLedgerAccountResolverTest {
 
       val cache = InMemoryAccountCache()
 
-      assertThrows<GeneralLedgerAccountResolver.RetryAfterConflictException> {
+      assertThrows<RetryAfterConflictException> {
         accountResolver.resolveSubAccount(prisonId, offenderId, entryCode, transactionType, cache)
       }
 

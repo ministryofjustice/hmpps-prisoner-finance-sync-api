@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.RetryAfterConflictException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
@@ -15,7 +16,6 @@ class GeneralLedgerAccountResolver(
   private val apiClient: GeneralLedgerApiClient,
   private val mapping: LedgerAccountMappingService,
 ) {
-  class RetryAfterConflictException(message: String) : Exception(message)
 
   private companion object {
     private val log = LoggerFactory.getLogger(GeneralLedgerAccountResolver::class.java)

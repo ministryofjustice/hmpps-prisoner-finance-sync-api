@@ -7,12 +7,11 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerA
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateStatementBalanceRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.BalanceAggregator
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerAccountResolver
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.InMemoryAccountCache
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.math.BigDecimal
-import java.time.Instant
 
 @Service("generalLedgerMigrationService")
 class GeneralLedgerMigrationService(
@@ -41,24 +40,9 @@ class GeneralLedgerMigrationService(
   ) {
     val requestCache = InMemoryAccountCache()
 
-    val balanceByAccount = mutableMapOf<Int, BigDecimal>()
-    val timestampByAccount = mutableMapOf<Int, Instant>()
+    val aggregatedBalances = BalanceAggregator.aggregateBalances(request.accountBalances)
 
-    request.accountBalances.forEach { balanceData ->
-      balanceByAccount[balanceData.accountCode] = (
-        balanceByAccount.getOrDefault(balanceData.accountCode, BigDecimal.ZERO) + balanceData.balance
-        )
-
-      val asOfTimestamp = timeConversionService.toUtcInstant(balanceData.asOfTimestamp)
-      timestampByAccount[balanceData.accountCode] = (
-        maxOf(
-          timestampByAccount.getOrDefault(balanceData.accountCode, asOfTimestamp),
-          asOfTimestamp,
-        )
-        )
-    }
-
-    for ((accountCode, balance) in balanceByAccount) {
+    for ((accountCode, aggregatedBalance) in aggregatedBalances) {
       val subAccountId = accountResolver.resolvePrisonerSubAccount(
         prisonNumber,
         accountCode,
@@ -66,8 +50,8 @@ class GeneralLedgerMigrationService(
       )
 
       val request = CreateStatementBalanceRequest(
-        balance.toPence(),
-        timestampByAccount.getValue(accountCode),
+        aggregatedBalance.balance.toPence(),
+        timeConversionService.toUtcInstant(aggregatedBalance.asOfTimestamp),
       )
 
       val res = generalLedgerApiClient.migrateSubAccountBalance(subAccountId, request)
