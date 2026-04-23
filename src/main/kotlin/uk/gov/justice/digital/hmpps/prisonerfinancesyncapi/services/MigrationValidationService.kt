@@ -35,7 +35,6 @@ class MigrationValidationService(
       val nomisBalance = aggregatedBalances[subAccountCode]?.balance?.toPence()
       val glBalance = subAccountBalances[subAccountRef]?.amount
 
-
       val accountNotInNomisData = nomisBalance == null
       val glSubAccountHasNoBalanceInformation = glBalance == 0L
       if (accountNotInNomisData && glSubAccountHasNoBalanceInformation) {
@@ -48,13 +47,10 @@ class MigrationValidationService(
         return@forEach
       }
 
-
       if (nomisBalance != glBalance) {
-         validated = false
-       }
-
+        validated = false
+      }
     }
-
 
     if (!validated) {
       val mismatchEvent = MigrationBalanceValidationMismatchEvent(

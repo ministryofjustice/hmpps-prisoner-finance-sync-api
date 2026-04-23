@@ -182,12 +182,12 @@ class MigrationValidationServiceTest {
       val nomisBalances = listOf(
         createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
         createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
-        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(0.00))
+        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(0.00)),
       )
 
       val generalLedgerBalances = mutableMapOf(
         "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
-        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500)
+        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
       )
 
       whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
