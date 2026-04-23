@@ -30,22 +30,31 @@ class MigrationValidationService(
 
     var validated = true
 
-    subAccountBalances.forEach { (subAccountRef, glBalance) ->
+    prisonerSubAccounts.forEach { (subAccountRef, subAccountCode) ->
 
-      val subAccountCode = prisonerSubAccounts[subAccountRef]
       val nomisBalance = aggregatedBalances[subAccountCode]?.balance?.toPence()
+      val glBalance = subAccountBalances[subAccountRef]?.amount
+
 
       val accountNotInNomisData = nomisBalance == null
-      val glSubAccountHasNoBalanceInformation = glBalance.amount == 0L
-
+      val glSubAccountHasNoBalanceInformation = glBalance == 0L
       if (accountNotInNomisData && glSubAccountHasNoBalanceInformation) {
         return@forEach
       }
 
-      if (nomisBalance != glBalance.amount) {
-        validated = false
+      val accountNotInGLData = glBalance == null
+      val nomisAccountHasNoBalanceInformation = nomisBalance == 0L
+      if (accountNotInGLData && nomisAccountHasNoBalanceInformation) {
+        return@forEach
       }
+
+
+      if (nomisBalance != glBalance) {
+         validated = false
+       }
+
     }
+
 
     if (!validated) {
       val mismatchEvent = MigrationBalanceValidationMismatchEvent(

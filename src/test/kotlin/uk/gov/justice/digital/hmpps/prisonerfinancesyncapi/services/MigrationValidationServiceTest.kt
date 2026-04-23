@@ -64,7 +64,7 @@ class MigrationValidationServiceTest {
     }
 
     @Test
-    fun `should return true if able to reconcile sub account balances with general ledger balances`() {
+    fun `should return true if able to reconcile NOMIS balances with general ledger balances`() {
       val mockedGLPrisonerBalances = mutableMapOf(
         "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
         "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 1000),
@@ -134,7 +134,7 @@ class MigrationValidationServiceTest {
 
       val generalLedgerBalances = mutableMapOf(
         "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
-        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 1000),
+        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
       )
 
       val aggregatedNomisBalances = BalanceAggregator.aggregateBalances(nomisBalances)
@@ -166,6 +166,28 @@ class MigrationValidationServiceTest {
         "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
         "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
         "SAVINGS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 0),
+      )
+
+      whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
+
+      val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
+
+      assertThat(result).isTrue()
+
+      verify(telemetryClient, times(0)).trackEvent(any(), any(), any())
+    }
+
+    @Test
+    fun `should return true if NOMIS sends an account balance of 0 and there is no sub account for that in GL yet - (Sub Accounts are created on transaction not when accounts are migrated)`() {
+      val nomisBalances = listOf(
+        createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
+        createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
+        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(0.00))
+      )
+
+      val generalLedgerBalances = mutableMapOf(
+        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
+        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500)
       )
 
       whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
