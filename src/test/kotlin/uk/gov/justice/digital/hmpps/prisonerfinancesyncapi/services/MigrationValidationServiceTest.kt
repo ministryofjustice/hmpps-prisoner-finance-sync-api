@@ -133,7 +133,7 @@ class MigrationValidationServiceTest {
       )
 
       val generalLedgerBalances = mutableMapOf(
-        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 999),
+        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
         "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 1000),
       )
 
