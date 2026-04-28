@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Digits
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -37,4 +38,11 @@ data class PrisonerAccountPointInTimeBalance(
     example = "2025-09-24T10:00:00",
   )
   val asOfTimestamp: LocalDateTime,
-)
+) {
+  fun toPrisonerEstablishmentBalanceDetails(): PrisonerEstablishmentBalanceDetails = PrisonerEstablishmentBalanceDetails(
+    prisonId = prisonId,
+    accountCode = accountCode,
+    totalBalance = balance,
+    holdBalance = holdBalance,
+  )
+}
