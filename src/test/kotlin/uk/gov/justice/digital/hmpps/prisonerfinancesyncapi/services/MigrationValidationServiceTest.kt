@@ -13,13 +13,15 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.MigrationBalanceValidationMismatchEvent
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.math.abs
 
 @ExtendWith(MockitoExtension::class)
 class MigrationValidationServiceTest {
@@ -38,6 +40,7 @@ class MigrationValidationServiceTest {
   inner class ValidatePrisonerBalances {
 
     val mockedPrisonNumber = "A1234BC"
+    val expectedErrorName = "prisoner-finance-sync-api-balance-validation-mismatch"
 
     fun createMockedNomisAccountBalances(prisonId: String, accountCode: Int, balance: BigDecimal) = PrisonerAccountPointInTimeBalance(
       prisonId = prisonId,
@@ -64,7 +67,7 @@ class MigrationValidationServiceTest {
     }
 
     @Test
-    fun `should return true if able to reconcile NOMIS balances with general ledger balances`() {
+    fun `should return an empty array and send no events if able to reconcile NOMIS balances with general ledger balances`() {
       val mockedGLPrisonerBalances = mutableMapOf(
         "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
         "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 1000),
@@ -84,75 +87,9 @@ class MigrationValidationServiceTest {
 
       val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, mockedNomisAccountBalances)
 
-      assertThat(result).isTrue()
+      assertThat(result.size == 0).isTrue()
 
       verify(telemetryClient, times(0)).trackEvent(any(), any(), any())
-    }
-
-    @Test
-    fun `should return false and send telemetry event if NOMIS balances do not match with general ledger balances`() {
-      val nomisBalances = listOf(
-        createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
-        createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
-        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(10.00)),
-        createMockedNomisAccountBalances("MDI", 2101, BigDecimal.valueOf(2.50)),
-        createMockedNomisAccountBalances("MDI", 2102, BigDecimal.valueOf(5.00)),
-        createMockedNomisAccountBalances("MDI", 2103, BigDecimal.valueOf(10.00)),
-      )
-
-      val generalLedgerBalances = mutableMapOf(
-        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 999),
-        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 1000),
-        "SAVINGS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 2000),
-      )
-
-      val aggregatedNomisBalances = BalanceAggregator.aggregateBalances(nomisBalances)
-
-      val mismatchEvent = MigrationBalanceValidationMismatchEvent(
-        prisonNumber = mockedPrisonNumber,
-        nomisBalances = nomisBalances,
-        generalLedgerBalances = generalLedgerBalances,
-        aggregatedNomisBalances = aggregatedNomisBalances,
-      )
-
-      whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
-
-      val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
-
-      assertThat(result).isFalse()
-
-      verify(telemetryClient).trackEvent(mismatchEvent.eventName, mismatchEvent.toStringMap(), null)
-    }
-
-    @Test
-    fun `should return false and send telemetry event if sub account exists in NOMIS but not GL`() {
-      val nomisBalances = listOf(
-        createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
-        createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
-        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(10.00)),
-      )
-
-      val generalLedgerBalances = mutableMapOf(
-        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
-        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
-      )
-
-      val aggregatedNomisBalances = BalanceAggregator.aggregateBalances(nomisBalances)
-
-      val mismatchEvent = MigrationBalanceValidationMismatchEvent(
-        prisonNumber = mockedPrisonNumber,
-        nomisBalances = nomisBalances,
-        generalLedgerBalances = generalLedgerBalances,
-        aggregatedNomisBalances = aggregatedNomisBalances,
-      )
-
-      whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
-
-      val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
-
-      assertThat(result).isFalse()
-
-      verify(telemetryClient).trackEvent(mismatchEvent.eventName, mismatchEvent.toStringMap(), null)
     }
 
     @Test
@@ -172,7 +109,7 @@ class MigrationValidationServiceTest {
 
       val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
 
-      assertThat(result).isTrue()
+      assertThat(result.size == 0).isTrue()
 
       verify(telemetryClient, times(0)).trackEvent(any(), any(), any())
     }
@@ -194,13 +131,13 @@ class MigrationValidationServiceTest {
 
       val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
 
-      assertThat(result).isTrue()
+      assertThat(result.size == 0).isTrue()
 
       verify(telemetryClient, times(0)).trackEvent(any(), any(), any())
     }
 
     @Test
-    fun `should return false if general ledger has extra sub accounts with a non-zero balance`() {
+    fun `should return a list of one discrepancy and send telemetry event if general ledger has extra sub accounts with a non-zero balance`() {
       val nomisBalances = listOf(
         createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
         createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
@@ -213,22 +150,218 @@ class MigrationValidationServiceTest {
 
       )
 
-      val aggregatedNomisBalances = BalanceAggregator.aggregateBalances(nomisBalances)
-
-      val mismatchEvent = MigrationBalanceValidationMismatchEvent(
-        prisonNumber = mockedPrisonNumber,
-        nomisBalances = nomisBalances,
-        generalLedgerBalances = generalLedgerBalances,
-        aggregatedNomisBalances = aggregatedNomisBalances,
+      val discrepancyDetail = GeneralLedgerDiscrepancyDetails(
+        message = "NOMIS balances do not match with general ledger balances",
+        prisonerId = mockedPrisonNumber,
+        accountType = "SAVINGS",
+        legacyAggregatedBalance = 0,
+        generalLedgerBalance = 100,
+        discrepancy = 100,
+        glBreakdown = listOf(generalLedgerBalances.getValue("SAVINGS")),
+        legacyBreakdown = emptyList(),
       )
 
       whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
 
       val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
 
-      assertThat(result).isFalse()
+      assertThat(result.size == 1).isTrue()
+      assertThat(result[0]).isEqualTo(discrepancyDetail)
 
-      verify(telemetryClient).trackEvent(mismatchEvent.eventName, mismatchEvent.toStringMap(), null)
+      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyDetail.toStringMap(), null)
+    }
+
+    @Test
+    fun `should return list of one discrepancy and send telemetry event if sub account exists in NOMIS but not GL`() {
+      val nomisBalances = listOf(
+        createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
+        createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
+        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(10.00)),
+      )
+
+      val generalLedgerBalances = mutableMapOf(
+        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
+        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
+      )
+
+      val discrepancyDetail = GeneralLedgerDiscrepancyDetails(
+        message = "NOMIS balances do not match with general ledger balances",
+        prisonerId = mockedPrisonNumber,
+        accountType = "SAVINGS",
+        legacyAggregatedBalance = 1000,
+        generalLedgerBalance = 0,
+        discrepancy = 1000,
+        glBreakdown = emptyList(),
+        legacyBreakdown = listOf(
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "LEI",
+            accountCode = 2103,
+            totalBalance = BigDecimal.valueOf(10.00),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+        ),
+      )
+
+      whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
+
+      val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
+
+      assertThat(result.size == 1).isTrue()
+      assertThat(result[0]).isEqualTo(discrepancyDetail)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyDetail.toStringMap(), null)
+    }
+
+    @Test
+    fun `should return list of one discrepancy and send telemetry event if NOMIS balances do not match with general ledger balances`() {
+      val nomisBalances = listOf(
+        createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
+        createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
+        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(10.00)),
+        createMockedNomisAccountBalances("MDI", 2101, BigDecimal.valueOf(2.50)),
+        createMockedNomisAccountBalances("MDI", 2102, BigDecimal.valueOf(5.00)),
+        createMockedNomisAccountBalances("MDI", 2103, BigDecimal.valueOf(10.00)),
+      )
+
+      val generalLedgerBalances = mutableMapOf(
+        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 999),
+        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 1000),
+        "SAVINGS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 2000),
+      )
+
+      val discrepancyDetail = GeneralLedgerDiscrepancyDetails(
+        message = "NOMIS balances do not match with general ledger balances",
+        prisonerId = mockedPrisonNumber,
+        accountType = "CASH",
+        legacyAggregatedBalance = 500,
+        generalLedgerBalance = 999,
+        discrepancy = 999 - 500,
+        glBreakdown = listOf(generalLedgerBalances["CASH"]!!),
+        legacyBreakdown = listOf(
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "LEI",
+            accountCode = 2101,
+            totalBalance = BigDecimal.valueOf(2.50),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "MDI",
+            accountCode = 2101,
+            totalBalance = BigDecimal.valueOf(2.50),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+        ),
+      )
+
+      whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
+
+      val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
+
+      assertThat(result.size == 1).isTrue()
+      assertThat(result[0]).isEqualTo(discrepancyDetail)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyDetail.toStringMap(), null)
+    }
+
+    @Test
+    fun `should return list of multiple discrepancies and send multiple telemetry events if multiple NOMIS balances do not match with general ledger balances`() {
+      val nomisBalances = listOf(
+        createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(2.50)),
+        createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(5.00)),
+        createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(10.00)),
+        createMockedNomisAccountBalances("MDI", 2101, BigDecimal.valueOf(2.50)),
+        createMockedNomisAccountBalances("MDI", 2102, BigDecimal.valueOf(5.00)),
+        createMockedNomisAccountBalances("MDI", 2103, BigDecimal.valueOf(10.00)),
+      )
+
+      val generalLedgerBalances = mutableMapOf(
+        "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 50000),
+        "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 50000),
+        "SAVINGS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 50000),
+      )
+
+      val cashDiscrepancyDetails = GeneralLedgerDiscrepancyDetails(
+        message = "NOMIS balances do not match with general ledger balances",
+        prisonerId = mockedPrisonNumber,
+        accountType = "CASH",
+        legacyAggregatedBalance = 500,
+        generalLedgerBalance = 50000,
+        discrepancy = abs(500 - 50000).toLong(),
+        glBreakdown = listOf(generalLedgerBalances["CASH"]!!),
+        legacyBreakdown = listOf(
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "LEI",
+            accountCode = 2101,
+            totalBalance = BigDecimal.valueOf(2.50),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "MDI",
+            accountCode = 2101,
+            totalBalance = BigDecimal.valueOf(2.50),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+        ),
+      )
+
+      val spendsDiscrepancyDetails = GeneralLedgerDiscrepancyDetails(
+        message = "NOMIS balances do not match with general ledger balances",
+        prisonerId = mockedPrisonNumber,
+        accountType = "SPENDS",
+        legacyAggregatedBalance = 1000,
+        generalLedgerBalance = 50000,
+        discrepancy = abs(1000 - 50000).toLong(),
+        glBreakdown = listOf(generalLedgerBalances["SPENDS"]!!),
+        legacyBreakdown = listOf(
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "LEI",
+            accountCode = 2102,
+            totalBalance = BigDecimal.valueOf(5.00),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "MDI",
+            accountCode = 2102,
+            totalBalance = BigDecimal.valueOf(5.00),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+        ),
+      )
+
+      val savingsDiscrepancyDetails = GeneralLedgerDiscrepancyDetails(
+        message = "NOMIS balances do not match with general ledger balances",
+        prisonerId = mockedPrisonNumber,
+        accountType = "SAVINGS",
+        legacyAggregatedBalance = 2000,
+        generalLedgerBalance = 50000,
+        discrepancy = abs(2000 - 50000).toLong(),
+        glBreakdown = listOf(generalLedgerBalances["SAVINGS"]!!),
+        legacyBreakdown = listOf(
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "LEI",
+            accountCode = 2103,
+            totalBalance = BigDecimal.valueOf(10.00),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+          PrisonerEstablishmentBalanceDetails(
+            prisonId = "MDI",
+            accountCode = 2103,
+            totalBalance = BigDecimal.valueOf(10.00),
+            holdBalance = BigDecimal.valueOf(0),
+          ),
+        ),
+      )
+
+      whenever(generalLedgerService.getGLPrisonerBalances(mockedPrisonNumber)).thenReturn(generalLedgerBalances)
+
+      val result = migrationValidationService.validatePrisonerBalances(mockedPrisonNumber, nomisBalances)
+
+      assertThat(result.size == 3).isTrue()
+      assertThat(result).containsExactlyInAnyOrder(cashDiscrepancyDetails, spendsDiscrepancyDetails, savingsDiscrepancyDetails)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, cashDiscrepancyDetails.toStringMap(), null)
+      verify(telemetryClient).trackEvent(expectedErrorName, spendsDiscrepancyDetails.toStringMap(), null)
+      verify(telemetryClient).trackEvent(expectedErrorName, savingsDiscrepancyDetails.toStringMap(), null)
     }
   }
 }
