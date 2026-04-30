@@ -13,6 +13,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.DiscrepancyProperties
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
@@ -50,6 +51,29 @@ class MigrationValidationServiceTest {
       transactionId = 3L,
       asOfTimestamp = LocalDateTime.now(),
     )
+
+    fun createPropertiesFromDiscrepancyDetails(descrepancyDetials: GeneralLedgerDiscrepancyDetails): DiscrepancyProperties {
+      val discrepancyProperties = DiscrepancyProperties(
+        message = descrepancyDetials.message,
+        prisonerId = descrepancyDetials.prisonerId,
+        accountType = descrepancyDetials.accountType,
+        glBreakdown = descrepancyDetials.glBreakdown,
+        legacyBreakdown = descrepancyDetials.legacyBreakdown,
+      )
+
+      return discrepancyProperties
+    }
+
+    fun createMetricsFromDiscrepancyDetails(descrepancyDetials: GeneralLedgerDiscrepancyDetails): Map<String, Double> {
+      val discrepancyMetrics = mapOf(
+        "generalLedgerBalance" to descrepancyDetials.generalLedgerBalance.toDouble(),
+        "legacyBalance" to descrepancyDetials.legacyAggregatedBalance.toDouble(),
+        "discrepancy" to descrepancyDetials.discrepancy.toDouble(),
+        "absoluteDiscrepancy" to abs(n = descrepancyDetials.discrepancy).toDouble(),
+      )
+
+      return discrepancyMetrics
+    }
 
     @Test
     fun `should call general ledger for requested prisoners balances`() {
@@ -147,7 +171,6 @@ class MigrationValidationServiceTest {
         "CASH" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 250),
         "SPENDS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 500),
         "SAVINGS" to SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 100),
-
       )
 
       val discrepancyDetail = GeneralLedgerDiscrepancyDetails(
@@ -168,7 +191,10 @@ class MigrationValidationServiceTest {
       assertThat(result.size == 1).isTrue()
       assertThat(result[0]).isEqualTo(discrepancyDetail)
 
-      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyDetail.toStringMap(), null)
+      val discrepancyProperties = createPropertiesFromDiscrepancyDetails(descrepancyDetials = discrepancyDetail)
+      val discrepancyMetrics = createMetricsFromDiscrepancyDetails(descrepancyDetials = discrepancyDetail)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyProperties.toStringMap(), discrepancyMetrics)
     }
 
     @Test
@@ -209,7 +235,10 @@ class MigrationValidationServiceTest {
       assertThat(result.size == 1).isTrue()
       assertThat(result[0]).isEqualTo(discrepancyDetail)
 
-      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyDetail.toStringMap(), null)
+      val discrepancyProperties = createPropertiesFromDiscrepancyDetails(descrepancyDetials = discrepancyDetail)
+      val discrepancyMetrics = createMetricsFromDiscrepancyDetails(descrepancyDetials = discrepancyDetail)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyProperties.toStringMap(), discrepancyMetrics)
     }
 
     @Test
@@ -260,7 +289,10 @@ class MigrationValidationServiceTest {
       assertThat(result.size == 1).isTrue()
       assertThat(result[0]).isEqualTo(discrepancyDetail)
 
-      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyDetail.toStringMap(), null)
+      val discrepancyProperties = createPropertiesFromDiscrepancyDetails(descrepancyDetials = discrepancyDetail)
+      val discrepancyMetrics = createMetricsFromDiscrepancyDetails(descrepancyDetials = discrepancyDetail)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, discrepancyProperties.toStringMap(), discrepancyMetrics)
     }
 
     @Test
@@ -359,9 +391,20 @@ class MigrationValidationServiceTest {
       assertThat(result.size == 3).isTrue()
       assertThat(result).containsExactlyInAnyOrder(cashDiscrepancyDetails, spendsDiscrepancyDetails, savingsDiscrepancyDetails)
 
-      verify(telemetryClient).trackEvent(expectedErrorName, cashDiscrepancyDetails.toStringMap(), null)
-      verify(telemetryClient).trackEvent(expectedErrorName, spendsDiscrepancyDetails.toStringMap(), null)
-      verify(telemetryClient).trackEvent(expectedErrorName, savingsDiscrepancyDetails.toStringMap(), null)
+      val cashDiscrepancyProperties = createPropertiesFromDiscrepancyDetails(descrepancyDetials = cashDiscrepancyDetails)
+      val cashDiscrepancyMetrics = createMetricsFromDiscrepancyDetails(descrepancyDetials = cashDiscrepancyDetails)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, cashDiscrepancyProperties.toStringMap(), cashDiscrepancyMetrics)
+
+      val spendsDiscrepancyProperties = createPropertiesFromDiscrepancyDetails(descrepancyDetials = spendsDiscrepancyDetails)
+      val spendsDiscrepancyMetrics = createMetricsFromDiscrepancyDetails(descrepancyDetials = spendsDiscrepancyDetails)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, spendsDiscrepancyProperties.toStringMap(), spendsDiscrepancyMetrics)
+
+      val savingsDiscrepancyProperties = createPropertiesFromDiscrepancyDetails(descrepancyDetials = savingsDiscrepancyDetails)
+      val savingsDiscrepancyMetrics = createMetricsFromDiscrepancyDetails(descrepancyDetials = savingsDiscrepancyDetails)
+
+      verify(telemetryClient).trackEvent(expectedErrorName, savingsDiscrepancyProperties.toStringMap(), savingsDiscrepancyMetrics)
     }
   }
 }

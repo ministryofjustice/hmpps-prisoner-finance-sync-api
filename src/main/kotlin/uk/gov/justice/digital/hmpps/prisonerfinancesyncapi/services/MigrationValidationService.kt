@@ -4,6 +4,7 @@ import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.GeneralLedgerAccountNotFoundException
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.DiscrepancyProperties
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
@@ -81,7 +82,22 @@ class MigrationValidationService(
 
         discrepancies.add(discrepancyDetails)
 
-        telemetryClient.trackEvent(validationMismatchEventName, discrepancyDetails.toStringMap(), null)
+        val discrepancyProperties = DiscrepancyProperties(
+          message = "NOMIS balances do not match with general ledger balances",
+          prisonerId = prisonNumber,
+          accountType = discrepancyDetails.accountType,
+          glBreakdown = discrepancyDetails.glBreakdown,
+          legacyBreakdown = discrepancyDetails.legacyBreakdown,
+        )
+
+        val discrepancyMetrics = mapOf(
+          "generalLedgerBalance" to discrepancyDetails.generalLedgerBalance.toDouble(),
+          "legacyBalance" to discrepancyDetails.legacyAggregatedBalance.toDouble(),
+          "discrepancy" to discrepancyDetails.discrepancy.toDouble(),
+          "absoluteDiscrepancy" to abs(discrepancyDetails.discrepancy).toDouble(),
+        )
+
+        telemetryClient.trackEvent(validationMismatchEventName, discrepancyProperties.toStringMap(), discrepancyMetrics)
         log.error("Migration balance validation mismatch for prisoner $prisonNumber: ${discrepancyDetails.toStringMap()}")
       }
     }
