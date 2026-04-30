@@ -1,24 +1,29 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.migration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
+import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.MigrationValidationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.math.abs
 
 class MigrationValidationTest : IntegrationTestBase() {
 
@@ -97,9 +102,8 @@ class MigrationValidationTest : IntegrationTestBase() {
     )
   }
 
-  @ParameterizedTest
-  @CsvSource("200, 200, 200", "1, 20, 6") // first test will validate, second test will not
-  fun `should return 200 when the payload is valid and prisoner exists regardless of whether the balance is validated`(cashBalance: Long, spendsBalance: Long, savingsBalance: Long) {
+  @Test
+  fun `should return 200 with validated == true and an empty list of discrepancies when balances are able to reconcile`() {
     val prisonNumber = uniquePrisonNumber()
 
     val mockedNomisAccountBalances = listOf(
@@ -117,15 +121,91 @@ class MigrationValidationTest : IntegrationTestBase() {
 
     val subAccounts = stubForGetAccount(prisonNumber)
 
-    stubForGetGLSubAccountBalances(subAccounts = subAccounts, cashBalance = cashBalance, spendsBalance = spendsBalance, savingsBalance = savingsBalance)
+    stubForGetGLSubAccountBalances(subAccounts = subAccounts, cashBalance = 200, spendsBalance = 200, savingsBalance = 200)
 
-    webTestClient.post()
+    val response = webTestClient.post()
       .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .contentType(MediaType.APPLICATION_JSON)
       .bodyValue(objectMapper.writeValueAsString(prisonerBalancesSyncRequest))
       .exchange()
       .expectStatus().isOk
+      .expectBody<MigrationValidationResponse>()
+      .returnResult()!!
+
+    assert(response.responseBody?.validated == true)
+    assertThat(response.responseBody?.discrepancyDetails?.isEmpty())
+  }
+
+  @Test
+  fun `should return 200 with validated == false and a list of discrepancies of balances that are not able to reconcile`() {
+    val prisonNumber = uniquePrisonNumber()
+
+    val mockedNomisAccountBalances = listOf(
+      createMockedNomisAccountBalances("LEI", 2101, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("LEI", 2102, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("LEI", 2103, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("MDI", 2101, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("MDI", 2102, BigDecimal.valueOf(1)),
+      createMockedNomisAccountBalances("MDI", 2103, BigDecimal.valueOf(1)),
+    )
+
+    val prisonerBalancesSyncRequest = PrisonerBalancesSyncRequest(
+      accountBalances = mockedNomisAccountBalances,
+    )
+
+    val subAccounts = stubForGetAccount(prisonNumber)
+
+    // Incorrect for 2 sub accounts - cash and spends
+    stubForGetGLSubAccountBalances(subAccounts = subAccounts, cashBalance = 999, spendsBalance = 999, savingsBalance = 200)
+
+    val response = webTestClient.post()
+      .uri("/validate/prisoner-balances/{prisonNumber}", prisonNumber)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .contentType(MediaType.APPLICATION_JSON)
+      .bodyValue(objectMapper.writeValueAsString(prisonerBalancesSyncRequest))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody<MigrationValidationResponse>()
+      .returnResult()!!
+
+    assertThat(response.responseBody?.validated).isFalse()
+
+    val expectedCashDiscrepancy = GeneralLedgerDiscrepancyDetails(
+      message = "NOMIS balances do not match with general ledger balances",
+      prisonerId = prisonNumber,
+      accountType = "CASH",
+      legacyAggregatedBalance = 200,
+      generalLedgerBalance = 999,
+      discrepancy = abs(200 - 999).toLong(),
+      glBreakdown = listOf(SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 999)),
+      legacyBreakdown = listOf(
+        PrisonerEstablishmentBalanceDetails("LEI", 2101, BigDecimal.valueOf(1), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2101, BigDecimal.valueOf(1), BigDecimal.ZERO),
+      ),
+    )
+
+    val expectedSpendsDiscrepancy = GeneralLedgerDiscrepancyDetails(
+      message = "NOMIS balances do not match with general ledger balances",
+      prisonerId = prisonNumber,
+      accountType = "SPENDS",
+      legacyAggregatedBalance = 200,
+      generalLedgerBalance = 999,
+      discrepancy = abs(200 - 999).toLong(),
+      glBreakdown = listOf(SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 999)),
+      legacyBreakdown = listOf(
+        PrisonerEstablishmentBalanceDetails("LEI", 2102, BigDecimal.valueOf(1), BigDecimal.ZERO),
+        PrisonerEstablishmentBalanceDetails("MDI", 2102, BigDecimal.valueOf(1), BigDecimal.ZERO),
+      ),
+    )
+
+    assertThat(response.responseBody?.discrepancyDetails)
+      .isNotNull
+      .hasSize(2)
+      .usingRecursiveComparison()
+      .ignoringFields("glBreakdown.subAccountId", "glBreakdown.balanceDateTime") // Generated randomly in our stubs
+      .ignoringCollectionOrder()
+      .isEqualTo(listOf(expectedCashDiscrepancy, expectedSpendsDiscrepancy))
   }
 
   @Test

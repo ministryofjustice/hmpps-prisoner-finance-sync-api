@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.MigrationValidationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.MigrationValidationService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
@@ -37,7 +38,10 @@ class MigrationValidationController(@Autowired private val migrationValidationSe
     value = [
       ApiResponse(
         responseCode = "200",
-        description = "Prisoner balances validation request received successfully.",
+        description = "Prisoner balances validation request received successfully. " +
+          "Will respond with true or false based on whether the validation has been successful along with a list of noted discrepancies. " +
+          "Any discrepancies will be logged and investigated.",
+        content = [Content(schema = Schema(implementation = MigrationValidationResponse::class))],
       ),
       ApiResponse(
         responseCode = "400",
@@ -71,9 +75,10 @@ class MigrationValidationController(@Autowired private val migrationValidationSe
   fun validatePrisonerBalances(
     @PathVariable prisonNumber: String,
     @RequestBody @Valid request: PrisonerBalancesSyncRequest,
-  ): ResponseEntity<Void> {
-    migrationValidationService.validatePrisonerBalances(prisonNumber = prisonNumber, accountBalances = request.accountBalances)
+  ): ResponseEntity<MigrationValidationResponse> {
+    val validationResults = migrationValidationService.validatePrisonerBalances(prisonNumber = prisonNumber, accountBalances = request.accountBalances)
 
-    return ResponseEntity.ok().build()
+    val validated = validationResults.size == 0
+    return ResponseEntity.ok(MigrationValidationResponse(validated = validated, discrepancyDetails = validationResults))
   }
 }
