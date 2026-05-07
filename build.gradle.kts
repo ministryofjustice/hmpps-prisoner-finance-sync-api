@@ -34,6 +34,7 @@ dependencies {
 
   implementation("jakarta.validation:jakarta.validation-api:3.1.1")
   implementation("jakarta.annotation:jakarta.annotation-api:3.0.0")
+  implementation("io.micrometer:micrometer-registry-prometheus")
 
   runtimeOnly("org.postgresql:postgresql:42.7.10")
   runtimeOnly("org.flywaydb:flyway-core")

@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
+import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.GeneralLedgerAccountNotFoundException
@@ -15,6 +16,8 @@ import kotlin.math.abs
 class MigrationValidationService(
   private val generalLedgerService: GeneralLedgerService,
   private val telemetryClient: TelemetryClient,
+  private val metricsService: MetricsService,
+  private val meterRegistry: MeterRegistry
 ) {
 
   fun createDiscrepancyReport(
@@ -98,6 +101,10 @@ class MigrationValidationService(
         )
 
         telemetryClient.trackEvent(validationMismatchEventName, discrepancyProperties.toStringMap(), discrepancyMetrics)
+
+        val mismatchCounter = metricsService.registerCounter(meterRegistry, name = "nomis_validation_mismatch_total")
+        mismatchCounter.increment()
+
         log.error("Migration balance validation mismatch for prisoner $prisonNumber: ${discrepancyDetails.toStringMap()}")
       }
     }
