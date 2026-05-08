@@ -74,10 +74,12 @@ server:
 management:
   endpoints:
     web:
-      base-path: /
       exposure:
-        include: 'info, health'
+        include: 'info, health, prometheus'
   endpoint:
+    prometheus:
+      # This explicitly overrides the hidden MoJ restriction!
+      access: unrestricted
     health:
       cache:
         time-to-live: 2000ms
@@ -88,6 +90,10 @@ management:
     info:
       cache:
         time-to-live: 2000ms
+  Prometheus:
+    metrics:
+      export:
+        enabled: true
 
 hmpps-auth:
   url: ${HMPPS_AUTH_URL}

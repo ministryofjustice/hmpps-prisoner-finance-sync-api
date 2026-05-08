@@ -17,7 +17,7 @@ class MigrationValidationService(
   private val generalLedgerService: GeneralLedgerService,
   private val telemetryClient: TelemetryClient,
   private val metricsService: MetricsService,
-  private val meterRegistry: MeterRegistry
+  private val meterRegistry: MeterRegistry,
 ) {
 
   fun createDiscrepancyReport(
