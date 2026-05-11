@@ -11,6 +11,6 @@ class ActuatorSecurityConfig {
 
   @Bean
   fun webSecurityCustomizer(): WebSecurityCustomizer = WebSecurityCustomizer { web ->
-    web.ignoring().requestMatchers("/prometheus")
+    web.ignoring().requestMatchers("/metrics")
   }
 }

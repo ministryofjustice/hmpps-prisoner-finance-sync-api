@@ -10,7 +10,7 @@ class ActuatorPrometheusTest : IntegrationTestBase() {
     stubPingWithResponse(200)
 
     webTestClient.get()
-      .uri("/prometheus")
+      .uri("/metrics")
       .exchange()
       .expectStatus()
       .isOk
