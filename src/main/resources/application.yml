@@ -75,8 +75,10 @@ management:
   endpoints:
     web:
       base-path: /
+      path-mapping:
+        prometheus: 'metrics'
       exposure:
-        include: 'info, health'
+        include: 'info, health, prometheus'
   endpoint:
     health:
       cache:
@@ -88,6 +90,10 @@ management:
     info:
       cache:
         time-to-live: 2000ms
+  Prometheus:
+    metrics:
+      export:
+        enabled: true
 
 hmpps-auth:
   url: ${HMPPS_AUTH_URL}

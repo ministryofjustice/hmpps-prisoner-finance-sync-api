@@ -1,13 +1,17 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.lenient
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.times
@@ -33,12 +37,27 @@ class MigrationValidationServiceTest {
   @Mock
   private lateinit var telemetryClient: TelemetryClient
 
+  @Mock
+  private lateinit var meterRegistry: MeterRegistry
+
+  @Mock
+  private lateinit var metricsService: MetricsService
+
+  @Mock
+  private lateinit var metricsCounter: Counter
+
   @InjectMocks
   lateinit var migrationValidationService: MigrationValidationService
 
   @Nested
   @DisplayName("validatePrisonerBalances")
   inner class ValidatePrisonerBalances {
+
+    @BeforeEach
+    internal fun setUp() {
+      lenient().whenever(metricsService.registerCounter(any(), name = any())).thenReturn(metricsCounter)
+      lenient().whenever(meterRegistry.counter(any())).thenReturn(metricsCounter)
+    }
 
     val mockedPrisonNumber = "A1234BC"
     val expectedErrorName = "prisoner-finance-sync-api-balance-validation-mismatch"
