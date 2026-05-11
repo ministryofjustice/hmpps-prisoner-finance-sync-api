@@ -74,6 +74,7 @@ server:
 management:
   endpoints:
     web:
+      base-path: /
       exposure:
         include: 'info, health, prometheus'
   endpoint:
