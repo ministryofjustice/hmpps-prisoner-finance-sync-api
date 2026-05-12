@@ -75,10 +75,8 @@ management:
   endpoints:
     web:
       base-path: /
-      path-mapping:
-        prometheus: 'metrics'
       exposure:
-        include: 'info, health, prometheus'
+        include: 'info, health'
   endpoint:
     prometheus:
       # This explicitly overrides the hidden MoJ restriction!
@@ -93,10 +91,6 @@ management:
     info:
       cache:
         time-to-live: 2000ms
-  Prometheus:
-    metrics:
-      export:
-        enabled: true
 
 hmpps-auth:
   url: ${HMPPS_AUTH_URL}
