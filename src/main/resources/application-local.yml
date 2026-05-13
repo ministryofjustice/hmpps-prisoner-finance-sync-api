@@ -3,7 +3,7 @@ spring:
     show-sql: true
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/nomis_sync?sslmode=prefer
+    url: 'jdbc:postgresql://localhost:5432/nomis_sync?sslmode=prefer'
     username: postgres
     password: postgres
 
@@ -24,7 +24,7 @@ hmpps.sqs:
 feature:
   general-ledger-api:
     enabled: true
-    test-prisoner-ids: A0251AB
+    test-prisoner-ids: 'A0251AB'
 
 general-ledger-api:
   url: http://localhost:8084
