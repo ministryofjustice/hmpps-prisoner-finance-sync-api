@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
@@ -456,6 +457,40 @@ class GeneralLedgerApiMockServer :
             .withBody(mapper.writeValueAsString(response)),
         ),
     )
+    return response
+  }
+
+  // GET /transactions/transactionUUID
+
+  fun stubGetTransactionByUUID(
+    transactionUUID: UUID,
+    reference: String,
+    createdAt: Instant,
+    timeStamp: Instant,
+    amount: Long,
+    postings: List<PostingResponse>,
+  ): TransactionResponse {
+    val response = TransactionResponse(
+      id = transactionUUID,
+      reference = reference,
+      createdBy = "TEST",
+      createdAt = createdAt,
+      description = "",
+      timestamp = timeStamp,
+      amount = amount,
+      postings = postings,
+    )
+
+    stubFor(
+      get(urlPathEqualTo("/transactions/$transactionUUID"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(mapper.writeValueAsString(response)),
+        ),
+    )
+
     return response
   }
 }

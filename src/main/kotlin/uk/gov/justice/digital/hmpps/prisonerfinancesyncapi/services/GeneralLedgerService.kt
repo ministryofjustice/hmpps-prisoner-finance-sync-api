@@ -14,8 +14,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.TransactionReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import kotlin.math.abs
 
@@ -201,5 +205,30 @@ class GeneralLedgerService(
     }
 
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
+  }
+
+  fun retrieveNomisGLTransactionsForDay(day: Instant): DailyReconciliationResponse {
+    val endDateTime = day.plus(Duration.ofDays(1)).minusNanos(1)
+
+    val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findByCreatedAtBetween(day, endDateTime)
+
+    if (nomisTransactionMappingsForTheDay.isEmpty()) {
+      return DailyReconciliationResponse(transactions = emptyList())
+    }
+
+    val nomisTransaction = nomisTransactionMappingsForTheDay.first()
+
+    val glTransaction = generalLedgerApiClient.getTransaction(nomisTransaction.glTransactionUuid)
+
+    return DailyReconciliationResponse(
+      transactions = listOf(
+        TransactionReconciliationResponse(
+          nomisTransactionId = nomisTransaction.legacyTransactionId,
+          glTransactionId = nomisTransaction.glTransactionUuid,
+          transactionCreatedAt = nomisTransaction.createdAt,
+          postings = glTransaction!!.postings,
+        ),
+      ),
+    )
   }
 }

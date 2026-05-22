@@ -6,16 +6,20 @@ import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.Option
 import com.jayway.jsonpath.spi.json.JacksonJsonProvider
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
+import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpHeaders
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ContainersConfig
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.PostgresContainer
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.registerPostgresProperties
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
@@ -32,13 +36,28 @@ import java.util.EnumSet
 )
 @ActiveProfiles("test")
 @AutoConfigureWebTestClient
+@Import(IntegrationTestHelpers::class, ContainersConfig::class)
 abstract class IntegrationTestBase {
+
+  @LocalServerPort
+  private var port: Int = 0
 
   @Autowired
   protected lateinit var webTestClient: WebTestClient
 
   @Autowired
   protected lateinit var jwtAuthHelper: JwtAuthorisationHelper
+
+  @Autowired
+  protected lateinit var integrationTestHelpers: IntegrationTestHelpers
+
+  @BeforeEach
+  fun initClients() {
+    webTestClient = WebTestClient.bindToServer()
+      .baseUrl("http://localhost:$port")
+      .build()
+    integrationTestHelpers.setWebClient(webTestClient)
+  }
 
   internal fun setAuthorisation(
     username: String? = "AUTH_ADM",
