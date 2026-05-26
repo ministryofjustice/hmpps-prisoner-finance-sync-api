@@ -4,11 +4,15 @@ import jakarta.transaction.Transactional
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -20,12 +24,20 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
+@TestPropertySource(
+  properties = [
+    "feature.general-ledger-api.enabled=true",
+    "feature.general-ledger-api.test-prisoner-ids=A9971EC",
+  ],
+)
+@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
 class DailyReconciliationTest : IntegrationTestBase() {
 
   @Transactional
   @BeforeEach
   fun setup() {
     integrationTestHelpers.clearDB()
+    hmppsAuth.stubGrantToken()
   }
 
   @Test
@@ -49,83 +61,74 @@ class DailyReconciliationTest : IntegrationTestBase() {
   @Test
   fun `should return a 200 response and a single transaction from a given date`() {
     val baseDate = LocalDate.of(2025, 5, 21)
-
     val createdAt = baseDate.atStartOfDay()
-
     val instantDate = baseDate.atStartOfDay().toInstant(ZoneOffset.UTC)
-
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val stringDate = baseDate.format(dateFormatter)
 
     val prisonNumber = "A9971EC"
 
-    print("$createdAt $stringDate")
+    val prisonerParentAccountUUID = UUID.randomUUID()
+    val creditSubAccountUUID = UUID.randomUUID()
+    val debtorSubAccountUUID = UUID.randomUUID()
 
-    val transactionUUID = UUID.randomUUID()
+    generalLedgerApi.stubGetAccount(
+      reference = prisonNumber,
+      subAccounts = listOf(
 
-
-    generalLedgerApi.stubGetAccount(reference = prisonNumber, subAccounts = listOf(
-      SubAccountResponse(
-        id = UUID.randomUUID(), reference = "sub-account-2101-ref",
-        parentAccountId = UUID.randomUUID(),
-        createdBy = "TEST",
-        createdAt = Instant.now(),
-      ),
-      SubAccountResponse(
-        id = UUID.randomUUID(), reference = "sub-account-2102-ref",
-        parentAccountId = UUID.randomUUID(),
-        createdBy = "TEST",
-        createdAt = Instant.now(),
-      ),
-    ))
-
-    generalLedgerApi.stubGetAccount(reference = "LEI", subAccounts = listOf(
-      SubAccountResponse(
-        id = UUID.randomUUID(), reference = "sub-account-2101-ref",
-        parentAccountId = UUID.randomUUID(),
-        createdBy = "TEST",
-        createdAt = Instant.now(),
-      ),
-      SubAccountResponse(
-        id = UUID.randomUUID(), reference = "sub-account-2102-ref",
-        parentAccountId = UUID.randomUUID(),
-        createdBy = "TEST",
-        createdAt = Instant.now(),
-      ),
-    ))
-
-
-    generalLedgerApi.stubGetTransactionByUUID(
-      transactionUUID = transactionUUID,
-      reference = "reference",
-      createdAt = instantDate,
-      timeStamp = instantDate,
-      amount = 0,
-      postings = listOf(
-        PostingResponse(
-          id = UUID.randomUUID(),
+        SubAccountResponse(
+          id = debtorSubAccountUUID,
+          reference = "CASH",
+          parentAccountId = prisonerParentAccountUUID,
           createdBy = "TEST",
-          createdAt = instantDate,
-          type = PostingResponse.Type.CR,
-          amount = 0,
-          subAccountID = UUID.randomUUID(),
+          createdAt = Instant.now(),
         ),
-        PostingResponse(
-          id = UUID.randomUUID(),
+        SubAccountResponse(
+          id = creditSubAccountUUID,
+          reference = "SPENDS",
+          parentAccountId = prisonerParentAccountUUID,
           createdBy = "TEST",
-          createdAt = instantDate,
-          type = PostingResponse.Type.DR,
-          amount = 0,
-          subAccountID = UUID.randomUUID(),
+          createdAt = Instant.now(),
         ),
       ),
     )
 
+    val transactionPostings = listOf(
+      PostingResponse(
+        id = prisonerParentAccountUUID,
+        createdBy = "TEST",
+        createdAt = instantDate,
+        type = PostingResponse.Type.CR,
+        amount = 0,
+        subAccountID = creditSubAccountUUID,
+      ),
+      PostingResponse(
+        id = prisonerParentAccountUUID,
+        createdBy = "TEST",
+        createdAt = instantDate,
+        type = PostingResponse.Type.DR,
+        amount = 0,
+        subAccountID = debtorSubAccountUUID,
+      ),
+    )
+
+    val returnGeneralLedgerUUID = UUID.randomUUID()
+
+    generalLedgerApi.stubGetTransactionByUUID(
+      transactionUUID = returnGeneralLedgerUUID,
+      reference = "REF",
+      createdAt = instantDate,
+      timeStamp = instantDate,
+      amount = 0,
+      postings = transactionPostings,
+    )
+
+    // Return UUID here is put into the Nomis to GL map
     generalLedgerApi.stubPostTransaction(
-      creditorSubAccountUuid = "uuid",
-      debtorSubAccountUuid = "uuid",
-      reference = "reference",
-      returnUUID = UUID.randomUUID()
+      creditorSubAccountUuid = creditSubAccountUUID.toString(),
+      debtorSubAccountUuid = debtorSubAccountUUID.toString(),
+      reference = "REF",
+      returnUUID = returnGeneralLedgerUUID,
     )
 
     val generalLedgerEntries = listOf(
@@ -151,20 +154,16 @@ class DailyReconciliationTest : IntegrationTestBase() {
       subAccountType = "REG",
       amount = BigDecimal.valueOf(1),
       generalLedgerEntries = generalLedgerEntries,
-      reference = "reference"
+      reference = "REF",
     )
 
-    val syncResponse = integrationTestHelpers.syncOffenderTransactions(
+    integrationTestHelpers.syncOffenderTransactions(
       1,
       "LEI",
       createdAt,
       createdAt,
       offenderTransactions = listOf(offenderTransactions),
     )
-
-    Thread.sleep(3000)
-
-    print("$syncResponse")
 
     val dailyReconciliationResponse = webTestClient
       .get()
@@ -174,9 +173,8 @@ class DailyReconciliationTest : IntegrationTestBase() {
       .expectStatus().isOk
       .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
 
-    print(dailyReconciliationResponse)
     assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(1)
-    assertThat(dailyReconciliationResponse.transactions[0].glTransactionId).isEqualTo(transactionUUID)
+    assertThat(dailyReconciliationResponse.transactions[0].glTransactionId).isEqualTo(returnGeneralLedgerUUID)
     assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
   }
 

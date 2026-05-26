@@ -84,7 +84,6 @@ class IntegrationTestHelpers(
     createdAt: LocalDateTime,
     offenderTransactions: List<OffenderTransaction>,
   ): SyncTransactionReceipt {
-
     val offenderTransactionRequest = SyncOffenderTransactionRequest(
       transactionId = transactionId,
       requestId = UUID.randomUUID(),
