@@ -57,6 +57,7 @@ class IntegrationTestHelpers(
     offenderBookingId: Long,
     subAccountType: String,
     amount: BigDecimal,
+    reference: String,
     generalLedgerEntries: List<GeneralLedgerEntry>,
   ): OffenderTransaction {
     val offenderTransaction = OffenderTransaction(
@@ -69,7 +70,7 @@ class IntegrationTestHelpers(
       type = "ATOF",
       description = "some transaction",
       amount = amount,
-      reference = null,
+      reference = reference,
       generalLedgerEntries = generalLedgerEntries,
     )
 
@@ -83,6 +84,7 @@ class IntegrationTestHelpers(
     createdAt: LocalDateTime,
     offenderTransactions: List<OffenderTransaction>,
   ): SyncTransactionReceipt {
+
     val offenderTransactionRequest = SyncOffenderTransactionRequest(
       transactionId = transactionId,
       requestId = UUID.randomUUID(),
@@ -97,17 +99,18 @@ class IntegrationTestHelpers(
       offenderTransactions = offenderTransactions,
     )
 
-    val account = webTestClient.post()
+    val transactionReceipt = webTestClient.post()
       .uri("/sync/offender-transactions")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .contentType(MediaType.APPLICATION_JSON)
       .bodyValue(offenderTransactionRequest)
       .exchange()
+      .expectStatus().isCreated
       .expectBody<SyncTransactionReceipt>()
       .returnResult()
       .responseBody!!
 
-    return account
+    return transactionReceipt
   }
 
   /*

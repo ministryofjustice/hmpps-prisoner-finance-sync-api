@@ -20,6 +20,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.Ledge
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.math.abs
 
@@ -88,6 +89,7 @@ class GeneralLedgerService(
             legacyTransactionId = request.transactionId,
             entrySequence = transaction.entrySequence,
             glTransactionUuid = transactionGLUUID,
+            createdAt = request.createdAt.toInstant(ZoneOffset.UTC),
           ),
         )
 

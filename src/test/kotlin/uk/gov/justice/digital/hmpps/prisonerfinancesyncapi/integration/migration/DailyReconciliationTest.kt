@@ -10,17 +10,17 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 class DailyReconciliationTest : IntegrationTestBase() {
-
-  private lateinit var generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository
 
   @Transactional
   @BeforeEach
@@ -57,9 +57,43 @@ class DailyReconciliationTest : IntegrationTestBase() {
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val stringDate = baseDate.format(dateFormatter)
 
+    val prisonNumber = "A9971EC"
+
     print("$createdAt $stringDate")
 
     val transactionUUID = UUID.randomUUID()
+
+
+    generalLedgerApi.stubGetAccount(reference = prisonNumber, subAccounts = listOf(
+      SubAccountResponse(
+        id = UUID.randomUUID(), reference = "sub-account-2101-ref",
+        parentAccountId = UUID.randomUUID(),
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+      ),
+      SubAccountResponse(
+        id = UUID.randomUUID(), reference = "sub-account-2102-ref",
+        parentAccountId = UUID.randomUUID(),
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+      ),
+    ))
+
+    generalLedgerApi.stubGetAccount(reference = "LEI", subAccounts = listOf(
+      SubAccountResponse(
+        id = UUID.randomUUID(), reference = "sub-account-2101-ref",
+        parentAccountId = UUID.randomUUID(),
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+      ),
+      SubAccountResponse(
+        id = UUID.randomUUID(), reference = "sub-account-2102-ref",
+        parentAccountId = UUID.randomUUID(),
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+      ),
+    ))
+
 
     generalLedgerApi.stubGetTransactionByUUID(
       transactionUUID = transactionUUID,
@@ -87,6 +121,13 @@ class DailyReconciliationTest : IntegrationTestBase() {
       ),
     )
 
+    generalLedgerApi.stubPostTransaction(
+      creditorSubAccountUuid = "uuid",
+      debtorSubAccountUuid = "uuid",
+      reference = "reference",
+      returnUUID = UUID.randomUUID()
+    )
+
     val generalLedgerEntries = listOf(
       GeneralLedgerEntry(
         entrySequence = 1,
@@ -110,6 +151,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
       subAccountType = "REG",
       amount = BigDecimal.valueOf(1),
       generalLedgerEntries = generalLedgerEntries,
+      reference = "reference"
     )
 
     val syncResponse = integrationTestHelpers.syncOffenderTransactions(
@@ -119,6 +161,8 @@ class DailyReconciliationTest : IntegrationTestBase() {
       createdAt,
       offenderTransactions = listOf(offenderTransactions),
     )
+
+    Thread.sleep(3000)
 
     print("$syncResponse")
 
@@ -130,6 +174,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
       .expectStatus().isOk
       .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
 
+    print(dailyReconciliationResponse)
     assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(1)
     assertThat(dailyReconciliationResponse.transactions[0].glTransactionId).isEqualTo(transactionUUID)
     assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
