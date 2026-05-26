@@ -58,35 +58,38 @@ class DailyReconciliationTest : IntegrationTestBase() {
     //
   }
 
-  @Test
-  fun `should return a 200 response and a single transaction from a given date`() {
-    val baseDate = LocalDate.of(2025, 5, 21)
-    val createdAt = baseDate.atStartOfDay()
-    val instantDate = baseDate.atStartOfDay().toInstant(ZoneOffset.UTC)
-    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val stringDate = baseDate.format(dateFormatter)
-
-    val prisonNumber = "A9971EC"
-
-    val prisonerParentAccountUUID = UUID.randomUUID()
-    val creditSubAccountUUID = UUID.randomUUID()
-    val debtorSubAccountUUID = UUID.randomUUID()
-
+  private fun stubPrisonerXferFromPrisonResponsesFromGL(
+    prisonNumber: String,
+    parentAccountUUID: UUID,
+    cashSubAccountUUID: UUID,
+    spendsSubAccountUUID: UUID,
+    savingsSubAccountUUID: UUID,
+    transactionDate: Instant,
+    prisonParentAccountUUID: UUID,
+    debtorPrisonSubAccountUUID: UUID,
+  ): List<UUID> {
     generalLedgerApi.stubGetAccount(
       reference = prisonNumber,
       subAccounts = listOf(
 
         SubAccountResponse(
-          id = debtorSubAccountUUID,
+          id = cashSubAccountUUID,
           reference = "CASH",
-          parentAccountId = prisonerParentAccountUUID,
+          parentAccountId = parentAccountUUID,
           createdBy = "TEST",
           createdAt = Instant.now(),
         ),
         SubAccountResponse(
-          id = creditSubAccountUUID,
+          id = spendsSubAccountUUID,
           reference = "SPENDS",
-          parentAccountId = prisonerParentAccountUUID,
+          parentAccountId = parentAccountUUID,
+          createdBy = "TEST",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = savingsSubAccountUUID,
+          reference = "SAVINGS",
+          parentAccountId = parentAccountUUID,
           createdBy = "TEST",
           createdAt = Instant.now(),
         ),
@@ -95,17 +98,125 @@ class DailyReconciliationTest : IntegrationTestBase() {
 
     val transactionPostings = listOf(
       PostingResponse(
-        id = prisonerParentAccountUUID,
+        id = parentAccountUUID,
         createdBy = "TEST",
-        createdAt = instantDate,
+        createdAt = transactionDate,
+        type = PostingResponse.Type.CR,
+        amount = 0,
+        subAccountID = cashSubAccountUUID,
+      ),
+      PostingResponse(
+        id = prisonParentAccountUUID,
+        createdBy = "TEST",
+        createdAt = transactionDate,
+        type = PostingResponse.Type.DR,
+        amount = 0,
+        subAccountID = debtorPrisonSubAccountUUID,
+      ),
+      //
+      PostingResponse(
+        id = parentAccountUUID,
+        createdBy = "TEST",
+        createdAt = transactionDate,
+        type = PostingResponse.Type.CR,
+        amount = 0,
+        subAccountID = savingsSubAccountUUID,
+      ),
+      PostingResponse(
+        id = prisonParentAccountUUID,
+        createdBy = "TEST",
+        createdAt = transactionDate,
+        type = PostingResponse.Type.DR,
+        amount = 0,
+        subAccountID = debtorPrisonSubAccountUUID,
+      ),
+      //
+      PostingResponse(
+        id = parentAccountUUID,
+        createdBy = "TEST",
+        createdAt = transactionDate,
+        type = PostingResponse.Type.CR,
+        amount = 0,
+        subAccountID = savingsSubAccountUUID,
+      ),
+      PostingResponse(
+        id = prisonParentAccountUUID,
+        createdBy = "TEST",
+        createdAt = transactionDate,
+        type = PostingResponse.Type.DR,
+        amount = 0,
+        subAccountID = debtorPrisonSubAccountUUID,
+      ),
+    )
+
+    // TODO: we have set up the first transaction post response but need to do other 2
+    // we then have to set up the syncoffendertransaction itself to have the 3 transactions
+    // this test wont pass at first, we need to alter the service to return all mappings instead of just the first
+    val returnGeneralLedgerUUID1 = UUID.randomUUID()
+
+    generalLedgerApi.stubGetTransactionByUUID(
+      transactionUUID = returnGeneralLedgerUUID1,
+      reference = "REF",
+      createdAt = transactionDate,
+      timeStamp = transactionDate,
+      amount = 0,
+      postings = transactionPostings,
+    )
+
+    // Return UUID here is put into the Nomis to GL map
+    generalLedgerApi.stubPostTransaction(
+      creditorSubAccountUuid = cashSubAccountUUID.toString(),
+      debtorSubAccountUuid = debtorPrisonSubAccountUUID.toString(),
+      reference = "REF",
+      returnUUID = returnGeneralLedgerUUID1,
+    )
+
+    val returnedGLUUIDs = listOf(returnGeneralLedgerUUID1)
+
+    return returnedGLUUIDs
+  }
+
+  private fun stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+    prisonNumber: String,
+    parentAccountUUID: UUID,
+    creditSubAccountUUID: UUID,
+    debtorSubAccountUUID: UUID,
+    transactionDate: Instant,
+  ): UUID {
+    generalLedgerApi.stubGetAccount(
+      reference = prisonNumber,
+      subAccounts = listOf(
+
+        SubAccountResponse(
+          id = debtorSubAccountUUID,
+          reference = "CASH",
+          parentAccountId = parentAccountUUID,
+          createdBy = "TEST",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = creditSubAccountUUID,
+          reference = "SPENDS",
+          parentAccountId = parentAccountUUID,
+          createdBy = "TEST",
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    val transactionPostings = listOf(
+      PostingResponse(
+        id = parentAccountUUID,
+        createdBy = "TEST",
+        createdAt = transactionDate,
         type = PostingResponse.Type.CR,
         amount = 0,
         subAccountID = creditSubAccountUUID,
       ),
       PostingResponse(
-        id = prisonerParentAccountUUID,
+        id = parentAccountUUID,
         createdBy = "TEST",
-        createdAt = instantDate,
+        createdAt = transactionDate,
         type = PostingResponse.Type.DR,
         amount = 0,
         subAccountID = debtorSubAccountUUID,
@@ -117,8 +228,8 @@ class DailyReconciliationTest : IntegrationTestBase() {
     generalLedgerApi.stubGetTransactionByUUID(
       transactionUUID = returnGeneralLedgerUUID,
       reference = "REF",
-      createdAt = instantDate,
-      timeStamp = instantDate,
+      createdAt = transactionDate,
+      timeStamp = transactionDate,
       amount = 0,
       postings = transactionPostings,
     )
@@ -129,6 +240,31 @@ class DailyReconciliationTest : IntegrationTestBase() {
       debtorSubAccountUuid = debtorSubAccountUUID.toString(),
       reference = "REF",
       returnUUID = returnGeneralLedgerUUID,
+    )
+
+    return returnGeneralLedgerUUID
+  }
+
+  @Test
+  fun `should return a 200 response and a single transaction from a given date`() {
+    val baseDate = LocalDate.of(2025, 5, 21)
+    val createdAt = baseDate.atStartOfDay()
+    val syncOffenderTransactionDate = baseDate.atStartOfDay().toInstant(ZoneOffset.UTC)
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val stringDate = baseDate.format(dateFormatter)
+
+    val prisonNumber = "A9971EC"
+
+    val prisonerParentAccountUUID = UUID.randomUUID()
+    val creditSubAccountUUID = UUID.randomUUID()
+    val debtorSubAccountUUID = UUID.randomUUID()
+
+    val returnGeneralLedgerUUID = stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+      prisonNumber = prisonNumber,
+      parentAccountUUID = prisonerParentAccountUUID,
+      creditSubAccountUUID = creditSubAccountUUID,
+      debtorSubAccountUUID = debtorSubAccountUUID,
+      transactionDate = syncOffenderTransactionDate,
     )
 
     val generalLedgerEntries = listOf(
@@ -179,6 +315,117 @@ class DailyReconciliationTest : IntegrationTestBase() {
   }
 
   // test for multiple transactions being returned , at some point we will need a non - batch get
+  fun `should return a 200 response and multiple transactions from a given date`() {
+    val baseDate = LocalDate.of(2025, 5, 21)
+    val createdAt = baseDate.atStartOfDay()
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val stringDate = baseDate.format(dateFormatter)
+
+    val generalLedgerEntriesOT1 = listOf(
+      GeneralLedgerEntry(
+        entrySequence = 1,
+        code = 2101,
+        postingType = "DR",
+        amount = BigDecimal.valueOf(1),
+      ),
+      GeneralLedgerEntry(
+        entrySequence = 2,
+        code = 2102,
+        postingType = "CR",
+        amount = BigDecimal.valueOf(1),
+      ),
+    )
+
+    val offenderTransaction1 = integrationTestHelpers.createOffenderTransaction(
+      entrySequence = 1,
+      offenderId = 123456,
+      offenderDisplayId = "A9971EC",
+      offenderBookingId = 12345678,
+      subAccountType = "REG",
+      amount = BigDecimal.valueOf(1),
+      generalLedgerEntries = generalLedgerEntriesOT1,
+      reference = "REF",
+    )
+
+    val generalLedgerEntriesOT2 = listOf(
+      GeneralLedgerEntry(
+        entrySequence = 1,
+        code = 2101,
+        postingType = "DR",
+        amount = BigDecimal.valueOf(1),
+      ),
+      GeneralLedgerEntry(
+        entrySequence = 2,
+        code = 2102,
+        postingType = "CR",
+        amount = BigDecimal.valueOf(1),
+      ),
+    )
+
+    val offenderTransaction2 = integrationTestHelpers.createOffenderTransaction(
+      entrySequence = 1,
+      offenderId = 123456,
+      offenderDisplayId = "A9971EC",
+      offenderBookingId = 12345678,
+      subAccountType = "REG",
+      amount = BigDecimal.valueOf(1),
+      generalLedgerEntries = generalLedgerEntriesOT2,
+      reference = "REF",
+    )
+
+    val generalLedgerEntriesOT3 = listOf(
+      GeneralLedgerEntry(
+        entrySequence = 1,
+        code = 2101,
+        postingType = "DR",
+        amount = BigDecimal.valueOf(1),
+      ),
+      GeneralLedgerEntry(
+        entrySequence = 2,
+        code = 2102,
+        postingType = "CR",
+        amount = BigDecimal.valueOf(1),
+      ),
+    )
+
+    val offenderTransaction3 = integrationTestHelpers.createOffenderTransaction(
+      entrySequence = 1,
+      offenderId = 123456,
+      offenderDisplayId = "A9971EC",
+      offenderBookingId = 12345678,
+      subAccountType = "REG",
+      amount = BigDecimal.valueOf(1),
+      generalLedgerEntries = generalLedgerEntriesOT3,
+      reference = "REF",
+    )
+
+    integrationTestHelpers.syncOffenderTransactions(
+      1,
+      "LEI",
+      createdAt,
+      createdAt,
+      offenderTransactions = listOf(offenderTransaction1, offenderTransaction2, offenderTransaction3),
+    )
+
+    val dailyReconciliationResponse = webTestClient
+      .get()
+      .uri("/verify/offender-transactions/$stringDate")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
+
+    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(3)
+
+    // assertThat(dailyReconciliationResponse.transactions[0].glTransactionId).isEqualTo(returnGeneralLedgerUUID)
+    assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
+
+    // assertThat(dailyReconciliationResponse.transactions[1].glTransactionId).isEqualTo(returnGeneralLedgerUUID)
+    assertThat(dailyReconciliationResponse.transactions[1].postings.size).isEqualTo(2)
+
+    // assertThat(dailyReconciliationResponse.transactions[2].glTransactionId).isEqualTo(returnGeneralLedgerUUID)
+    assertThat(dailyReconciliationResponse.transactions[2].postings.size).isEqualTo(2)
+  }
 
   // test for multiple transactions being returned , at some point we will need a batch get ???
 }
