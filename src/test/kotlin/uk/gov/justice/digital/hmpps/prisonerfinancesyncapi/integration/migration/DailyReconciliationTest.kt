@@ -59,6 +59,35 @@ class DailyReconciliationTest : IntegrationTestBase() {
     //
   }
 
+  @Test
+  fun `should throw 400 Bad request when date is formated incorrectly`() {
+    webTestClient
+      .get()
+      .uri("/verify/offender-transactions/21-05-2026")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isBadRequest
+  }
+
+  @Test
+  fun `should return 403 when requesting account with incorrect role`() {
+    webTestClient
+      .get()
+      .uri("/verify/offender-transactions/2026-01-01")
+      .headers(setAuthorisation(roles = emptyList()))
+      .exchange()
+      .expectStatus().isForbidden
+  }
+
+  @Test
+  fun `should return 401 when unauthorized`() {
+    webTestClient
+      .get()
+      .uri("/verify/offender-transactions/2026-01-01")
+      .exchange()
+      .expectStatus().isUnauthorized
+  }
+
   private fun stubPrisonerXferFromPrisonResponsesFromGL(
     prisonNumber: String,
     parentAccountUUID: UUID,
