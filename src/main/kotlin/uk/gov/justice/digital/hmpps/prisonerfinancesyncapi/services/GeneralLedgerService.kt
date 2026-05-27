@@ -218,19 +218,17 @@ class GeneralLedgerService(
       return DailyReconciliationResponse(transactions = emptyList())
     }
 
-    val nomisTransaction = nomisTransactionMappingsForTheDay.first()
+    val transactionReconciliations = nomisTransactionMappingsForTheDay.map { it ->
 
-    val glTransaction = generalLedgerApiClient.getTransaction(nomisTransaction.glTransactionUuid)
+      val glTransaction = generalLedgerApiClient.getTransaction(it.glTransactionUuid)
 
-    return DailyReconciliationResponse(
-      transactions = listOf(
-        TransactionReconciliationResponse(
-          nomisTransactionId = nomisTransaction.legacyTransactionId,
-          glTransactionId = nomisTransaction.glTransactionUuid,
-          transactionCreatedAt = nomisTransaction.createdAt,
-          postings = glTransaction!!.postings,
-        ),
-      ),
-    )
+      TransactionReconciliationResponse(
+        nomisTransactionId = it.legacyTransactionId,
+        glTransactionId = it.glTransactionUuid,
+        transactionCreatedAt = it.createdAt,
+        postings = glTransaction!!.postings,
+      )
+    }
+    return DailyReconciliationResponse(transactions = transactionReconciliations)
   }
 }

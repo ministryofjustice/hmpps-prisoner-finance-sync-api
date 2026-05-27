@@ -23,6 +23,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import kotlin.random.Random
 
 @TestPropertySource(
   properties = [
@@ -186,7 +187,6 @@ class DailyReconciliationTest : IntegrationTestBase() {
     generalLedgerApi.stubGetAccount(
       reference = prisonNumber,
       subAccounts = listOf(
-
         SubAccountResponse(
           id = debtorSubAccountUUID,
           reference = "CASH",
@@ -246,12 +246,10 @@ class DailyReconciliationTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `should return a 200 response and a single transaction from a given date`() {
+  fun `should return a 200 response an empty list if no transactions on the given date`() {
     val baseDate = LocalDate.of(2025, 5, 21)
     val createdAt = baseDate.atStartOfDay()
     val syncOffenderTransactionDate = baseDate.atStartOfDay().toInstant(ZoneOffset.UTC)
-    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val stringDate = baseDate.format(dateFormatter)
 
     val prisonNumber = "A9971EC"
 
@@ -259,7 +257,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
     val creditSubAccountUUID = UUID.randomUUID()
     val debtorSubAccountUUID = UUID.randomUUID()
 
-    val returnGeneralLedgerUUID = stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+    stubPrisonerCASHtoSPENDSXferResponsesFromGL(
       prisonNumber = prisonNumber,
       parentAccountUUID = prisonerParentAccountUUID,
       creditSubAccountUUID = creditSubAccountUUID,
@@ -303,14 +301,91 @@ class DailyReconciliationTest : IntegrationTestBase() {
 
     val dailyReconciliationResponse = webTestClient
       .get()
+      .uri("/verify/offender-transactions/1900-01-01")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
+
+    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(0)
+  }
+
+  @Test
+  fun `should return a 200 response and transactions from a given date`() {
+    val baseDate = LocalDate.of(2025, 5, 21)
+    val createdAt = baseDate.atStartOfDay()
+    val syncOffenderTransactionDate = baseDate.atStartOfDay().toInstant(ZoneOffset.UTC)
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val stringDate = baseDate.format(dateFormatter)
+
+    val prisonNumber = "A9971EC"
+
+    val prisonerParentAccountUUID = UUID.randomUUID()
+    val creditSubAccountUUID = UUID.randomUUID()
+    val debtorSubAccountUUID = UUID.randomUUID()
+
+    val glUUIDs = mutableListOf<UUID>()
+
+    repeat(3) {
+      val generalLedgerUUID = stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+        prisonNumber = prisonNumber,
+        parentAccountUUID = prisonerParentAccountUUID,
+        creditSubAccountUUID = creditSubAccountUUID,
+        debtorSubAccountUUID = debtorSubAccountUUID,
+        transactionDate = syncOffenderTransactionDate,
+      )
+      glUUIDs.add(generalLedgerUUID)
+
+      val generalLedgerEntries = listOf(
+        GeneralLedgerEntry(
+          entrySequence = 1,
+          code = 2101,
+          postingType = "DR",
+          amount = BigDecimal.valueOf(1),
+        ),
+        GeneralLedgerEntry(
+          entrySequence = 2,
+          code = 2102,
+          postingType = "CR",
+          amount = BigDecimal.valueOf(1),
+        ),
+      )
+
+      val offenderTransactions = integrationTestHelpers.createOffenderTransaction(
+        entrySequence = 1,
+        offenderId = 123456,
+        offenderDisplayId = "A9971EC",
+        offenderBookingId = 12345678,
+        subAccountType = "REG",
+        amount = BigDecimal.valueOf(1),
+        generalLedgerEntries = generalLedgerEntries,
+        reference = "REF",
+      )
+
+      integrationTestHelpers.syncOffenderTransactions(
+        Random.nextLong(),
+        "LEI",
+        createdAt,
+        createdAt,
+        offenderTransactions = listOf(offenderTransactions),
+      )
+    }
+
+    val dailyReconciliationResponse = webTestClient
+      .get()
       .uri("/verify/offender-transactions/$stringDate")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
 
-    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(1)
-    assertThat(dailyReconciliationResponse.transactions[0].glTransactionId).isEqualTo(returnGeneralLedgerUUID)
+    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(3)
+
+    for (i in 0 until glUUIDs.size) {
+      val glUUID = glUUIDs[i]
+      assertThat(dailyReconciliationResponse.transactions[i].glTransactionId).isEqualTo(glUUID)
+    }
+
     assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
   }
 
