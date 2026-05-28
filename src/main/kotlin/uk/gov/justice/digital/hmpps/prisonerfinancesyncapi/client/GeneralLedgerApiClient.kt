@@ -80,4 +80,11 @@ class GeneralLedgerApiClient(
 
   // GET /transactions/transactionUUID
   fun getTransaction(transactionUUID: UUID): TransactionResponse? = transactionApi.getTransactionById(transactionUUID).block()
+
+  // POST /transactions/search
+  fun searchTransactions(glTransactionUUIDs: List<UUID>): List<TransactionResponse> {
+    val response = transactionApi.searchTransactions(glTransactionUUIDs).block()
+    return response
+      ?: throw IllegalStateException("GL Api returned null body for search transactions $response")
+  }
 }

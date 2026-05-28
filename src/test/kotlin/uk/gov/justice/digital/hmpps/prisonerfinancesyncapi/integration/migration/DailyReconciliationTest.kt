@@ -89,22 +89,22 @@ class DailyReconciliationTest : IntegrationTestBase() {
 
     val returnGeneralLedgerUUID = UUID.randomUUID()
 
-    generalLedgerApi.stubGetTransactionByUUID(
-      transactionUUID = returnGeneralLedgerUUID,
-      reference = "REF",
-      createdAt = transactionDate,
-      timeStamp = transactionDate,
-      amount = 0,
-      postings = transactionPostings,
-    )
+//    generalLedgerApi.stubGetTransactionByUUID(
+//      transactionUUID = returnGeneralLedgerUUID,
+//      reference = "REF",
+//      createdAt = transactionDate,
+//      timeStamp = transactionDate,
+//      amount = 0,
+//      postings = transactionPostings,
+//    )
 
     // Return UUID here is put into the Nomis to GL map
-    generalLedgerApi.stubPostTransaction(
-      creditorSubAccountUuid = creditSubAccountUUID.toString(),
-      debtorSubAccountUuid = debtorSubAccountUUID.toString(),
-      reference = "REF",
-      returnUUID = returnGeneralLedgerUUID,
-    )
+//    generalLedgerApi.stubPostTransaction(
+//      creditorSubAccountUuid = creditSubAccountUUID.toString(),
+//      debtorSubAccountUuid = debtorSubAccountUUID.toString(),
+//      reference = "REF",
+//      returnUUID = returnGeneralLedgerUUID,
+//    )
 
     return returnGeneralLedgerUUID
   }

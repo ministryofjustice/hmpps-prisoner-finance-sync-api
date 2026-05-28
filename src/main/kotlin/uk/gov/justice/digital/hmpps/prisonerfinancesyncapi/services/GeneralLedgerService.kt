@@ -214,14 +214,18 @@ class GeneralLedgerService(
 
     val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findByCreatedAtBetween(day, endDateTime)
 
-    val transactionReconciliations = nomisTransactionMappingsForTheDay.map {
-      val glTransaction = generalLedgerApiClient.getTransaction(it.glTransactionUuid)
+    val transactionMap = nomisTransactionMappingsForTheDay.associateBy { it.glTransactionUuid }
 
+    val glUUIDs = nomisTransactionMappingsForTheDay.map { it.glTransactionUuid }
+
+    val glTransactions = generalLedgerApiClient.searchTransactions(glUUIDs)
+
+    val transactionReconciliations = glTransactions.map {
       TransactionReconciliationResponse(
-        nomisTransactionId = it.legacyTransactionId,
-        glTransactionId = it.glTransactionUuid,
-        transactionCreatedAt = it.createdAt,
-        postings = glTransaction!!.postings,
+        nomisTransactionId = transactionMap[it.id]!!.id,
+        glTransactionId = it.id,
+        transactionCreatedAt = transactionMap[it.id]!!.createdAt,
+        postings = it.postings,
       )
     }
 

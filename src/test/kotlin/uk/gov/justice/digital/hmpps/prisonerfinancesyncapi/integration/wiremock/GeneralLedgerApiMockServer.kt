@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Transaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
@@ -509,5 +510,15 @@ class GeneralLedgerApiMockServer :
         ),
     )
     return response
+  }
+
+  fun stubSearchTransactionsByUUIDs(glUUIDs : List<UUID>, transactionResponses : List<Transaction>
+                                    transactionUUID: UUID,
+                                    reference: String,
+                                    createdAt: Instant,
+                                    timeStamp: Instant,
+                                    amount: Long,
+                                    postings: List<PostingResponse>,) {
+
   }
 }
