@@ -214,12 +214,7 @@ class GeneralLedgerService(
 
     val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findByCreatedAtBetween(day, endDateTime)
 
-    if (nomisTransactionMappingsForTheDay.isEmpty()) {
-      return DailyReconciliationResponse(transactions = emptyList())
-    }
-
-    val transactionReconciliations = nomisTransactionMappingsForTheDay.map { it ->
-
+    val transactionReconciliations = nomisTransactionMappingsForTheDay.map {
       val glTransaction = generalLedgerApiClient.getTransaction(it.glTransactionUuid)
 
       TransactionReconciliationResponse(
@@ -229,6 +224,7 @@ class GeneralLedgerService(
         postings = glTransaction!!.postings,
       )
     }
+
     return DailyReconciliationResponse(transactions = transactionReconciliations)
   }
 }

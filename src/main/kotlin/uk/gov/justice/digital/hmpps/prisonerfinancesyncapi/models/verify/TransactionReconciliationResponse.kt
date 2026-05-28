@@ -15,6 +15,15 @@ data class TransactionReconciliationResponse(
   // subaccountCode
   // prisonNumber == account reference
   // offenderBookingId
+
+  // PF GL transaction reference -> glTransactionId
+
+  // Financial values -> in postings
+
+  // Transaction dates -> posting created date
+
+  // Additional NOMIS transaction metadata
+
 )
 
 // note: we will need to create another mapping peer sub account that maps to offenderBookingId + subacountCode

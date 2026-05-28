@@ -25,6 +25,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
+import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.Instant
 import java.util.UUID
 
@@ -491,6 +492,22 @@ class GeneralLedgerApiMockServer :
         ),
     )
 
+    return response
+  }
+
+  fun stubGetTransactionByUUIDNotFound(
+    transactionUUID: UUID,
+  ): ErrorResponse {
+    val response = ErrorResponse(status = 404)
+    stubFor(
+      get(urlPathEqualTo("/transactions/$transactionUUID"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(404)
+            .withBody(mapper.writeValueAsString(response)),
+        ),
+    )
     return response
   }
 }

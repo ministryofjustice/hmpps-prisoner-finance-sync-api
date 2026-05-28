@@ -41,53 +41,6 @@ class DailyReconciliationTest : IntegrationTestBase() {
     hmppsAuth.stubGrantToken()
   }
 
-  @Test
-  fun `should return a 200 response and an empty transactions list on a day with no transactions`() {
-    webTestClient
-      .get()
-      .uri("/verify/offender-transactions/2026-05-21")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
-
-    // this should return an empty list
-
-    // what happens if they send us a date, we have info from sync but not GL eg we have it in mapping but not in GL?
-    // / maybe raise an appinsights, dont send it back just fail. If there are single GL transactions that dont exist we cant send back empty
-
-    //
-  }
-
-  @Test
-  fun `should throw 400 Bad request when date is formated incorrectly`() {
-    webTestClient
-      .get()
-      .uri("/verify/offender-transactions/21-05-2026")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isBadRequest
-  }
-
-  @Test
-  fun `should return 403 when requesting account with incorrect role`() {
-    webTestClient
-      .get()
-      .uri("/verify/offender-transactions/2026-01-01")
-      .headers(setAuthorisation(roles = emptyList()))
-      .exchange()
-      .expectStatus().isForbidden
-  }
-
-  @Test
-  fun `should return 401 when unauthorized`() {
-    webTestClient
-      .get()
-      .uri("/verify/offender-transactions/2026-01-01")
-      .exchange()
-      .expectStatus().isUnauthorized
-  }
-
   private fun stubPrisonerCASHtoSPENDSXferResponsesFromGL(
     prisonNumber: String,
     parentAccountUUID: UUID,
@@ -298,5 +251,90 @@ class DailyReconciliationTest : IntegrationTestBase() {
     }
 
     assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
+  }
+
+  @Test
+  fun `should skip transactions when missing GL entries`() {
+    val baseDate = LocalDate.of(2025, 5, 21)
+    val createdAt = baseDate.atStartOfDay()
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val stringDate = baseDate.format(dateFormatter)
+
+    val prisonerParentAccountUUID = UUID.randomUUID()
+
+    generalLedgerApi.stubGetTransactionByUUIDNotFound(prisonerParentAccountUUID)
+
+    val generalLedgerEntries = listOf(
+      GeneralLedgerEntry(
+        entrySequence = 1,
+        code = 2101,
+        postingType = "DR",
+        amount = BigDecimal.valueOf(1),
+      ),
+      GeneralLedgerEntry(
+        entrySequence = 2,
+        code = 2102,
+        postingType = "CR",
+        amount = BigDecimal.valueOf(1),
+      ),
+    )
+
+    val offenderTransactions = integrationTestHelpers.createOffenderTransaction(
+      entrySequence = 1,
+      offenderId = 123456,
+      offenderDisplayId = "A9971EC",
+      offenderBookingId = 12345678,
+      subAccountType = "REG",
+      amount = BigDecimal.valueOf(1),
+      generalLedgerEntries = generalLedgerEntries,
+      reference = "REF",
+    )
+
+    integrationTestHelpers.syncOffenderTransactions(
+      1,
+      "LEI",
+      createdAt,
+      createdAt,
+      offenderTransactions = listOf(offenderTransactions),
+    )
+
+    val dailyReconciliationResponse = webTestClient
+      .get()
+      .uri("/verify/offender-transactions/$stringDate")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isOk
+      .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
+
+    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(0)
+  }
+
+  @Test
+  fun `should return 401 when unauthorized`() {
+    webTestClient
+      .get()
+      .uri("/verify/offender-transactions/2026-01-01")
+      .exchange()
+      .expectStatus().isUnauthorized
+  }
+
+  @Test
+  fun `should throw 400 Bad request when date is formated incorrectly`() {
+    webTestClient
+      .get()
+      .uri("/verify/offender-transactions/21-05-2026")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isBadRequest
+  }
+
+  @Test
+  fun `should return 403 when requesting account with incorrect role`() {
+    webTestClient
+      .get()
+      .uri("/verify/offender-transactions/2026-01-01")
+      .headers(setAuthorisation(roles = emptyList()))
+      .exchange()
+      .expectStatus().isForbidden
   }
 }
