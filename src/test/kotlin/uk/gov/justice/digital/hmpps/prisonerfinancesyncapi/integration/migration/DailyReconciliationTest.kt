@@ -15,6 +15,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
 import java.math.BigDecimal
@@ -47,7 +48,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
     creditSubAccountUUID: UUID,
     debtorSubAccountUUID: UUID,
     transactionDate: Instant,
-  ): UUID {
+  ): TransactionResponse {
     generalLedgerApi.stubGetAccount(
       reference = prisonNumber,
       subAccounts = listOf(
@@ -89,24 +90,16 @@ class DailyReconciliationTest : IntegrationTestBase() {
 
     val returnGeneralLedgerUUID = UUID.randomUUID()
 
-//    generalLedgerApi.stubGetTransactionByUUID(
-//      transactionUUID = returnGeneralLedgerUUID,
-//      reference = "REF",
-//      createdAt = transactionDate,
-//      timeStamp = transactionDate,
-//      amount = 0,
-//      postings = transactionPostings,
-//    )
-
     // Return UUID here is put into the Nomis to GL map
-//    generalLedgerApi.stubPostTransaction(
-//      creditorSubAccountUuid = creditSubAccountUUID.toString(),
-//      debtorSubAccountUuid = debtorSubAccountUUID.toString(),
-//      reference = "REF",
-//      returnUUID = returnGeneralLedgerUUID,
-//    )
+    val transactionResponse = generalLedgerApi.stubPostTransaction(
+      creditorSubAccountUuid = creditSubAccountUUID.toString(),
+      debtorSubAccountUuid = debtorSubAccountUUID.toString(),
+      reference = "REF",
+      returnUUID = returnGeneralLedgerUUID,
+      postings = transactionPostings,
+    )
 
-    return returnGeneralLedgerUUID
+    return transactionResponse
   }
 
   @Test
@@ -128,6 +121,8 @@ class DailyReconciliationTest : IntegrationTestBase() {
       debtorSubAccountUUID = debtorSubAccountUUID,
       transactionDate = syncOffenderTransactionDate,
     )
+
+    generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
 
     val generalLedgerEntries = listOf(
       GeneralLedgerEntry(
@@ -190,15 +185,20 @@ class DailyReconciliationTest : IntegrationTestBase() {
 
     val glUUIDs = mutableListOf<UUID>()
 
+    val glTransactions = mutableListOf<TransactionResponse>()
+
     repeat(3) {
-      val generalLedgerUUID = stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+      val transactionResponse = stubPrisonerCASHtoSPENDSXferResponsesFromGL(
         prisonNumber = prisonNumber,
         parentAccountUUID = prisonerParentAccountUUID,
         creditSubAccountUUID = creditSubAccountUUID,
         debtorSubAccountUUID = debtorSubAccountUUID,
         transactionDate = syncOffenderTransactionDate,
       )
-      glUUIDs.add(generalLedgerUUID)
+
+      glUUIDs.add(transactionResponse.id)
+
+      glTransactions.add(transactionResponse)
 
       val generalLedgerEntries = listOf(
         GeneralLedgerEntry(
@@ -235,6 +235,8 @@ class DailyReconciliationTest : IntegrationTestBase() {
       )
     }
 
+    generalLedgerApi.stubSearchTransactionsByUUIDs(glUUIDs, glTransactions)
+
     val dailyReconciliationResponse = webTestClient
       .get()
       .uri("/verify/offender-transactions/$stringDate")
@@ -262,7 +264,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
 
     val prisonerParentAccountUUID = UUID.randomUUID()
 
-    generalLedgerApi.stubGetTransactionByUUIDNotFound(prisonerParentAccountUUID)
+    generalLedgerApi.stubSearchTransactionsByUUIDs(listOf(prisonerParentAccountUUID), emptyList())
 
     val generalLedgerEntries = listOf(
       GeneralLedgerEntry(

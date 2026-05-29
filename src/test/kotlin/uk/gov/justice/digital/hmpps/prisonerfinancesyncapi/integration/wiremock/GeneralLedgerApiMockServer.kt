@@ -20,7 +20,6 @@ import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Transaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
@@ -407,7 +406,8 @@ class GeneralLedgerApiMockServer :
     debtorSubAccountUuid: String? = null,
     reference: String? = null,
     returnUUID: UUID = UUID.randomUUID(),
-  ) {
+    postings: List<PostingResponse> = emptyList(),
+  ): TransactionResponse {
     val response = TransactionResponse(
       id = returnUUID,
       reference = reference ?: "MOCK_TXN",
@@ -416,7 +416,7 @@ class GeneralLedgerApiMockServer :
       createdAt = Instant.now(),
       description = "Mock Transaction Description",
       timestamp = Instant.now(),
-      postings = emptyList(),
+      postings = postings,
     )
 
     var mapping = post(urlEqualTo("/transactions"))
@@ -440,6 +440,8 @@ class GeneralLedgerApiMockServer :
     }
 
     stubFor(mapping)
+
+    return response
   }
 
   // GET /sub-accounts/$accountId/balance
@@ -512,13 +514,19 @@ class GeneralLedgerApiMockServer :
     return response
   }
 
-  fun stubSearchTransactionsByUUIDs(glUUIDs : List<UUID>, transactionResponses : List<Transaction>
-                                    transactionUUID: UUID,
-                                    reference: String,
-                                    createdAt: Instant,
-                                    timeStamp: Instant,
-                                    amount: Long,
-                                    postings: List<PostingResponse>,) {
+  fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<TransactionResponse>): List<TransactionResponse> {
+    // This ensures that the mock behaves in the same way as the GL
+    val response = transactionResponses.filter { glUUIDs.contains(it.id) }
 
+    stubFor(
+      post(urlPathEqualTo("/transactions/search"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(mapper.writeValueAsString(transactionResponses)),
+        ),
+    )
+    return response
   }
 }
