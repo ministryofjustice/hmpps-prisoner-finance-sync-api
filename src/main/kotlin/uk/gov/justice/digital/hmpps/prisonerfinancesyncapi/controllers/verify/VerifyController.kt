@@ -12,12 +12,15 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import java.time.LocalDate
-import java.time.ZoneOffset
 
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
-class VerifyController(private val generalLedgerService: GeneralLedgerService) {
+class VerifyController(
+  private val generalLedgerService: GeneralLedgerService,
+  private val timeConversionService: TimeConversionService,
+) {
 
   @GetMapping(path = ["/verify/offender-transactions/{date}"])
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
@@ -27,9 +30,7 @@ class VerifyController(private val generalLedgerService: GeneralLedgerService) {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     date: LocalDate,
   ): ResponseEntity<DailyReconciliationResponse> {
-    val startOfDay = date.atStartOfDay().toInstant(
-      ZoneOffset.UTC,
-    )
+    val startOfDay = timeConversionService.toUtcStartOfDay(date)
 
     val response = generalLedgerService.retrieveNomisGLTransactionsForDay(startOfDay)
 

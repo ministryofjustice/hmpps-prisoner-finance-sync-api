@@ -19,7 +19,6 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ContainersConfig
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.PostgresContainer
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.registerPostgresProperties
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
@@ -36,7 +35,7 @@ import java.util.EnumSet
 )
 @ActiveProfiles("test")
 @AutoConfigureWebTestClient
-@Import(IntegrationTestHelpers::class, ContainersConfig::class)
+@Import(IntegrationTestHelpers::class)
 abstract class IntegrationTestBase {
 
   @LocalServerPort

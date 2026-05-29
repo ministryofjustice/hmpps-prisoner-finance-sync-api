@@ -48,7 +48,6 @@ dependencies {
   }
   testImplementation("org.testcontainers:postgresql:1.21.4")
   testImplementation("org.testcontainers:localstack:1.21.4")
-  testImplementation("org.springframework.boot:spring-boot-testcontainers")
 }
 
 kotlin {

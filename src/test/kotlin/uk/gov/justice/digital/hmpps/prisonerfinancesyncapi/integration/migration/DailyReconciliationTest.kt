@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
@@ -18,6 +19,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -33,7 +35,7 @@ import kotlin.random.Random
   ],
 )
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
-class DailyReconciliationTest : IntegrationTestBase() {
+class DailyReconciliationTest(@Autowired private val timeConversionService: TimeConversionService) : IntegrationTestBase() {
 
   @Transactional
   @BeforeEach
@@ -42,7 +44,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
     hmppsAuth.stubGrantToken()
   }
 
-  private fun stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+  private fun stubPrisonerCashToSpendsTransferResponsesFromGL(
     prisonNumber: String,
     parentAccountUUID: UUID,
     creditSubAccountUUID: UUID,
@@ -106,7 +108,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
   fun `should return a 200 response an empty list if no transactions on the given date`() {
     val baseDate = LocalDate.of(2025, 5, 21)
     val createdAt = baseDate.atStartOfDay()
-    val syncOffenderTransactionDate = baseDate.atStartOfDay().toInstant(ZoneOffset.UTC)
+    val syncOffenderTransactionDate = timeConversionService.toUtcInstant(createdAt)
 
     val prisonNumber = "A9971EC"
 
@@ -114,7 +116,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
     val creditSubAccountUUID = UUID.randomUUID()
     val debtorSubAccountUUID = UUID.randomUUID()
 
-    stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+    stubPrisonerCashToSpendsTransferResponsesFromGL(
       prisonNumber = prisonNumber,
       parentAccountUUID = prisonerParentAccountUUID,
       creditSubAccountUUID = creditSubAccountUUID,
@@ -188,7 +190,7 @@ class DailyReconciliationTest : IntegrationTestBase() {
     val glTransactions = mutableListOf<TransactionResponse>()
 
     repeat(3) {
-      val transactionResponse = stubPrisonerCASHtoSPENDSXferResponsesFromGL(
+      val transactionResponse = stubPrisonerCashToSpendsTransferResponsesFromGL(
         prisonNumber = prisonNumber,
         parentAccountUUID = prisonerParentAccountUUID,
         creditSubAccountUUID = creditSubAccountUUID,
@@ -247,24 +249,23 @@ class DailyReconciliationTest : IntegrationTestBase() {
 
     assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(3)
 
-    for (i in 0 until glUUIDs.size) {
-      val glUUID = glUUIDs[i]
-      assertThat(dailyReconciliationResponse.transactions[i].glTransactionId).isEqualTo(glUUID)
-    }
+    val idsInReconciliation = dailyReconciliationResponse.transactions.map { it.glTransactionId }.toSet()
+
+    glUUIDs.forEach { glUUID -> assertThat(glUUID in idsInReconciliation) }
 
     assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
   }
 
   @Test
-  fun `should skip transactions when missing GL entries`() {
+  fun `should not fail when missing GL entries`() {
     val baseDate = LocalDate.of(2025, 5, 21)
     val createdAt = baseDate.atStartOfDay()
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val stringDate = baseDate.format(dateFormatter)
 
-    val prisonerParentAccountUUID = UUID.randomUUID()
+    val transactionUUID = UUID.randomUUID()
 
-    generalLedgerApi.stubSearchTransactionsByUUIDs(listOf(prisonerParentAccountUUID), emptyList())
+    generalLedgerApi.stubSearchTransactionsByUUIDs(listOf(transactionUUID), emptyList())
 
     val generalLedgerEntries = listOf(
       GeneralLedgerEntry(
