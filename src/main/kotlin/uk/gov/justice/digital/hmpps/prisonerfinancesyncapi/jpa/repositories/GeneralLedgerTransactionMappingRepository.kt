@@ -14,5 +14,5 @@ interface GeneralLedgerTransactionMappingRepository : JpaRepository<GeneralLedge
     WHERE glm.createdAt >= :dateStart AND glm.createdAt <:dateEnd
 """,
   )
-  fun findByCreatedAtBetween(dateStart: Instant, dateEnd: Instant): List<GeneralLedgerTransactionMapping>
+  fun findAllOnDate(dateStart: Instant, dateEnd: Instant): List<GeneralLedgerTransactionMapping>
 }

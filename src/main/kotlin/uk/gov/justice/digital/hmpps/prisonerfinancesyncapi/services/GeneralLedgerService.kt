@@ -210,7 +210,7 @@ class GeneralLedgerService(
   fun retrieveNomisGLTransactionsForDay(day: Instant): DailyReconciliationResponse {
     val endDateTime = day.plus(Duration.ofDays(1)).minusNanos(1)
 
-    val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findByCreatedAtBetween(day, endDateTime)
+    val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findAllOnDate(day, endDateTime)
     val transactionMap = nomisTransactionMappingsForTheDay.associateBy { it.glTransactionUuid }
 
     val glUUIDs = nomisTransactionMappingsForTheDay.map { it.glTransactionUuid }
