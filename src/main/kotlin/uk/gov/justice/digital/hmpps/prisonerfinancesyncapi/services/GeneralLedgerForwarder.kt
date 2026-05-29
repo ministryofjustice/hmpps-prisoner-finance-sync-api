@@ -27,8 +27,10 @@ class GeneralLedgerForwarder(
       try {
         return block()
       } catch (e: WebClientResponseException) {
+        print(e)
         log.error("HTTP Error to General Ledger. HTTP ${e.statusCode} - Body: ${e.responseBodyAsString}, ${e.request}", e)
       } catch (e: Exception) {
+        print(e)
         log.error(logErrorMessage, e)
       }
     }

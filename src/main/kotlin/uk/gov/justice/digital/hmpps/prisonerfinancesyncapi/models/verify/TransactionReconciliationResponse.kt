@@ -10,11 +10,11 @@ data class TransactionReconciliationResponse(
   val transactionCreatedAt: Instant,
   val postings: List<PostingResponse>,
   // stuff we might need
-    // caseloadId,
-    // in the postings
-      // subaccountCode
-      // prisonNumber == account reference
-      // offenderBookingId
+  // caseloadId,
+  // in the postings
+  // subaccountCode
+  // prisonNumber == account reference
+  // offenderBookingId
 )
 data class DailyReconciliationResponse(
   val transactions: List<TransactionReconciliationResponse>,
