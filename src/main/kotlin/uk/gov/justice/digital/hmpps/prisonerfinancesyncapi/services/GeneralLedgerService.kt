@@ -218,7 +218,7 @@ class GeneralLedgerService(
 
     val transactionReconciliations = glTransactions.map {
       TransactionReconciliationResponse(
-        nomisTransactionId = transactionMap.getValue(it.id).id,
+        nomisTransactionId = transactionMap.getValue(it.id).legacyTransactionId,
         glTransactionId = it.id,
         transactionCreatedAt = transactionMap.getValue(it.id).createdAt,
         postings = it.postings,
