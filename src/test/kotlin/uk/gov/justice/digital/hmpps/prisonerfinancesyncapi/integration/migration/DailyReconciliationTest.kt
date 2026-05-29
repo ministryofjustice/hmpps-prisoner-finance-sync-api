@@ -185,7 +185,7 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
     val creditSubAccountUUID = UUID.randomUUID()
     val debtorSubAccountUUID = UUID.randomUUID()
 
-    val glUUIDs = mutableListOf<UUID>()
+    val glIdAndNomisIdPairs = mutableListOf<Pair<UUID, Long>>()
 
     val glTransactions = mutableListOf<TransactionResponse>()
 
@@ -197,8 +197,6 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
         debtorSubAccountUUID = debtorSubAccountUUID,
         transactionDate = syncOffenderTransactionDate,
       )
-
-      glUUIDs.add(transactionResponse.id)
 
       glTransactions.add(transactionResponse)
 
@@ -228,14 +226,19 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
         reference = "REF",
       )
 
+      val nomisID = Random.nextLong()
+      glIdAndNomisIdPairs.add(Pair(transactionResponse.id, nomisID))
+
       integrationTestHelpers.syncOffenderTransactions(
-        Random.nextLong(),
+        nomisID,
         "LEI",
         createdAt,
         createdAt,
         offenderTransactions = listOf(offenderTransactions),
       )
     }
+
+    val glUUIDs = glIdAndNomisIdPairs.map { it.first }
 
     generalLedgerApi.stubSearchTransactionsByUUIDs(glUUIDs, glTransactions)
 
@@ -249,9 +252,9 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
 
     assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(3)
 
-    val idsInReconciliation = dailyReconciliationResponse.transactions.map { it.glTransactionId }.toSet()
+    val idsInReconciliation = dailyReconciliationResponse.transactions.map { Pair(it.glTransactionId, it.nomisTransactionId) }.toSet()
 
-    glUUIDs.forEach { glUUID -> assertThat(glUUID in idsInReconciliation) }
+    glIdAndNomisIdPairs.forEach { pair -> assertThat(pair in idsInReconciliation).isTrue() }
 
     assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
   }
