@@ -15,24 +15,21 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @DataJpaTest
-class GeneralLedgerTransactionMappingRepositoryTest (
+class GeneralLedgerTransactionMappingRepositoryTest(
   @Autowired private val entityManager: TestEntityManager,
   @Autowired private val glTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
-) :
-  RepositoryTestBase() {
+) : RepositoryTestBase() {
 
-  fun setup () {
+  fun setup() {
     glTransactionMappingRepository.deleteAll()
     entityManager.flush()
-
-
   }
 
   @Nested
   inner class FindByCreatedAtBetween {
 
     @Test
-    fun`should only find mappings created on the day (midnight included)` () {
+    fun `should only find mappings created on the day (midnight included)`() {
       val timeConversion = TimeConversionService()
       val firstMidnight = timeConversion.toUtcStartOfDay(LocalDate.of(2020, 1, 1))
       val firstLunchtime = timeConversion.toUtcInstant(LocalDateTime.of(2020, 1, 1, 13, 30))
@@ -40,12 +37,14 @@ class GeneralLedgerTransactionMappingRepositoryTest (
 
       val times = listOf(firstMidnight, firstLunchtime, secondMidnight)
 
-      val transactionMaps = times.withIndex().map {(index, it) -> GeneralLedgerTransactionMapping(
-        legacyTransactionId = index.toLong(),
-        entrySequence = 1,
-        glTransactionUuid = UUID.randomUUID(),
-        createdAt = it,
-      ) }
+      val transactionMaps = times.withIndex().map { (index, it) ->
+        GeneralLedgerTransactionMapping(
+          legacyTransactionId = index.toLong(),
+          entrySequence = 1,
+          glTransactionUuid = UUID.randomUUID(),
+          createdAt = it,
+        )
+      }
 
       glTransactionMappingRepository.saveAll(transactionMaps)
       entityManager.flush()
@@ -56,6 +55,4 @@ class GeneralLedgerTransactionMappingRepositoryTest (
       assertThat(mappingsFromTheFirst[1].createdAt).isEqualTo(firstLunchtime)
     }
   }
-
-
 }
