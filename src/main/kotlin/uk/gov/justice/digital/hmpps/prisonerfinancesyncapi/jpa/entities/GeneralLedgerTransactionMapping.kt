@@ -31,6 +31,6 @@ class GeneralLedgerTransactionMapping(
   @Column(nullable = false)
   val glTransactionUuid: UUID,
 
-  @Column(nullable = false)
+  @Column(name = "created_at", nullable = false)
   val createdAt: Instant = Instant.now(),
 )

@@ -449,6 +449,7 @@ class GeneralLedgerServiceTest {
       whenever(request.caseloadId).thenReturn("MDI")
       whenever(request.transactionTimestamp).thenReturn(LocalDateTime.now())
       whenever(request.offenderTransactions).thenReturn(listOf(tx1, tx2))
+      whenever(request.createdAt).thenReturn(LocalDateTime.now())
 
       whenever(generalLedgerAccountResolver.resolveSubAccount(any(), any(), any(), any(), any()))
         .thenReturn(

@@ -175,6 +175,10 @@ Download the latest spec:
 ```sh
 ./gradlew writeGeneralledgerJson
 ```
+build API client:
+```sh
+./gradlew buildGeneralledgerApiClient
+```
 
 Verify & Regenerate: Check the diff in openapi-specs/generalledger.json and run a build to ensure the code compiles.
 

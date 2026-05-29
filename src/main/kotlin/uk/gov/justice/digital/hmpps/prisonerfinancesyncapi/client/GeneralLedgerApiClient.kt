@@ -12,6 +12,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import java.util.UUID
 import kotlin.collections.firstOrNull
 
@@ -75,5 +76,15 @@ class GeneralLedgerApiClient(
 
     return response?.id
       ?: throw IllegalStateException("New GL API returned null body for transaction ${request.reference}")
+  }
+
+  // GET /transactions/transactionUUID
+  fun getTransaction(transactionUUID: UUID): TransactionResponse? = transactionApi.getTransactionById(transactionUUID).block()
+
+  // POST /transactions/search
+  fun searchTransactions(glTransactionUUIDs: List<UUID>): List<TransactionResponse> {
+    val response = transactionApi.searchTransactions(glTransactionUUIDs).block()
+    return response
+      ?: throw IllegalStateException("GL Api returned null body for search transactions $response")
   }
 }

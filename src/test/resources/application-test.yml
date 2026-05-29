@@ -40,6 +40,7 @@ hmpps:
 general-ledger-api:
     url: http://localhost:8091
 
+
 springdoc:
   packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi
   packages-to-exclude:
@@ -49,3 +50,4 @@ springdoc:
   swagger-ui:
     version: 5.32.2
     enabled: true
+

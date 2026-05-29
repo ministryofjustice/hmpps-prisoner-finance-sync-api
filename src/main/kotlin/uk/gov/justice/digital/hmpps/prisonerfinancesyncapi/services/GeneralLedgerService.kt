@@ -14,8 +14,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.TransactionReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 import kotlin.math.abs
 
@@ -84,9 +88,9 @@ class GeneralLedgerService(
             legacyTransactionId = request.transactionId,
             entrySequence = transaction.entrySequence,
             glTransactionUuid = transactionGLUUID,
+            createdAt = timeConversionService.toUtcInstant(request.createdAt),
           ),
         )
-
         transactionGLUUIDs.add(transactionGLUUID)
       } catch (e: Exception) {
         val properties = mapOf(
@@ -201,5 +205,26 @@ class GeneralLedgerService(
     }
 
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
+  }
+
+  fun retrieveNomisGLTransactionsForDay(day: Instant): DailyReconciliationResponse {
+    val endDateTime = day.plus(Duration.ofDays(1)).minusNanos(1)
+
+    val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findAllOnDate(day, endDateTime)
+    val transactionMap = nomisTransactionMappingsForTheDay.associateBy { it.glTransactionUuid }
+
+    val glUUIDs = nomisTransactionMappingsForTheDay.map { it.glTransactionUuid }
+    val glTransactions = generalLedgerApiClient.searchTransactions(glUUIDs)
+
+    val transactionReconciliations = glTransactions.map {
+      TransactionReconciliationResponse(
+        nomisTransactionId = transactionMap.getValue(it.id).id,
+        glTransactionId = it.id,
+        transactionCreatedAt = transactionMap.getValue(it.id).createdAt,
+        postings = it.postings,
+      )
+    }
+
+    return DailyReconciliationResponse(transactions = transactionReconciliations)
   }
 }
