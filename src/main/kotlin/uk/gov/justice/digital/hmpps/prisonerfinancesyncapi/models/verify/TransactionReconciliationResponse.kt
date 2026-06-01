@@ -9,12 +9,6 @@ data class TransactionReconciliationResponse(
   val glTransactionId: UUID,
   val transactionCreatedAt: Instant,
   val postings: List<SearchPostingResponse>,
-  // stuff we might need
-  // caseloadId,
-  // in the postings
-  // subaccountCode
-  // prisonNumber == account reference
-  // offenderBookingId
 )
 data class DailyReconciliationResponse(
   val transactions: List<TransactionReconciliationResponse>,
