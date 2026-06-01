@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.jpa.repository
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,6 +21,7 @@ class GeneralLedgerTransactionMappingRepositoryTest(
   @Autowired private val glTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
 ) : RepositoryTestBase() {
 
+  @BeforeEach
   fun setup() {
     glTransactionMappingRepository.deleteAll()
     entityManager.flush()

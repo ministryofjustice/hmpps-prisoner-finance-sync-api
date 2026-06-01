@@ -15,8 +15,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
@@ -50,20 +51,23 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
     creditSubAccountUUID: UUID,
     debtorSubAccountUUID: UUID,
     transactionDate: Instant,
-  ): TransactionResponse {
+  ): SearchTransactionResponse {
+    val subAccountOneRef = "CASH"
+    val subAccountTwoRef = "SPENDS"
+
     generalLedgerApi.stubGetAccount(
       reference = prisonNumber,
       subAccounts = listOf(
         SubAccountResponse(
           id = debtorSubAccountUUID,
-          reference = "CASH",
+          reference = subAccountOneRef,
           parentAccountId = parentAccountUUID,
           createdBy = "TEST",
           createdAt = Instant.now(),
         ),
         SubAccountResponse(
           id = creditSubAccountUUID,
-          reference = "SPENDS",
+          reference = subAccountTwoRef,
           parentAccountId = parentAccountUUID,
           createdBy = "TEST",
           createdAt = Instant.now(),
@@ -101,7 +105,32 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
       postings = transactionPostings,
     )
 
-    return transactionResponse
+    val searchPostingResponses = transactionResponse.postings.withIndex().map { (index, posting) ->
+      SearchPostingResponse(
+        id = posting.id,
+        createdBy = posting.createdBy,
+        createdAt = posting.createdAt,
+        type = SearchPostingResponse.Type.valueOf(posting.type.name),
+        amount = posting.amount,
+        subAccountID = posting.subAccountID,
+        subAccountReference = if (index == 0) subAccountOneRef else subAccountTwoRef,
+        accountID = parentAccountUUID,
+        accountReference = prisonNumber,
+      )
+    }
+
+    val searchTransactionResponse = SearchTransactionResponse(
+      id = transactionResponse.id,
+      createdBy = transactionResponse.createdBy,
+      createdAt = transactionResponse.createdAt,
+      reference = transactionResponse.reference,
+      description = transactionResponse.description,
+      timestamp = transactionResponse.timestamp,
+      amount = transactionResponse.amount,
+      postings = searchPostingResponses,
+    )
+
+    return searchTransactionResponse
   }
 
   @Test
@@ -187,7 +216,7 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
 
     val glIdAndNomisIdPairs = mutableListOf<Pair<UUID, Long>>()
 
-    val glTransactions = mutableListOf<TransactionResponse>()
+    val glTransactions = mutableListOf<SearchTransactionResponse>()
 
     repeat(3) {
       val transactionResponse = stubPrisonerCashToSpendsTransferResponsesFromGL(
