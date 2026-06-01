@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
@@ -514,7 +515,7 @@ class GeneralLedgerApiMockServer :
     return response
   }
 
-  fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<TransactionResponse>): List<TransactionResponse> {
+  fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<SearchTransactionResponse>): List<SearchTransactionResponse> {
     // This ensures that the mock behaves in the same way as the GL
     val response = transactionResponses.filter { glUUIDs.contains(it.id) }
 

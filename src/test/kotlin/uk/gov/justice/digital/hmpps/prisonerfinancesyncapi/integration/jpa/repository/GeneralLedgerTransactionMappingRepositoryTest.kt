@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.jpa.repository
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,6 +28,9 @@ class GeneralLedgerTransactionMappingRepositoryTest(
 
   @Nested
   inner class FindByCreatedAtBetween {
+
+    @BeforeEach
+    internal fun setUp() {}
 
     @Test
     fun `should only find mappings created on the day (midnight included)`() {

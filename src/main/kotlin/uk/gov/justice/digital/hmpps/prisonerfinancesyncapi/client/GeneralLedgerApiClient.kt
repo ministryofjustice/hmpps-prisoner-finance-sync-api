@@ -10,6 +10,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateStatementBalanceRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
@@ -82,7 +83,7 @@ class GeneralLedgerApiClient(
   fun getTransaction(transactionUUID: UUID): TransactionResponse? = transactionApi.getTransactionById(transactionUUID).block()
 
   // POST /transactions/search
-  fun searchTransactions(glTransactionUUIDs: List<UUID>): List<TransactionResponse> {
+  fun searchTransactions(glTransactionUUIDs: List<UUID>): List<SearchTransactionResponse> {
     val response = transactionApi.searchTransactions(glTransactionUUIDs).block()
     return response
       ?: throw IllegalStateException("GL Api returned null body for search transactions $response")
