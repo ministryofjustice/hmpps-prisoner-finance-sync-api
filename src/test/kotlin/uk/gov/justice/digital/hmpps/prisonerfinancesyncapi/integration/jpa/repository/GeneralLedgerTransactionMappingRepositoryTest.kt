@@ -21,6 +21,7 @@ class GeneralLedgerTransactionMappingRepositoryTest(
   @Autowired private val glTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
 ) : RepositoryTestBase() {
 
+  @BeforeEach
   fun setup() {
     glTransactionMappingRepository.deleteAll()
     entityManager.flush()
@@ -28,9 +29,6 @@ class GeneralLedgerTransactionMappingRepositoryTest(
 
   @Nested
   inner class FindByCreatedAtBetween {
-
-    @BeforeEach
-    internal fun setUp() {}
 
     @Test
     fun `should only find mappings created on the day (midnight included)`() {
