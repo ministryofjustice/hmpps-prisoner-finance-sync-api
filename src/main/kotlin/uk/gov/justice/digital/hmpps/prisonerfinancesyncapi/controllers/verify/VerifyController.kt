@@ -29,8 +29,8 @@ class VerifyController(
 ) {
 
   @Operation(
-    summary = "Verify Nomis transactions in the General Ledger",
-    description = "Retrieve a list of Nomis transactions synchronised to the Prisoner Finance general ledger on a given date, using the createdAt field.",
+    summary = "Verify NOMIS transactions in the General Ledger",
+    description = "Retrieve a list of NOMIS transactions synchronised to the Prisoner Finance general ledger on a given date, using the createdAt field.",
   )
   @GetMapping(path = ["/verify/offender-transactions/{date}"])
   @ApiResponses(
