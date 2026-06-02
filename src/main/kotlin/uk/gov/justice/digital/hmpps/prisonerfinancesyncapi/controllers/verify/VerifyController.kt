@@ -1,5 +1,10 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.verify
 
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.format.annotation.DateTimeFormat
@@ -13,6 +18,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
+import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
 
 @Tag(name = TAG_NOMIS_SYNC)
@@ -22,7 +28,40 @@ class VerifyController(
   private val timeConversionService: TimeConversionService,
 ) {
 
+  @Operation(
+    summary = "Verify Nomis transactions in the General Ledger",
+    description = "Retrieve a list of Nomis transactions synchronised to the Prisoner Finance general ledger on a given date, using the createdAt field.",
+  )
   @GetMapping(path = ["/verify/offender-transactions/{date}"])
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "200",
+        description = "General ledger transactions successfully retrieved.",
+        content = [Content(mediaType = "application/json", schema = Schema(implementation = DailyReconciliationResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid date format.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun getDailyReconciliation(
