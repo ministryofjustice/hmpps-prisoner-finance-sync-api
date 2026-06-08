@@ -28,6 +28,7 @@ class GeneralLedgerTransactionMapping(
   @Column(nullable = false)
   val entrySequence: Int,
 
+  // TODO: We need to add an index to this
   @Column(nullable = false)
   val glTransactionUuid: UUID,
 

@@ -408,11 +408,12 @@ class GeneralLedgerApiMockServer :
     reference: String? = null,
     returnUUID: UUID = UUID.randomUUID(),
     postings: List<PostingResponse> = emptyList(),
+    amount: Long = 1000,
   ): TransactionResponse {
     val response = TransactionResponse(
       id = returnUUID,
       reference = reference ?: "MOCK_TXN",
-      amount = 1000,
+      amount = amount,
       createdBy = "MOCK_USER",
       createdAt = Instant.now(),
       description = "Mock Transaction Description",

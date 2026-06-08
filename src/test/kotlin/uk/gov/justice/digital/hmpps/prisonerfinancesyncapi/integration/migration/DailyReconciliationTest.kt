@@ -116,21 +116,28 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
         subAccountReference = if (index == 0) subAccountOneRef else subAccountTwoRef,
         accountID = parentAccountUUID,
         accountReference = prisonNumber,
+        entrySequence = index.toLong() + 1,
       )
     }
 
-    val searchTransactionResponse = SearchTransactionResponse(
-      id = transactionResponse.id,
-      createdBy = transactionResponse.createdBy,
-      createdAt = transactionResponse.createdAt,
-      reference = transactionResponse.reference,
-      description = transactionResponse.description,
-      timestamp = transactionResponse.timestamp,
-      amount = transactionResponse.amount,
-      postings = searchPostingResponses,
+    val glTransactionResponse = generalLedgerApi.stubSearchTransactionsByUUIDs(
+      listOf(transactionResponse.id),
+      listOf(
+        SearchTransactionResponse(
+          id = transactionResponse.id,
+          createdBy = "",
+          createdAt = transactionResponse.createdAt,
+          reference = transactionResponse.reference,
+          description = transactionResponse.description,
+          timestamp = transactionResponse.timestamp,
+          amount = transactionResponse.amount,
+          entrySequence = 1,
+          postings = searchPostingResponses,
+        ),
+      ),
     )
 
-    return searchTransactionResponse
+    return glTransactionResponse.first()
   }
 
   @Test

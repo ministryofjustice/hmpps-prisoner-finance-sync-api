@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-06-01.501.7c68108"
+    "version" : "2026-06-08.504.bdc3206"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1747,9 +1747,14 @@
           "accountReference" : {
             "type" : "string",
             "description" : "The reference of the account associated with the posting"
+          },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The entry sequence of the posting"
           }
         },
-        "required" : [ "accountID", "accountReference", "amount", "createdAt", "createdBy", "id", "subAccountID", "subAccountReference", "type" ]
+        "required" : [ "accountID", "accountReference", "amount", "createdAt", "createdBy", "entrySequence", "id", "subAccountID", "subAccountReference", "type" ]
       },
       "SearchTransactionResponse" : {
         "type" : "object",
@@ -1787,6 +1792,11 @@
             "format" : "int64",
             "description" : "The total transaction monetary amount in pence"
           },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The entrySequence of the transaction"
+          },
           "postings" : {
             "type" : "array",
             "description" : "A collection of postings for the transaction",
@@ -1795,7 +1805,7 @@
             }
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "description", "id", "postings", "reference", "timestamp" ]
+        "required" : [ "amount", "createdAt", "createdBy", "description", "entrySequence", "id", "postings", "reference", "timestamp" ]
       },
       "CreateStatementBalanceRequest" : {
         "type" : "object",

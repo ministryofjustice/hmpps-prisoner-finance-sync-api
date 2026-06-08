@@ -18,14 +18,18 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
+import java.util.UUID
 
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
 class ReconciliationController(
   @param:Autowired private val ledgerQueryService: LedgerQueryService,
   @param:Autowired private val reconciliationService: ReconciliationService,
+  @param:Autowired private val generalLedgerService: GeneralLedgerService,
 ) {
   @Operation(
     summary = "Get a list of all subaccount balances for a prisoner, grouped by establishment where transactions occurred",
@@ -72,5 +76,17 @@ class ReconciliationController(
     val items = ledgerQueryService.listGeneralLedgerBalances(prisonId)
     val body = GeneralLedgerBalanceDetailsList(items)
     return ResponseEntity.ok(body)
+  }
+
+  @GetMapping(
+    path = [
+      "/reconcile/offender-transactions/{synchronizedTransactionId}",
+    ],
+    produces = [MediaType.APPLICATION_JSON_VALUE],
+  )
+  fun getTransactionReconciliationById(@PathVariable synchronizedTransactionId: UUID): ResponseEntity<SyncGeneralLedgerTransactionResponse> {
+    val response = generalLedgerService.retrieveNomisGLTransactionByGlId(synchronizedTransactionId)
+
+    return ResponseEntity.ok(response)
   }
 }

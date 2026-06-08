@@ -11,8 +11,10 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.TransactionReconciliationResponse
@@ -20,6 +22,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.Ledge
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.math.abs
 
@@ -226,5 +229,32 @@ class GeneralLedgerService(
     }
 
     return DailyReconciliationResponse(transactions = transactionReconciliations)
+  }
+
+  fun retrieveNomisGLTransactionByGlId(glUUID: UUID): SyncGeneralLedgerTransactionResponse? {
+    val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByGlTransactionUuid(glUUID)
+
+    val glTransaction = generalLedgerApiClient.searchTransactions(listOf(glUUID)).firstOrNull()
+
+    if (transactionMapping == null || glTransaction == null) {
+      return null
+    }
+
+    return SyncGeneralLedgerTransactionResponse(
+      synchronizedTransactionId = glUUID,
+      legacyTransactionId = transactionMapping.legacyTransactionId,
+      description = glTransaction.description,
+      reference = glTransaction.reference,
+      caseloadId = "",
+      transactionType = "",
+      transactionTimestamp = timeConversionService.toLocalDateTime(glTransaction.timestamp),
+      createdAt = timeConversionService.toLocalDateTime(glTransaction.createdAt),
+      createdBy = "",
+      createdByDisplayName = "",
+      lastModifiedAt = LocalDateTime.now(),
+      lastModifiedBy = "",
+      lastModifiedByDisplayName = "",
+      generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+    )
   }
 }
