@@ -92,6 +92,8 @@ class GeneralLedgerService(
             entrySequence = transaction.entrySequence,
             glTransactionUuid = transactionGLUUID,
             createdAt = timeConversionService.toUtcInstant(request.createdAt),
+            caseloadId = request.caseloadId,
+            transactionType = transaction.type,
           ),
         )
         transactionGLUUIDs.add(transactionGLUUID)
@@ -245,8 +247,8 @@ class GeneralLedgerService(
       legacyTransactionId = transactionMapping.legacyTransactionId,
       description = glTransaction.description,
       reference = glTransaction.reference,
-      caseloadId = "",
-      transactionType = "",
+      caseloadId = transactionMapping.caseloadId ?: "",
+      transactionType = transactionMapping.transactionType ?: "",
       transactionTimestamp = timeConversionService.toLocalDateTime(glTransaction.timestamp),
       createdAt = timeConversionService.toLocalDateTime(glTransaction.createdAt),
       createdBy = "",

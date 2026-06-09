@@ -27,7 +27,8 @@ class LedgerAccountMappingService {
     return PrisonAccountDetails(code, splitReference[1].trim())
   }
 
-  fun mapSubAccountPrisonerReferenceToNOMIS(referenceGLCode: String): Int = prisonerSubAccounts[referenceGLCode] ?: throw IllegalArgumentException("Unknown GL Prisoner reference Code: $referenceGLCode")
+  fun mapSubAccountPrisonerReferenceToNOMIS(referenceGLCode: String): Int = prisonerSubAccounts[referenceGLCode]
+    ?: throw IllegalArgumentException("Unknown GL Prisoner reference Code: $referenceGLCode")
 
   fun isValidPrisonerAccountCode(prisonerAccountCode: Int): Boolean {
     try {
@@ -35,6 +36,14 @@ class LedgerAccountMappingService {
       return true
     } catch (_: IllegalArgumentException) {
       return false
+    }
+  }
+
+  fun mapGLRefToNOMISCode(referenceGLCode: String): Int {
+    try {
+      return mapSubAccountPrisonerReferenceToNOMIS(referenceGLCode)
+    } catch (_: IllegalArgumentException) {
+      return mapSubAccountGLReferenceToNOMIS(referenceGLCode).code
     }
   }
 }

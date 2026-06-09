@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Digits
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
 import java.math.BigDecimal
 
 @Schema(description = "Represents a general ledger entry.")
@@ -27,10 +28,11 @@ data class GeneralLedgerEntry(
 ) {
   companion object {
 
+    private val accountMappingService = LedgerAccountMappingService()
+
     fun fromGeneralLedgerPostingResponse(glSearchPosting: SearchPostingResponse): GeneralLedgerEntry = GeneralLedgerEntry(
       entrySequence = glSearchPosting.entrySequence.toInt(),
-      // code = glSearchPosting.subAccountReference.split(":")[1].toInt(),
-      code = 2000,
+      code = accountMappingService.mapGLRefToNOMISCode(glSearchPosting.subAccountReference),
       postingType = glSearchPosting.type.value,
       amount = (glSearchPosting.amount.toBigDecimal()).movePointLeft(2),
     )

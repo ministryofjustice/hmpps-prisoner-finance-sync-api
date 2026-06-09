@@ -8,6 +8,7 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.verify
 import org.springframework.http.HttpStatusCode
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 
@@ -19,6 +20,9 @@ class ReconciliationControllerTest {
 
   @Mock
   private lateinit var reconciliationService: ReconciliationService
+
+  @Mock
+  private lateinit var generalLedgerService: GeneralLedgerService
 
   @InjectMocks
   private lateinit var reconciliationController: ReconciliationController

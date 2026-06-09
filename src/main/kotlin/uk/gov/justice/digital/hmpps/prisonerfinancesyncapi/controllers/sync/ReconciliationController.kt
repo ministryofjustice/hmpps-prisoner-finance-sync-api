@@ -22,6 +22,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGener
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
+import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.util.UUID
 
 @Tag(name = TAG_NOMIS_SYNC)
@@ -78,12 +79,51 @@ class ReconciliationController(
     return ResponseEntity.ok(body)
   }
 
+  @Operation(
+    summary = "Retrieve an offender transaction by its ID using data from the prisoner general ledger",
+  )
   @GetMapping(
     path = [
       "/reconcile/offender-transactions/{synchronizedTransactionId}",
     ],
     produces = [MediaType.APPLICATION_JSON_VALUE],
   )
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "200",
+        description = "Retrieve an offender transaction by its ID using data from the prisoner general ledger",
+        content = [Content(schema = Schema(implementation = SyncGeneralLedgerTransactionResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "404",
+        description = "Not Found - Prison Number not found",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
+  @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
+  @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun getTransactionReconciliationById(@PathVariable synchronizedTransactionId: UUID): ResponseEntity<SyncGeneralLedgerTransactionResponse> {
     val response = generalLedgerService.retrieveNomisGLTransactionByGlId(synchronizedTransactionId)
 

@@ -44,6 +44,8 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     val subAccountOneRef = "CASH"
     val subAccountTwoRef = "SPENDS"
 
+    val subAccountsRefs = listOf(subAccountOneRef, subAccountTwoRef)
+
     generalLedgerApi.stubGetAccount(
       reference = prisonNumber,
       subAccounts = listOf(
@@ -102,7 +104,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         type = SearchPostingResponse.Type.valueOf(it.type.name),
         amount = it.amount,
         subAccountID = it.subAccountID,
-        subAccountReference = "",
+        subAccountReference = subAccountsRefs[index],
         accountID = parentAccountUUID,
         accountReference = prisonNumber,
         entrySequence = index.toLong() + 1,
@@ -136,10 +138,10 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     hmppsAuth.stubGrantToken()
   }
 
+  // At present Syscon only sends one-to-one transactions.
+  // IE. CANT transactions are split into multiple one-to-one transactions
   @Test
-  fun `should return the correct transaction`() {
-    val glTransactionUUID: UUID = UUID.randomUUID()
-
+  fun `Should return the general ledger transaction in Syscon format when given the corresponding ID`() {
     val legacyTransactionId = 12345L
 
     val prisonNumber = "A9971EC"
@@ -148,7 +150,6 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     val debtorSubAccountId: UUID = UUID.randomUUID()
 
     val transactionDate = Instant.now()
-
     val glTransaction = stubPrisonerCashToSpendsTransferResponsesFromGL(
       prisonNumber = prisonNumber,
       parentAccountUUID = prisonerAccountId,
@@ -194,25 +195,25 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
     val transactionResponse = webTestClient
       .get()
-      .uri("/reconcile/offender-transactions/$glTransactionUUID")
+      .uri("/reconcile/offender-transactions/${glTransaction.id}")
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
       .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
 
-    assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransactionUUID)
+    assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransaction.id)
     assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
     assertThat(transactionResponse.transactionType).isEqualTo("ATOF")
-    assertThat(transactionResponse.description).isEqualTo("TEST transaction")
+    assertThat(transactionResponse.description).isEqualTo("Mock Transaction Description")
     assertThat(transactionResponse.generalLedgerEntries.size).isEqualTo(2)
     assertThat(transactionResponse.generalLedgerEntries[0].entrySequence).isEqualTo(1)
     assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(2101)
     assertThat(transactionResponse.generalLedgerEntries[0].postingType).isEqualTo("CR")
-    assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(5.00))
+    assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal("5.00"))
 
     assertThat(transactionResponse.generalLedgerEntries[1].entrySequence).isEqualTo(2)
     assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2102)
     assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
-    assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(5.00))
+    assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
   }
 }
