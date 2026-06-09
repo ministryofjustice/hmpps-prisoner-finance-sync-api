@@ -1,9 +1,9 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.sync
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.verify
@@ -24,8 +24,16 @@ class ReconciliationControllerTest {
   @Mock
   private lateinit var generalLedgerService: GeneralLedgerService
 
-  @InjectMocks
   private lateinit var reconciliationController: ReconciliationController
+
+  @BeforeEach
+  fun setUp() {
+    reconciliationController = ReconciliationController(
+      ledgerQueryService,
+      reconciliationService,
+      generalLedgerService,
+    )
+  }
 
   @Test
   fun `should call reconcile prisoner when listing prisoners by establishment`() {
