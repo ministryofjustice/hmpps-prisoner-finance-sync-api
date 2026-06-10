@@ -2,9 +2,11 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
@@ -235,11 +237,14 @@ class GeneralLedgerService(
 
   fun retrieveNomisGLTransactionByGlId(glUUID: UUID): SyncGeneralLedgerTransactionResponse? {
     val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByGlTransactionUuid(glUUID)
+    if (transactionMapping == null) {
+      return null
+    }
 
     val glTransaction = generalLedgerApiClient.searchTransactions(listOf(glUUID)).firstOrNull()
 
-    if (transactionMapping == null || glTransaction == null) {
-      return null
+    if (glTransaction == null) {
+      throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
     }
 
     return SyncGeneralLedgerTransactionResponse(

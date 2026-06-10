@@ -20,6 +20,17 @@ import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 @RestControllerAdvice
 class PrisonerFinanceSyncApiExceptionHandler {
 
+  @ExceptionHandler(CustomException::class)
+  fun handleCustomException(e: CustomException): ResponseEntity<ErrorResponse> = ResponseEntity
+    .status(e.status)
+    .body(
+      ErrorResponse(
+        status = e.status.value(),
+        userMessage = e.message,
+        developerMessage = e.message,
+      ),
+    ).also { log.info("CustomExceptionThrown: {}", e.message) }
+
   @ExceptionHandler(GeneralLedgerAccountNotFoundException::class)
   fun handleGeneralLedgerAccountNotFoundException(e: GeneralLedgerAccountNotFoundException): ResponseEntity<ErrorResponse> {
     val userMessage = "Not Found: " + e.message

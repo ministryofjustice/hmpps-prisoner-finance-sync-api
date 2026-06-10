@@ -19,6 +19,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
+import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
@@ -215,5 +216,111 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2102)
     assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
     assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
+  }
+
+  @Test
+  fun `Should return 404 when the transaction ID is not found in GL`() {
+    val legacyTransactionId = 12345L
+
+    val prisonNumber = "A9971EC"
+    val prisonerAccountUUID: UUID = UUID.randomUUID()
+    val creditSubAccountUUID: UUID = UUID.randomUUID()
+    val debtorSubAccountUUID: UUID = UUID.randomUUID()
+
+    generalLedgerApi.stubGetAccount(
+      reference = prisonNumber,
+      subAccounts = listOf(
+        SubAccountResponse(
+          id = debtorSubAccountUUID,
+          reference = "CASH",
+          parentAccountId = prisonerAccountUUID,
+          createdBy = "TEST",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = creditSubAccountUUID,
+          reference = "SPENDS",
+          parentAccountId = prisonerAccountUUID,
+          createdBy = "TEST",
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    val transactionPostings = listOf(
+      PostingResponse(
+        id = prisonerAccountUUID,
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+        type = PostingResponse.Type.CR,
+        amount = 6,
+        subAccountID = creditSubAccountUUID,
+      ),
+      PostingResponse(
+        id = prisonerAccountUUID,
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+        type = PostingResponse.Type.DR,
+        amount = 6,
+        subAccountID = debtorSubAccountUUID,
+      ),
+    )
+
+    val returnGeneralLedgerUUID = UUID.randomUUID()
+
+    val transactionResponse = generalLedgerApi.stubPostTransaction(
+      creditorSubAccountUuid = creditSubAccountUUID.toString(),
+      debtorSubAccountUuid = debtorSubAccountUUID.toString(),
+      reference = "REF",
+      returnUUID = returnGeneralLedgerUUID,
+      postings = transactionPostings,
+      amount = 6,
+    )
+
+    val generalLedgerEntries = listOf(
+      GeneralLedgerEntry(
+        entrySequence = 1,
+        code = 2101,
+        postingType = "DR",
+        amount = BigDecimal.valueOf(500),
+      ),
+      GeneralLedgerEntry(
+        entrySequence = 2,
+        code = 2102,
+        postingType = "CR",
+        amount = BigDecimal.valueOf(500),
+      ),
+    )
+
+    val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
+      entrySequence = 1,
+      offenderId = 1,
+      offenderDisplayId = prisonNumber,
+      offenderBookingId = 1,
+      subAccountType = "",
+      amount = BigDecimal.valueOf(5.00),
+      generalLedgerEntries = generalLedgerEntries,
+      reference = "ANY_REF",
+    )
+
+    integrationTestHelpers.syncOffenderTransactions(
+      transactionId = legacyTransactionId,
+      caseloadId = "LEI",
+      transactionTimestamp = LocalDateTime.now(),
+      createdAt = LocalDateTime.now(),
+      offenderTransactions = listOf(offenderTransaction),
+    )
+
+    generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
+
+    val error = webTestClient
+      .get()
+      .uri("/reconcile/offender-transactions/${transactionResponse.id}")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isNotFound
+      .expectBody<ErrorResponse>().returnResult().responseBody!!
+
+    assertThat(error.developerMessage).isEqualTo("No gl transaction found for gl ${transactionResponse.id}")
   }
 }
