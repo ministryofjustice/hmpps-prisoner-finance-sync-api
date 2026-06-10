@@ -238,7 +238,7 @@ class GeneralLedgerService(
   fun retrieveNomisGLTransactionByGlId(glUUID: UUID): SyncGeneralLedgerTransactionResponse? {
     val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByGlTransactionUuid(glUUID)
     if (transactionMapping == null) {
-      return null
+      throw CustomException("No mapping found for $glUUID", status = HttpStatus.NOT_FOUND)
     }
 
     val glTransaction = generalLedgerApiClient.searchTransactions(listOf(glUUID)).firstOrNull()

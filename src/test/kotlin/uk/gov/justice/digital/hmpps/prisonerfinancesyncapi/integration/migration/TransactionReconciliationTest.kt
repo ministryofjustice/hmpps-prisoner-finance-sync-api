@@ -323,4 +323,37 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
     assertThat(error.developerMessage).isEqualTo("No gl transaction found for gl ${transactionResponse.id}")
   }
+
+  @Test
+  fun `Should return a 404 when there is no mapping entry found in sync`() {
+    val incorrectUUID = UUID.randomUUID()
+    val error = webTestClient
+      .get()
+      .uri("/reconcile/offender-transactions/$incorrectUUID")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isNotFound
+      .expectBody<ErrorResponse>().returnResult().responseBody!!
+
+    assertThat(error.developerMessage).isEqualTo("No mapping found for $incorrectUUID")
+  }
+
+  @Test
+  fun `Should return 401 when unauthorized`() {
+    val incorrectUUID = UUID.randomUUID()
+    webTestClient.get()
+      .uri("/reconcile/offender-transactions/$incorrectUUID")
+      .exchange()
+      .expectStatus().isUnauthorized
+  }
+
+  @Test
+  fun `Should return 403 when given an incorrect role`() {
+    val incorrectUUID = UUID.randomUUID()
+    webTestClient.get()
+      .uri("/reconcile/offender-transactions/$incorrectUUID")
+      .headers(setAuthorisation(roles = listOf("INCORRECT_ROLE")))
+      .exchange()
+      .expectStatus().isForbidden
+  }
 }
