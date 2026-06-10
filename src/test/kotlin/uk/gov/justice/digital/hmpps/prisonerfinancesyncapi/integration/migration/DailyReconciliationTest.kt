@@ -5,6 +5,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.expectBody
@@ -19,8 +21,10 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.PagedResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.TransactionReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
+import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -137,7 +141,7 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
       ),
     )
 
-    return glTransactionResponse.first()
+    return glTransactionResponse.content.first()
   }
 
   @Test
@@ -202,9 +206,9 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
-      .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
+      .expectBody<PagedResponse<TransactionReconciliationResponse>>().returnResult().responseBody!!
 
-    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(0)
+    assertThat(dailyReconciliationResponse.content.size).isEqualTo(0)
   }
 
   @Test
@@ -284,15 +288,15 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
-      .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
+      .expectBody<PagedResponse<TransactionReconciliationResponse>>().returnResult().responseBody!!
 
-    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(3)
+    assertThat(dailyReconciliationResponse.content.size).isEqualTo(3)
 
-    val idsInReconciliation = dailyReconciliationResponse.transactions.map { Pair(it.glTransactionId, it.nomisTransactionId) }.toSet()
+    val idsInReconciliation = dailyReconciliationResponse.content.map { Pair(it.glTransactionId, it.nomisTransactionId) }.toSet()
 
     glIdAndNomisIdPairs.forEach { pair -> assertThat(pair in idsInReconciliation).isTrue() }
 
-    assertThat(dailyReconciliationResponse.transactions[0].postings.size).isEqualTo(2)
+    assertThat(dailyReconciliationResponse.content[0].postings.size).isEqualTo(2)
   }
 
   @Test
@@ -346,9 +350,9 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
       .exchange()
       .expectStatus().isOk
-      .expectBody<DailyReconciliationResponse>().returnResult().responseBody!!
+      .expectBody<PagedResponse<TransactionReconciliationResponse>>().returnResult().responseBody!!
 
-    assertThat(dailyReconciliationResponse.transactions.size).isEqualTo(0)
+    assertThat(dailyReconciliationResponse.content.size).isEqualTo(0)
   }
 
   @Test
@@ -358,6 +362,32 @@ class DailyReconciliationTest(@Autowired private val timeConversionService: Time
       .uri("/verify/offender-transactions/2026-01-01")
       .exchange()
       .expectStatus().isUnauthorized
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+    "0, asd, -1",
+  )
+  fun `Should return 400 when pageNumber is invalid`(invalidInput: String) {
+    webTestClient.get()
+      .uri("/verify/offender-transactions/2026-01-01?pageNumber=$invalidInput")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isBadRequest
+      .expectBody<ErrorResponse>()
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+    "0, asd, -1",
+  )
+  fun `Should return 400 when pageSize is invalid`(invalidInput: String) {
+    webTestClient.get()
+      .uri("/verify/offender-transactions/2026-01-01?pageSize=$invalidInput")
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .exchange()
+      .expectStatus().isBadRequest
+      .expectBody<ErrorResponse>()
   }
 
   @Test

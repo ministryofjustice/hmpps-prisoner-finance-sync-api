@@ -129,7 +129,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       ),
     )
 
-    return glTransactionResponse.firstOrNull()
+    return glTransactionResponse.content.firstOrNull()
   }
 
   @Transactional

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PagedResponseSearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
@@ -516,9 +517,18 @@ class GeneralLedgerApiMockServer :
     return response
   }
 
-  fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<SearchTransactionResponse>): List<SearchTransactionResponse> {
+  fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<SearchTransactionResponse>): PagedResponseSearchTransactionResponse {
     // This ensures that the mock behaves in the same way as the GL
-    val response = transactionResponses.filter { glUUIDs.contains(it.id) }
+    val results = transactionResponses.filter { glUUIDs.contains(it.id) }
+
+    val pagedResponse = PagedResponseSearchTransactionResponse(
+      content = results,
+      pageNumber = 1,
+      pageSize = results.size,
+      totalElements = results.size.toLong(),
+      totalPages = 1,
+      isLastPage = true,
+    )
 
     stubFor(
       post(urlPathEqualTo("/transactions/search"))
@@ -526,9 +536,9 @@ class GeneralLedgerApiMockServer :
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
             .withStatus(200)
-            .withBody(mapper.writeValueAsString(transactionResponses)),
+            .withBody(mapper.writeValueAsString(pagedResponse)),
         ),
     )
-    return response
+    return pagedResponse
   }
 }

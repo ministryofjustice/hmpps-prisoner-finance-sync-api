@@ -18,7 +18,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.TransactionReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
@@ -214,16 +214,16 @@ class GeneralLedgerService(
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
   }
 
-  fun retrieveNomisGLTransactionsForDay(day: Instant): DailyReconciliationResponse {
+  fun retrieveNomisGLTransactionsForDay(day: Instant, pageNumber: Int, pageSize: Int): PagedResponse<TransactionReconciliationResponse> {
     val endDateTime = day.plus(Duration.ofDays(1)).minusNanos(1)
 
     val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findAllOnDate(day, endDateTime)
     val transactionMap = nomisTransactionMappingsForTheDay.associateBy { it.glTransactionUuid }
 
     val glUUIDs = nomisTransactionMappingsForTheDay.map { it.glTransactionUuid }
-    val glTransactions = generalLedgerApiClient.searchTransactions(glUUIDs)
+    val glTransactions = generalLedgerApiClient.searchTransactions(glUUIDs, pageNumber, pageSize)
 
-    val transactionReconciliations = glTransactions.map {
+    val transactionReconciliations = glTransactions.content.map {
       TransactionReconciliationResponse(
         nomisTransactionId = transactionMap.getValue(it.id).legacyTransactionId,
         glTransactionId = it.id,
@@ -232,7 +232,14 @@ class GeneralLedgerService(
       )
     }
 
-    return DailyReconciliationResponse(transactions = transactionReconciliations)
+    return PagedResponse<TransactionReconciliationResponse>(
+      content = transactionReconciliations,
+      pageNumber = glTransactions.pageNumber,
+      pageSize = glTransactions.pageSize,
+      totalElements = glTransactions.totalElements,
+      totalPages = glTransactions.totalPages,
+      isLastPage = glTransactions.isLastPage,
+    )
   }
 
   fun retrieveNomisGLTransactionByGlId(glUUID: UUID): SyncGeneralLedgerTransactionResponse? {
@@ -241,7 +248,11 @@ class GeneralLedgerService(
       throw CustomException("No mapping found for $glUUID", status = HttpStatus.NOT_FOUND)
     }
 
-    val glTransaction = generalLedgerApiClient.searchTransactions(listOf(glUUID)).firstOrNull()
+    val glTransaction = generalLedgerApiClient.searchTransactions(
+      listOf(glUUID),
+      pageNumber = 1,
+      pageSize = 1,
+    ).content.firstOrNull()
 
     if (glTransaction == null) {
       throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
