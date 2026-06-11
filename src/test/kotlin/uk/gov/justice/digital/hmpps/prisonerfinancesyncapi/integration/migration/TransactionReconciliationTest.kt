@@ -6,6 +6,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
@@ -132,7 +135,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     // At present Syscon only sends one-to-one transactions.
     // IE. CANT transactions are split into multiple one-to-one transactions
     @Test
-    fun `Should return the general ledger transaction in Syscon format when given the corresponding ID`() {
+    fun `should return the general ledger transaction in Syscon format when given the corresponding ID`() {
       val legacyTransactionId = 12345L
 
       val prisonNumber = "A9971EC"
@@ -226,7 +229,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `Should return 404 when the transaction ID is not found in GL`() {
+    fun `should return 404 when the transaction ID is not found in GL`() {
       val legacyTransactionId = 12345L
 
       val prisonNumber = "A9971EC"
@@ -318,7 +321,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         offenderTransactions = listOf(offenderTransaction),
       )
 
-      generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
+      generalLedgerApi.stubSearchTransactionThrowsOutOfBoundsException()
 
       val error = webTestClient
         .get()
@@ -332,7 +335,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `Should return a 404 when there is no mapping entry found in sync`() {
+    fun `should return a 404 when there is no mapping entry found in sync`() {
       val incorrectUUID = UUID.randomUUID()
       val error = webTestClient
         .get()
@@ -346,7 +349,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `Should return 401 when unauthorized`() {
+    fun `should return 401 when unauthorized`() {
       val incorrectUUID = UUID.randomUUID()
       webTestClient.get()
         .uri("/reconcile/offender-transactions/$incorrectUUID")
@@ -355,7 +358,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `Should return 403 when given an incorrect role`() {
+    fun `should return 403 when given an incorrect role`() {
       val incorrectUUID = UUID.randomUUID()
       webTestClient.get()
         .uri("/reconcile/offender-transactions/$incorrectUUID")
@@ -371,7 +374,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     val timeConversion = TimeConversionService()
 
     @Test
-    fun `Should return no transactions when no transactions exist for the given date range`() {
+    fun `should return no transactions when no transactions exist for the given date range`() {
       generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
 
       val transactionsResponse = webTestClient
@@ -438,7 +441,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `Should return a transaction when it exists for the given date range`() {
+    fun `should return a transaction when it exists for the given date range`() {
       val legacyTransactionId = 12345L
 
       val firstOfJan2025 = LocalDateTime.of(2025, 1, 1, 1, 1)
@@ -490,6 +493,89 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       assertThat(firstTransaction.generalLedgerEntries[1].code).isEqualTo(2102)
       assertThat(firstTransaction.generalLedgerEntries[1].postingType).isEqualTo("DR")
       assertThat(firstTransaction.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
+    }
+
+    // TODO: Add more pagination tests & 502
+
+    @Test
+    fun `should return 400 when page requested is out of range`() {
+      generalLedgerApi.stubSearchTransactionThrowsOutOfBoundsException()
+
+      val response = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+
+      assertThat(response.userMessage).isEqualTo("Page requested is out of range")
+    }
+
+    @Test
+    fun `should return 400 when startDate is invalid`() {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=invalid&endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
+    @Test
+    fun `should return 400 when endDate is invalid`() {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=invalid")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
+    @ParameterizedTest
+    @CsvSource("0", "-1", "abc")
+    fun `should return 400 when page number is invalid`(inputPageNumber: String) {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02&pageNumber=$inputPageNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
+    @ParameterizedTest
+    @CsvSource("0", "-1", "abc")
+    fun `should return 400 when page size is invalid`(inputPageSize: String) {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02&pageSize=$inputPageSize")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
+    @Test
+    fun `401 unauthorised`() {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
+        .exchange()
+        .expectStatus().isUnauthorized
+    }
+
+    @Test
+    fun `403 forbidden - does not have the right role`() {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
+        .accept(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf("SOME_OTHER_ROLE")))
+        .exchange()
+        .expectStatus().isForbidden
     }
   }
 }

@@ -531,6 +531,28 @@ class GeneralLedgerApiMockServer :
     return response
   }
 
+  fun stubSearchTransactionThrowsOutOfBoundsException() {
+    stubFor(
+      post(urlPathEqualTo("/transactions/search"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(400)
+            .withBody(
+              """
+                {
+                  "status": 400,
+                  "errorCode": "BadRequest",
+                  "userMessage": "Page requested is out of range",
+                  "developerMessage": "Page requested is out of range",
+                  "moreInfo": "more info"
+                }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<SearchTransactionResponse>): PagedResponseSearchTransactionResponse {
     // This ensures that the mock behaves in the same way as the GL
     val results = transactionResponses.filter { glUUIDs.contains(it.id) }

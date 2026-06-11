@@ -13,6 +13,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
@@ -249,14 +250,19 @@ class GeneralLedgerService(
       throw CustomException("No mapping found for $glUUID", status = HttpStatus.NOT_FOUND)
     }
 
-    val glTransaction = generalLedgerApiClient.searchTransactions(
-      listOf(glUUID),
-      pageNumber = 1,
-      pageSize = 1,
-    ).content.firstOrNull()
+    lateinit var glTransaction: SearchTransactionResponse
 
-    if (glTransaction == null) {
-      throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
+    // search transaction will always throw out of bounds if there is nothing matching
+    try {
+      glTransaction = generalLedgerApiClient.searchTransactions(
+        listOf(glUUID),
+        pageNumber = 1,
+        pageSize = 1,
+      ).content.first()
+    } catch (e: CustomException) {
+      if (e.message == "Page requested is out of range") {
+        throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
+      }
     }
 
     return SyncGeneralLedgerTransactionResponse(
@@ -277,7 +283,7 @@ class GeneralLedgerService(
     )
   }
 
-  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate): PagedResponse<SyncGeneralLedgerTransactionResponse> {
+  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate, pageNumber: Int, pageSize: Int): PagedResponse<SyncGeneralLedgerTransactionResponse> {
     val startDateUtc = timeConversionService.toUtcStartOfDay(startDate)
     val endDateUtc = timeConversionService.toUtcStartOfDay(endDate.plusDays(1))
 
@@ -288,8 +294,8 @@ class GeneralLedgerService(
 
     val glTransactions = generalLedgerApiClient.searchTransactions(
       transactionMappings.map { it.glTransactionUuid },
-      pageSize = 9999,
-      pageNumber = 1,
+      pageSize = pageSize,
+      pageNumber = pageNumber,
     )
 
     val transactionMappingByGlId = transactionMappings.associateBy { it.glTransactionUuid }
