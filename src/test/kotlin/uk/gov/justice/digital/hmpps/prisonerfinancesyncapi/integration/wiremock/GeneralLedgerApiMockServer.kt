@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
+import com.github.tomakehurst.wiremock.client.WireMock.containing
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.matching
@@ -29,6 +30,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 class GeneralLedgerApiExtension :
@@ -410,6 +412,7 @@ class GeneralLedgerApiMockServer :
     returnUUID: UUID = UUID.randomUUID(),
     postings: List<PostingResponse> = emptyList(),
     amount: Long = 1000,
+    transactionTimestamp: Instant? = null,
   ): TransactionResponse {
     val response = TransactionResponse(
       id = returnUUID,
@@ -439,6 +442,17 @@ class GeneralLedgerApiMockServer :
     if (debtorSubAccountUuid != null) {
       mapping = mapping.withRequestBody(
         matchingJsonPath("$.postings[?(@.type == 'DR' && @.subAccountId == '$debtorSubAccountUuid')]"),
+      )
+    }
+
+    if (transactionTimestamp != null) {
+      val prefix = transactionTimestamp
+        .truncatedTo(ChronoUnit.SECONDS)
+        .toString()
+        .removeSuffix("Z")
+
+      mapping = mapping.withRequestBody(
+        matchingJsonPath("$.timestamp", containing(prefix)),
       )
     }
 

@@ -19,6 +19,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
@@ -44,7 +45,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     debtorSubAccountUUID: UUID,
     transactionDate: Instant,
     amount: Long,
-  ): SearchTransactionResponse? {
+  ): Pair<TransactionResponse, List<SearchPostingResponse>> {
     val subAccountOneRef = "CASH"
     val subAccountTwoRef = "SPENDS"
 
@@ -98,6 +99,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       returnUUID = returnGeneralLedgerUUID,
       postings = transactionPostings,
       amount = amount,
+      transactionTimestamp = transactionDate,
     )
 
     val postingSearchResponses = transactionResponse.postings.withIndex().map { (index, it) ->
@@ -115,24 +117,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       )
     }
 
-    val glTransactionResponse = generalLedgerApi.stubSearchTransactionsByUUIDs(
-      listOf(transactionResponse.id),
-      listOf(
-        SearchTransactionResponse(
-          id = transactionResponse.id,
-          createdBy = "",
-          createdAt = transactionResponse.createdAt,
-          reference = transactionResponse.reference,
-          description = transactionResponse.description,
-          timestamp = transactionResponse.timestamp,
-          amount = transactionResponse.amount,
-          entrySequence = 1,
-          postings = postingSearchResponses,
-        ),
-      ),
-    )
-
-    return glTransactionResponse.content.firstOrNull()
+    return Pair(transactionResponse, postingSearchResponses)
   }
 
   @Transactional
@@ -156,13 +141,30 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       val debtorSubAccountId: UUID = UUID.randomUUID()
 
       val transactionDate = Instant.now()
-      val glTransaction = stubPrisonerCashToSpendsTransferResponsesFromGL(
+      val (glTransactionResponse, postingSearchResponses) = stubPrisonerCashToSpendsTransferResponsesFromGL(
         prisonNumber = prisonNumber,
         parentAccountUUID = prisonerAccountId,
         creditSubAccountUUID = creditSubAccountId,
         debtorSubAccountUUID = debtorSubAccountId,
         transactionDate = transactionDate,
         amount = 500,
+      )
+
+      generalLedgerApi.stubSearchTransactionsByUUIDs(
+        listOf(glTransactionResponse.id),
+        listOf(
+          SearchTransactionResponse(
+            id = glTransactionResponse.id,
+            createdBy = "",
+            createdAt = glTransactionResponse.createdAt,
+            reference = glTransactionResponse.reference,
+            description = glTransactionResponse.description,
+            timestamp = glTransactionResponse.timestamp,
+            amount = glTransactionResponse.amount,
+            entrySequence = 1,
+            postings = postingSearchResponses,
+          ),
+        ),
       )
 
       val generalLedgerEntries = listOf(
@@ -188,7 +190,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         subAccountType = "",
         amount = BigDecimal.valueOf(5.00),
         generalLedgerEntries = generalLedgerEntries,
-        reference = glTransaction!!.reference,
+        reference = glTransactionResponse!!.reference,
       )
 
       integrationTestHelpers.syncOffenderTransactions(
@@ -201,13 +203,13 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
       val transactionResponse = webTestClient
         .get()
-        .uri("/reconcile/offender-transactions/${glTransaction.id}")
+        .uri("/reconcile/offender-transactions/${glTransactionResponse.id}")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
         .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
 
-      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransaction.id)
+      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransactionResponse.id)
       assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
       assertThat(transactionResponse.transactionType).isEqualTo("ATOF")
       assertThat(transactionResponse.description).isEqualTo("Mock Transaction Description")
@@ -383,23 +385,18 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       assertThat(transactionsResponse.content).isEmpty()
     }
 
-    @Test
-    fun `Should return a transaction when it exists for the given date range`() {
-      val legacyTransactionId = 12345L
-
+    fun createTransactionAndStubGeneralLedger(legacyTransactionId: Long, transactionDateTime: LocalDateTime): Pair<TransactionResponse, List<SearchPostingResponse>> {
       val prisonNumber = "A9971EC"
       val prisonerAccountId: UUID = UUID.randomUUID()
       val creditSubAccountId: UUID = UUID.randomUUID()
       val debtorSubAccountId: UUID = UUID.randomUUID()
 
-      val firstOfJan2025 = LocalDateTime.of(2025, 1, 1, 1, 1)
-
-      val glTransaction = stubPrisonerCashToSpendsTransferResponsesFromGL(
+      val (glTransaction, postingResponse) = stubPrisonerCashToSpendsTransferResponsesFromGL(
         prisonNumber = prisonNumber,
         parentAccountUUID = prisonerAccountId,
         creditSubAccountUUID = creditSubAccountId,
         debtorSubAccountUUID = debtorSubAccountId,
-        transactionDate = timeConversion.toUtcInstant(firstOfJan2025),
+        transactionDate = timeConversion.toUtcInstant(transactionDateTime),
         amount = 500,
       )
 
@@ -432,9 +429,39 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       integrationTestHelpers.syncOffenderTransactions(
         transactionId = legacyTransactionId,
         caseloadId = "LEI",
-        transactionTimestamp = firstOfJan2025,
-        createdAt = firstOfJan2025,
+        transactionTimestamp = transactionDateTime,
+        createdAt = transactionDateTime,
         offenderTransactions = listOf(offenderTransaction),
+      )
+
+      return Pair(glTransaction, postingResponse)
+    }
+
+    @Test
+    fun `Should return a transaction when it exists for the given date range`() {
+      val legacyTransactionId = 12345L
+
+      val firstOfJan2025 = LocalDateTime.of(2025, 1, 1, 1, 1)
+
+      val (glTransaction, postingResponse) = createTransactionAndStubGeneralLedger(legacyTransactionId, firstOfJan2025)
+
+      createTransactionAndStubGeneralLedger(56789, firstOfJan2025.plusDays(3))
+
+      generalLedgerApi.stubSearchTransactionsByUUIDs(
+        listOf(glTransaction.id),
+        listOf(
+          SearchTransactionResponse(
+            id = glTransaction.id,
+            createdBy = "",
+            createdAt = glTransaction.createdAt,
+            reference = glTransaction.reference,
+            description = glTransaction.description,
+            timestamp = glTransaction.timestamp,
+            amount = glTransaction.amount,
+            entrySequence = 1,
+            postings = postingResponse,
+          ),
+        ),
       )
 
       val transactionsResponse = webTestClient
