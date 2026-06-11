@@ -9,6 +9,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerA
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
@@ -18,12 +19,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.TransactionReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.math.abs
@@ -273,6 +274,50 @@ class GeneralLedgerService(
       lastModifiedBy = "",
       lastModifiedByDisplayName = "",
       generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+    )
+  }
+
+  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate): PagedResponse<SyncGeneralLedgerTransactionResponse> {
+    val startDateUtc = timeConversionService.toUtcStartOfDay(startDate)
+    val endDateUtc = timeConversionService.toUtcStartOfDay(endDate.plusDays(1))
+
+    val transactionMappings = ledgerTransactionMappingRepository.findAllOnDate(
+      startDateUtc,
+      endDateUtc,
+    )
+
+    val glTransactions = generalLedgerApiClient.searchTransactions(
+      transactionMappings.map { it.glTransactionUuid },
+      pageSize = 9999,
+      pageNumber = 1,
+    )
+
+    val transactionMappingByGlId = transactionMappings.associateBy { it.glTransactionUuid }
+
+    return PagedResponse(
+      content = glTransactions.content.map {
+        SyncGeneralLedgerTransactionResponse(
+          synchronizedTransactionId = it.id,
+          legacyTransactionId = transactionMappingByGlId.getValue(it.id).legacyTransactionId,
+          description = it.description,
+          reference = it.reference,
+          caseloadId = transactionMappingByGlId.getValue(it.id).caseloadId ?: "",
+          transactionType = transactionMappingByGlId.getValue(it.id).transactionType ?: "",
+          transactionTimestamp = timeConversionService.toLocalDateTime(it.timestamp),
+          createdAt = timeConversionService.toLocalDateTime(it.createdAt),
+          createdBy = "",
+          createdByDisplayName = "",
+          lastModifiedAt = LocalDateTime.now(),
+          lastModifiedBy = "",
+          lastModifiedByDisplayName = "",
+          generalLedgerEntries = it.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+        )
+      },
+      pageNumber = glTransactions.pageNumber,
+      pageSize = glTransactions.pageSize,
+      totalElements = glTransactions.totalElements,
+      totalPages = glTransactions.totalPages,
+      isLastPage = glTransactions.isLastPage,
     )
   }
 }

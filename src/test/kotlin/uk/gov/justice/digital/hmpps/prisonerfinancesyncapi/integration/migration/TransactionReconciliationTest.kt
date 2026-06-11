@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.migratio
 import jakarta.transaction.Transactional
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.test.context.TestPropertySource
@@ -13,12 +14,14 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.math.BigDecimal
 import java.time.Instant
@@ -139,221 +142,327 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     hmppsAuth.stubGrantToken()
   }
 
-  // At present Syscon only sends one-to-one transactions.
-  // IE. CANT transactions are split into multiple one-to-one transactions
-  @Test
-  fun `Should return the general ledger transaction in Syscon format when given the corresponding ID`() {
-    val legacyTransactionId = 12345L
+  @Nested
+  inner class ReconcileOffenderTransactionById {
+    // At present Syscon only sends one-to-one transactions.
+    // IE. CANT transactions are split into multiple one-to-one transactions
+    @Test
+    fun `Should return the general ledger transaction in Syscon format when given the corresponding ID`() {
+      val legacyTransactionId = 12345L
 
-    val prisonNumber = "A9971EC"
-    val prisonerAccountId: UUID = UUID.randomUUID()
-    val creditSubAccountId: UUID = UUID.randomUUID()
-    val debtorSubAccountId: UUID = UUID.randomUUID()
+      val prisonNumber = "A9971EC"
+      val prisonerAccountId: UUID = UUID.randomUUID()
+      val creditSubAccountId: UUID = UUID.randomUUID()
+      val debtorSubAccountId: UUID = UUID.randomUUID()
 
-    val transactionDate = Instant.now()
-    val glTransaction = stubPrisonerCashToSpendsTransferResponsesFromGL(
-      prisonNumber = prisonNumber,
-      parentAccountUUID = prisonerAccountId,
-      creditSubAccountUUID = creditSubAccountId,
-      debtorSubAccountUUID = debtorSubAccountId,
-      transactionDate = transactionDate,
-      amount = 500,
-    )
+      val transactionDate = Instant.now()
+      val glTransaction = stubPrisonerCashToSpendsTransferResponsesFromGL(
+        prisonNumber = prisonNumber,
+        parentAccountUUID = prisonerAccountId,
+        creditSubAccountUUID = creditSubAccountId,
+        debtorSubAccountUUID = debtorSubAccountId,
+        transactionDate = transactionDate,
+        amount = 500,
+      )
 
-    val generalLedgerEntries = listOf(
-      GeneralLedgerEntry(
+      val generalLedgerEntries = listOf(
+        GeneralLedgerEntry(
+          entrySequence = 1,
+          code = 2101,
+          postingType = "DR",
+          amount = BigDecimal.valueOf(500),
+        ),
+        GeneralLedgerEntry(
+          entrySequence = 2,
+          code = 2102,
+          postingType = "CR",
+          amount = BigDecimal.valueOf(500),
+        ),
+      )
+
+      val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
         entrySequence = 1,
-        code = 2101,
-        postingType = "DR",
-        amount = BigDecimal.valueOf(500),
-      ),
-      GeneralLedgerEntry(
-        entrySequence = 2,
-        code = 2102,
-        postingType = "CR",
-        amount = BigDecimal.valueOf(500),
-      ),
-    )
+        offenderId = 1,
+        offenderDisplayId = prisonNumber,
+        offenderBookingId = 1,
+        subAccountType = "",
+        amount = BigDecimal.valueOf(5.00),
+        generalLedgerEntries = generalLedgerEntries,
+        reference = glTransaction!!.reference,
+      )
 
-    val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
-      entrySequence = 1,
-      offenderId = 1,
-      offenderDisplayId = prisonNumber,
-      offenderBookingId = 1,
-      subAccountType = "",
-      amount = BigDecimal.valueOf(5.00),
-      generalLedgerEntries = generalLedgerEntries,
-      reference = glTransaction!!.reference,
-    )
+      integrationTestHelpers.syncOffenderTransactions(
+        transactionId = legacyTransactionId,
+        caseloadId = "LEI",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now(),
+        offenderTransactions = listOf(offenderTransaction),
+      )
 
-    integrationTestHelpers.syncOffenderTransactions(
-      transactionId = legacyTransactionId,
-      caseloadId = "LEI",
-      transactionTimestamp = LocalDateTime.now(),
-      createdAt = LocalDateTime.now(),
-      offenderTransactions = listOf(offenderTransaction),
-    )
+      val transactionResponse = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions/${glTransaction.id}")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
 
-    val transactionResponse = webTestClient
-      .get()
-      .uri("/reconcile/offender-transactions/${glTransaction.id}")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
+      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransaction.id)
+      assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
+      assertThat(transactionResponse.transactionType).isEqualTo("ATOF")
+      assertThat(transactionResponse.description).isEqualTo("Mock Transaction Description")
+      assertThat(transactionResponse.generalLedgerEntries.size).isEqualTo(2)
+      assertThat(transactionResponse.generalLedgerEntries[0].entrySequence).isEqualTo(1)
+      assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(2101)
+      assertThat(transactionResponse.generalLedgerEntries[0].postingType).isEqualTo("CR")
+      assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal("5.00"))
 
-    assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransaction.id)
-    assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
-    assertThat(transactionResponse.transactionType).isEqualTo("ATOF")
-    assertThat(transactionResponse.description).isEqualTo("Mock Transaction Description")
-    assertThat(transactionResponse.generalLedgerEntries.size).isEqualTo(2)
-    assertThat(transactionResponse.generalLedgerEntries[0].entrySequence).isEqualTo(1)
-    assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(2101)
-    assertThat(transactionResponse.generalLedgerEntries[0].postingType).isEqualTo("CR")
-    assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal("5.00"))
+      assertThat(transactionResponse.generalLedgerEntries[1].entrySequence).isEqualTo(2)
+      assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2102)
+      assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
+      assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
+    }
 
-    assertThat(transactionResponse.generalLedgerEntries[1].entrySequence).isEqualTo(2)
-    assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2102)
-    assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
-    assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
-  }
+    @Test
+    fun `Should return 404 when the transaction ID is not found in GL`() {
+      val legacyTransactionId = 12345L
 
-  @Test
-  fun `Should return 404 when the transaction ID is not found in GL`() {
-    val legacyTransactionId = 12345L
+      val prisonNumber = "A9971EC"
+      val prisonerAccountUUID: UUID = UUID.randomUUID()
+      val creditSubAccountUUID: UUID = UUID.randomUUID()
+      val debtorSubAccountUUID: UUID = UUID.randomUUID()
 
-    val prisonNumber = "A9971EC"
-    val prisonerAccountUUID: UUID = UUID.randomUUID()
-    val creditSubAccountUUID: UUID = UUID.randomUUID()
-    val debtorSubAccountUUID: UUID = UUID.randomUUID()
+      generalLedgerApi.stubGetAccount(
+        reference = prisonNumber,
+        subAccounts = listOf(
+          SubAccountResponse(
+            id = debtorSubAccountUUID,
+            reference = "CASH",
+            parentAccountId = prisonerAccountUUID,
+            createdBy = "TEST",
+            createdAt = Instant.now(),
+          ),
+          SubAccountResponse(
+            id = creditSubAccountUUID,
+            reference = "SPENDS",
+            parentAccountId = prisonerAccountUUID,
+            createdBy = "TEST",
+            createdAt = Instant.now(),
+          ),
+        ),
+      )
 
-    generalLedgerApi.stubGetAccount(
-      reference = prisonNumber,
-      subAccounts = listOf(
-        SubAccountResponse(
-          id = debtorSubAccountUUID,
-          reference = "CASH",
-          parentAccountId = prisonerAccountUUID,
+      val transactionPostings = listOf(
+        PostingResponse(
+          id = prisonerAccountUUID,
           createdBy = "TEST",
           createdAt = Instant.now(),
+          type = PostingResponse.Type.CR,
+          amount = 6,
+          subAccountID = creditSubAccountUUID,
         ),
-        SubAccountResponse(
-          id = creditSubAccountUUID,
-          reference = "SPENDS",
-          parentAccountId = prisonerAccountUUID,
+        PostingResponse(
+          id = prisonerAccountUUID,
           createdBy = "TEST",
           createdAt = Instant.now(),
+          type = PostingResponse.Type.DR,
+          amount = 6,
+          subAccountID = debtorSubAccountUUID,
         ),
-      ),
-    )
+      )
 
-    val transactionPostings = listOf(
-      PostingResponse(
-        id = prisonerAccountUUID,
-        createdBy = "TEST",
-        createdAt = Instant.now(),
-        type = PostingResponse.Type.CR,
+      val returnGeneralLedgerUUID = UUID.randomUUID()
+
+      val transactionResponse = generalLedgerApi.stubPostTransaction(
+        creditorSubAccountUuid = creditSubAccountUUID.toString(),
+        debtorSubAccountUuid = debtorSubAccountUUID.toString(),
+        reference = "REF",
+        returnUUID = returnGeneralLedgerUUID,
+        postings = transactionPostings,
         amount = 6,
-        subAccountID = creditSubAccountUUID,
-      ),
-      PostingResponse(
-        id = prisonerAccountUUID,
-        createdBy = "TEST",
-        createdAt = Instant.now(),
-        type = PostingResponse.Type.DR,
-        amount = 6,
-        subAccountID = debtorSubAccountUUID,
-      ),
-    )
+      )
 
-    val returnGeneralLedgerUUID = UUID.randomUUID()
+      val generalLedgerEntries = listOf(
+        GeneralLedgerEntry(
+          entrySequence = 1,
+          code = 2101,
+          postingType = "DR",
+          amount = BigDecimal.valueOf(500),
+        ),
+        GeneralLedgerEntry(
+          entrySequence = 2,
+          code = 2102,
+          postingType = "CR",
+          amount = BigDecimal.valueOf(500),
+        ),
+      )
 
-    val transactionResponse = generalLedgerApi.stubPostTransaction(
-      creditorSubAccountUuid = creditSubAccountUUID.toString(),
-      debtorSubAccountUuid = debtorSubAccountUUID.toString(),
-      reference = "REF",
-      returnUUID = returnGeneralLedgerUUID,
-      postings = transactionPostings,
-      amount = 6,
-    )
-
-    val generalLedgerEntries = listOf(
-      GeneralLedgerEntry(
+      val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
         entrySequence = 1,
-        code = 2101,
-        postingType = "DR",
-        amount = BigDecimal.valueOf(500),
-      ),
-      GeneralLedgerEntry(
-        entrySequence = 2,
-        code = 2102,
-        postingType = "CR",
-        amount = BigDecimal.valueOf(500),
-      ),
-    )
+        offenderId = 1,
+        offenderDisplayId = prisonNumber,
+        offenderBookingId = 1,
+        subAccountType = "",
+        amount = BigDecimal.valueOf(5.00),
+        generalLedgerEntries = generalLedgerEntries,
+        reference = "ANY_REF",
+      )
 
-    val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
-      entrySequence = 1,
-      offenderId = 1,
-      offenderDisplayId = prisonNumber,
-      offenderBookingId = 1,
-      subAccountType = "",
-      amount = BigDecimal.valueOf(5.00),
-      generalLedgerEntries = generalLedgerEntries,
-      reference = "ANY_REF",
-    )
+      integrationTestHelpers.syncOffenderTransactions(
+        transactionId = legacyTransactionId,
+        caseloadId = "LEI",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now(),
+        offenderTransactions = listOf(offenderTransaction),
+      )
 
-    integrationTestHelpers.syncOffenderTransactions(
-      transactionId = legacyTransactionId,
-      caseloadId = "LEI",
-      transactionTimestamp = LocalDateTime.now(),
-      createdAt = LocalDateTime.now(),
-      offenderTransactions = listOf(offenderTransaction),
-    )
+      generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
 
-    generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
+      val error = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions/${transactionResponse.id}")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isNotFound
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
 
-    val error = webTestClient
-      .get()
-      .uri("/reconcile/offender-transactions/${transactionResponse.id}")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isNotFound
-      .expectBody<ErrorResponse>().returnResult().responseBody!!
+      assertThat(error.developerMessage).isEqualTo("No gl transaction found for gl ${transactionResponse.id}")
+    }
 
-    assertThat(error.developerMessage).isEqualTo("No gl transaction found for gl ${transactionResponse.id}")
+    @Test
+    fun `Should return a 404 when there is no mapping entry found in sync`() {
+      val incorrectUUID = UUID.randomUUID()
+      val error = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions/$incorrectUUID")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isNotFound
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+
+      assertThat(error.developerMessage).isEqualTo("No mapping found for $incorrectUUID")
+    }
+
+    @Test
+    fun `Should return 401 when unauthorized`() {
+      val incorrectUUID = UUID.randomUUID()
+      webTestClient.get()
+        .uri("/reconcile/offender-transactions/$incorrectUUID")
+        .exchange()
+        .expectStatus().isUnauthorized
+    }
+
+    @Test
+    fun `Should return 403 when given an incorrect role`() {
+      val incorrectUUID = UUID.randomUUID()
+      webTestClient.get()
+        .uri("/reconcile/offender-transactions/$incorrectUUID")
+        .headers(setAuthorisation(roles = listOf("INCORRECT_ROLE")))
+        .exchange()
+        .expectStatus().isForbidden
+    }
   }
 
-  @Test
-  fun `Should return a 404 when there is no mapping entry found in sync`() {
-    val incorrectUUID = UUID.randomUUID()
-    val error = webTestClient
-      .get()
-      .uri("/reconcile/offender-transactions/$incorrectUUID")
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isNotFound
-      .expectBody<ErrorResponse>().returnResult().responseBody!!
+  @Nested
+  inner class ReconcileOffenderTransactionByDateRange {
 
-    assertThat(error.developerMessage).isEqualTo("No mapping found for $incorrectUUID")
-  }
+    val timeConversion = TimeConversionService()
 
-  @Test
-  fun `Should return 401 when unauthorized`() {
-    val incorrectUUID = UUID.randomUUID()
-    webTestClient.get()
-      .uri("/reconcile/offender-transactions/$incorrectUUID")
-      .exchange()
-      .expectStatus().isUnauthorized
-  }
+    @Test
+    fun `Should return no transactions when no transactions exist for the given date range`() {
+      generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
 
-  @Test
-  fun `Should return 403 when given an incorrect role`() {
-    val incorrectUUID = UUID.randomUUID()
-    webTestClient.get()
-      .uri("/reconcile/offender-transactions/$incorrectUUID")
-      .headers(setAuthorisation(roles = listOf("INCORRECT_ROLE")))
-      .exchange()
-      .expectStatus().isForbidden
+      val transactionsResponse = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<PagedResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
+
+      assertThat(transactionsResponse.content).isEmpty()
+    }
+
+    @Test
+    fun `Should return a transaction when it exists for the given date range`() {
+      val legacyTransactionId = 12345L
+
+      val prisonNumber = "A9971EC"
+      val prisonerAccountId: UUID = UUID.randomUUID()
+      val creditSubAccountId: UUID = UUID.randomUUID()
+      val debtorSubAccountId: UUID = UUID.randomUUID()
+
+      val firstOfJan2025 = LocalDateTime.of(2025, 1, 1, 1, 1)
+
+      val glTransaction = stubPrisonerCashToSpendsTransferResponsesFromGL(
+        prisonNumber = prisonNumber,
+        parentAccountUUID = prisonerAccountId,
+        creditSubAccountUUID = creditSubAccountId,
+        debtorSubAccountUUID = debtorSubAccountId,
+        transactionDate = timeConversion.toUtcInstant(firstOfJan2025),
+        amount = 500,
+      )
+
+      val generalLedgerEntries = listOf(
+        GeneralLedgerEntry(
+          entrySequence = 1,
+          code = 2101,
+          postingType = "DR",
+          amount = BigDecimal.valueOf(500),
+        ),
+        GeneralLedgerEntry(
+          entrySequence = 2,
+          code = 2102,
+          postingType = "CR",
+          amount = BigDecimal.valueOf(500),
+        ),
+      )
+
+      val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
+        entrySequence = 1,
+        offenderId = 1,
+        offenderDisplayId = prisonNumber,
+        offenderBookingId = 1,
+        subAccountType = "",
+        amount = BigDecimal.valueOf(5.00),
+        generalLedgerEntries = generalLedgerEntries,
+        reference = glTransaction!!.reference,
+      )
+
+      integrationTestHelpers.syncOffenderTransactions(
+        transactionId = legacyTransactionId,
+        caseloadId = "LEI",
+        transactionTimestamp = firstOfJan2025,
+        createdAt = firstOfJan2025,
+        offenderTransactions = listOf(offenderTransaction),
+      )
+
+      val transactionsResponse = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<PagedResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
+
+      assertThat(transactionsResponse.content).hasSize(1)
+
+      val firstTransaction = transactionsResponse.content.first()
+
+      assertThat(firstTransaction.synchronizedTransactionId).isEqualTo(glTransaction.id)
+      assertThat(firstTransaction.legacyTransactionId).isEqualTo(legacyTransactionId)
+      assertThat(firstTransaction.transactionType).isEqualTo("ATOF")
+      assertThat(firstTransaction.description).isEqualTo("Mock Transaction Description")
+      assertThat(firstTransaction.generalLedgerEntries.size).isEqualTo(2)
+      assertThat(firstTransaction.generalLedgerEntries[0].entrySequence).isEqualTo(1)
+      assertThat(firstTransaction.generalLedgerEntries[0].code).isEqualTo(2101)
+      assertThat(firstTransaction.generalLedgerEntries[0].postingType).isEqualTo("CR")
+      assertThat(firstTransaction.generalLedgerEntries[0].amount).isEqualTo(BigDecimal("5.00"))
+
+      assertThat(firstTransaction.generalLedgerEntries[1].entrySequence).isEqualTo(2)
+      assertThat(firstTransaction.generalLedgerEntries[1].code).isEqualTo(2102)
+      assertThat(firstTransaction.generalLedgerEntries[1].postingType).isEqualTo("DR")
+      assertThat(firstTransaction.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
+    }
   }
 }

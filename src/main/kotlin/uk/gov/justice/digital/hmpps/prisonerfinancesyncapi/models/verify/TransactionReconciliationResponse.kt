@@ -10,12 +10,3 @@ data class TransactionReconciliationResponse(
   val transactionCreatedAt: Instant,
   val postings: List<SearchPostingResponse>,
 )
-
-data class PagedResponse<T>(
-  val content: List<T>,
-  val pageNumber: Int,
-  val pageSize: Int,
-  val totalElements: Long,
-  val totalPages: Int,
-  val isLastPage: Boolean,
-)

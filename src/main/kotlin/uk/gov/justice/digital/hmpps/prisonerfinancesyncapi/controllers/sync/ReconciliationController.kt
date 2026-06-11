@@ -8,14 +8,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
@@ -23,6 +26,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedge
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
+import java.time.LocalDate
 import java.util.UUID
 
 @Tag(name = TAG_NOMIS_SYNC)
@@ -127,6 +131,30 @@ class ReconciliationController(
   fun getTransactionReconciliationById(@PathVariable synchronizedTransactionId: UUID): ResponseEntity<SyncGeneralLedgerTransactionResponse> {
     val response = generalLedgerService.retrieveNomisGLTransactionByGlId(synchronizedTransactionId)
 
+    return ResponseEntity.ok(response)
+  }
+
+  @Operation(
+    summary = "Retrieve paginated list of offender transactions by a date range using data from the prisoner general ledger",
+  )
+  @GetMapping(
+    path = [
+      "/reconcile/offender-transactions",
+    ],
+    produces = [MediaType.APPLICATION_JSON_VALUE],
+  )
+  @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
+  @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
+  fun getTransactionReconciliationByDateRange(
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate,
+    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate,
+    @RequestParam(defaultValue = "0") page: Int,
+    @RequestParam(defaultValue = "20") size: Int,
+  ): ResponseEntity<PagedResponse<SyncGeneralLedgerTransactionResponse>> {
+    val response = generalLedgerService.retrieveNomisGLTransactionByDateRange(
+      startDate,
+      endDate,
+    )
     return ResponseEntity.ok(response)
   }
 }
