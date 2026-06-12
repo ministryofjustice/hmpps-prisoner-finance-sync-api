@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
@@ -60,6 +61,22 @@ class PrisonerFinanceSyncApiExceptionHandler {
           developerMessage = developerMessage,
         ),
       ).also { log.info("Bad request - HttpMessageNotReadableException: {}", e.message) }
+  }
+
+  @ExceptionHandler(MissingServletRequestParameterException::class)
+  fun handleMissingServletRequestParameterException(e: MissingServletRequestParameterException): ResponseEntity<ErrorResponse> {
+    log.warn("MissingServletRequestParameterException caught: {}", e.message)
+    val userMessage = "Invalid request, a required parameter is missing"
+    val developerMessage = "JSON parse error: " + e.message
+    return ResponseEntity
+      .status(BAD_REQUEST)
+      .body(
+        ErrorResponse(
+          status = BAD_REQUEST,
+          userMessage = userMessage,
+          developerMessage = developerMessage,
+        ),
+      ).also { log.info("Bad request - MissingServletRequestParameterException: {}", e.message) }
   }
 
   @ExceptionHandler(MethodArgumentTypeMismatchException::class)

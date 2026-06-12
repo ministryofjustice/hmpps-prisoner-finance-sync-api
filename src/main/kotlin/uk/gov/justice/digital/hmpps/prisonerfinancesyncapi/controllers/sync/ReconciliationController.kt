@@ -127,6 +127,11 @@ class ReconciliationController(
         description = "Internal Server Error - An unexpected error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
+      ApiResponse(
+        responseCode = "502",
+        description = "General Ledger threw an unexpected 5XX error.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
     ],
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
@@ -146,11 +151,45 @@ class ReconciliationController(
     ],
     produces = [MediaType.APPLICATION_JSON_VALUE],
   )
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "200",
+        description = "Retrieve an offender transaction by a date range using data from the prisoner general ledger",
+        content = [Content(schema = Schema(implementation = SyncGeneralLedgerTransactionResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "General Ledger threw an unexpected 5XX error.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun getTransactionReconciliationByDateRange(
-    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate,
-    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate,
+    @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate,
+    @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate,
     @RequestParam(defaultValue = "1") @Min(1) pageNumber: Int,
     @RequestParam(defaultValue = "20") @Min(1) pageSize: Int,
   ): ResponseEntity<PagedResponse<SyncGeneralLedgerTransactionResponse>> {

@@ -598,6 +598,28 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .expectBody<ErrorResponse>().returnResult().responseBody!!
     }
 
+    @Test
+    fun `should return 400 when startDate is missing`() {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
+    @Test
+    fun `should return 400 when endDate is missing`() {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
     @ParameterizedTest
     @CsvSource("0", "-1", "abc")
     fun `should return 400 when page number is invalid`(inputPageNumber: String) {
