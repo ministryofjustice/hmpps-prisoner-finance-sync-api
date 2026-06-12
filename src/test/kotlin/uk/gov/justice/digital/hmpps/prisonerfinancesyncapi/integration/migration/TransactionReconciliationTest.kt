@@ -192,7 +192,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         subAccountType = "",
         amount = BigDecimal.valueOf(5.00),
         generalLedgerEntries = generalLedgerEntries,
-        reference = glTransactionResponse!!.reference,
+        reference = glTransactionResponse.reference,
       )
 
       integrationTestHelpers.syncOffenderTransactions(
@@ -451,7 +451,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
-        .expectBody<PagedTransactionResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
+        .expectBody<PagedTransactionResponse>().returnResult().responseBody!!
 
       assertThat(transactionsResponse.transactions).isEmpty()
     }
@@ -539,7 +539,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
-        .expectBody<PagedTransactionResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
+        .expectBody<PagedTransactionResponse>().returnResult().responseBody!!
 
       assertThat(transactionsResponse.transactions).hasSize(1)
 

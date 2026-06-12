@@ -246,7 +246,7 @@ class GeneralLedgerService(
     )
   }
 
-  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate, pageNumber: Int, pageSize: Int): PagedTransactionResponse<SyncGeneralLedgerTransactionResponse> {
+  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate, pageNumber: Int, pageSize: Int): PagedTransactionResponse {
     val startDateUtc = timeConversionService.toUtcStartOfDay(startDate)
     val endDateUtc = timeConversionService.toUtcStartOfDay(endDate.plusDays(1))
 
