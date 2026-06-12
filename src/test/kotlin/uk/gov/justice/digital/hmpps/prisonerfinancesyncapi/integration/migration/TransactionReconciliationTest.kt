@@ -368,6 +368,72 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isForbidden
     }
+
+    @Test
+    fun `should return 502 when the general ledger API returns a 5XX error`() {
+      val legacyTransactionId = 12345L
+
+      val prisonNumber = "A9971EC"
+      val prisonerAccountId: UUID = UUID.randomUUID()
+      val creditSubAccountId: UUID = UUID.randomUUID()
+      val debtorSubAccountId: UUID = UUID.randomUUID()
+
+      val transactionDate = Instant.now()
+      val (glTransactionResponse, postingSearchResponses) = stubPrisonerCashToSpendsTransferResponsesFromGL(
+        prisonNumber = prisonNumber,
+        parentAccountUUID = prisonerAccountId,
+        creditSubAccountUUID = creditSubAccountId,
+        debtorSubAccountUUID = debtorSubAccountId,
+        transactionDate = transactionDate,
+        amount = 500,
+      )
+
+      generalLedgerApi.stubSearchTransactionsByUUIDsThrows500()
+
+      val generalLedgerEntries = listOf(
+        GeneralLedgerEntry(
+          entrySequence = 1,
+          code = 2101,
+          postingType = "DR",
+          amount = BigDecimal.valueOf(500),
+        ),
+        GeneralLedgerEntry(
+          entrySequence = 2,
+          code = 2102,
+          postingType = "CR",
+          amount = BigDecimal.valueOf(500),
+        ),
+      )
+
+      val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
+        entrySequence = 1,
+        offenderId = 1,
+        offenderDisplayId = prisonNumber,
+        offenderBookingId = 1,
+        subAccountType = "",
+        amount = BigDecimal.valueOf(5.00),
+        generalLedgerEntries = generalLedgerEntries,
+        reference = glTransactionResponse.reference,
+      )
+
+      integrationTestHelpers.syncOffenderTransactions(
+        transactionId = legacyTransactionId,
+        caseloadId = "LEI",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now(),
+        offenderTransactions = listOf(offenderTransaction),
+      )
+
+      val error = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions/${glTransactionResponse.id}")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().is5xxServerError
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+
+      assertThat(error.status).isEqualTo(502)
+    }
   }
 
   @Nested
@@ -428,7 +494,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         subAccountType = "",
         amount = BigDecimal.valueOf(5.00),
         generalLedgerEntries = generalLedgerEntries,
-        reference = glTransaction!!.reference,
+        reference = glTransaction.reference,
       )
 
       integrationTestHelpers.syncOffenderTransactions(
@@ -443,14 +509,12 @@ class TransactionReconciliationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a transaction when it exists for the given date range`() {
+    fun `should a paginated response of transactions when transactions exist for the given date range`() {
       val legacyTransactionId = 12345L
 
       val firstOfJan2025 = LocalDateTime.of(2025, 1, 1, 1, 1)
 
       val (glTransaction, postingResponse) = createTransactionAndStubGeneralLedger(legacyTransactionId, firstOfJan2025)
-
-      createTransactionAndStubGeneralLedger(56789, firstOfJan2025.plusDays(3))
 
       generalLedgerApi.stubSearchTransactionsByUUIDs(
         listOf(glTransaction.id),
@@ -496,8 +560,6 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       assertThat(firstTransaction.generalLedgerEntries[1].postingType).isEqualTo("DR")
       assertThat(firstTransaction.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
     }
-
-    // TODO: Add more pagination tests & 502
 
     @Test
     fun `should return 400 when page requested is out of range`() {
@@ -578,6 +640,21 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf("SOME_OTHER_ROLE")))
         .exchange()
         .expectStatus().isForbidden
+    }
+
+    @Test
+    fun `should return 502 when the general ledger API returns a 5XX error`() {
+      generalLedgerApi.stubSearchTransactionsByUUIDsThrows500()
+
+      val error = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().is5xxServerError
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+
+      assertThat(error.status).isEqualTo(502)
     }
   }
 }

@@ -159,7 +159,12 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun stubGetAccountNotFound(reference: String, scenarioName: String? = null, scenarioState: String = STARTED, nextState: String = "SECOND_CALL") {
+  fun stubGetAccountNotFound(
+    reference: String,
+    scenarioName: String? = null,
+    scenarioState: String = STARTED,
+    nextState: String = "SECOND_CALL",
+  ) {
     stubFor(
       get(urlPathEqualTo("/accounts"))
         .apply {
@@ -383,7 +388,11 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun verifyTransactionPosted(times: Int = 1, debtorSubAccountUuid: String? = null, creditorSubAccountUuid: String? = null) {
+  fun verifyTransactionPosted(
+    times: Int = 1,
+    debtorSubAccountUuid: String? = null,
+    creditorSubAccountUuid: String? = null,
+  ) {
     var verification = postRequestedFor(urlPathEqualTo("/transactions"))
       .withHeader("Idempotency-Key", matching(".*"))
 
@@ -539,7 +548,10 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<SearchTransactionResponse>): PagedResponseSearchTransactionResponse {
+  fun stubSearchTransactionsByUUIDs(
+    glUUIDs: List<UUID>,
+    transactionResponses: List<SearchTransactionResponse>,
+  ): PagedResponseSearchTransactionResponse {
     // This ensures that the mock behaves in the same way as the GL
     val results = transactionResponses.filter { glUUIDs.contains(it.id) }
 
@@ -562,5 +574,27 @@ class GeneralLedgerApiMockServer :
         ),
     )
     return pagedResponse
+  }
+
+  fun stubSearchTransactionsByUUIDsThrows500() {
+    stubFor(
+      post(urlPathEqualTo("/transactions/search"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(500)
+            .withBody(
+              """
+                {
+                  "status": 500,
+                  "errorCode": "ServerError",
+                  "userMessage": "General Ledger Server Error",
+                  "developerMessage": "General Ledger Server Error",
+                  "moreInfo": "more info"
+                }
+              """.trimIndent(),
+            ),
+        ),
+    )
   }
 }
