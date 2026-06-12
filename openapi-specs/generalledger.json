@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-06-01.501.7c68108"
+    "version" : "2026-06-11.514.5b15123"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -197,6 +197,25 @@
         "tags" : [ "Transaction Controller" ],
         "summary" : "Find a list of GL transactions by a list of UUIDs. If a transaction is not found, it is omitted from the results.",
         "operationId" : "searchTransactions",
+        "parameters" : [ {
+          "name" : "pageNumber",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        } ],
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -215,12 +234,9 @@
           "200" : {
             "description" : "Retrieve transactions",
             "content" : {
-              "application/json" : {
+              "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/SearchTransactionResponse"
-                  }
+                  "$ref" : "#/components/schemas/PagedResponseSearchTransactionResponse"
                 }
               }
             }
@@ -1702,6 +1718,37 @@
         },
         "required" : [ "status" ]
       },
+      "PagedResponseSearchTransactionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SearchTransactionResponse"
+            }
+          },
+          "pageNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "isLastPage" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
+      },
       "SearchPostingResponse" : {
         "type" : "object",
         "description" : "A posting within a transaction",
@@ -1747,9 +1794,14 @@
           "accountReference" : {
             "type" : "string",
             "description" : "The reference of the account associated with the posting"
+          },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The entry sequence of the posting"
           }
         },
-        "required" : [ "accountID", "accountReference", "amount", "createdAt", "createdBy", "id", "subAccountID", "subAccountReference", "type" ]
+        "required" : [ "accountID", "accountReference", "amount", "createdAt", "createdBy", "entrySequence", "id", "subAccountID", "subAccountReference", "type" ]
       },
       "SearchTransactionResponse" : {
         "type" : "object",
@@ -1787,6 +1839,11 @@
             "format" : "int64",
             "description" : "The total transaction monetary amount in pence"
           },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The entrySequence of the transaction"
+          },
           "postings" : {
             "type" : "array",
             "description" : "A collection of postings for the transaction",
@@ -1795,7 +1852,7 @@
             }
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "description", "id", "postings", "reference", "timestamp" ]
+        "required" : [ "amount", "createdAt", "createdBy", "description", "entrySequence", "id", "postings", "reference", "timestamp" ]
       },
       "CreateStatementBalanceRequest" : {
         "type" : "object",
