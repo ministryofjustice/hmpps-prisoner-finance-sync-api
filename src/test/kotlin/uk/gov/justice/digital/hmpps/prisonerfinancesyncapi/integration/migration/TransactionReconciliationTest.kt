@@ -321,7 +321,10 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         offenderTransactions = listOf(offenderTransaction),
       )
 
-      generalLedgerApi.stubSearchTransactionThrowsOutOfBoundsException()
+      generalLedgerApi.stubSearchTransactionsByUUIDs(
+        emptyList(),
+        emptyList(),
+      )
 
       val error = webTestClient
         .get()

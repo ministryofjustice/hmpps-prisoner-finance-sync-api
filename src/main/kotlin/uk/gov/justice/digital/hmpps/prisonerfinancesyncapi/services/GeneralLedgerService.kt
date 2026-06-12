@@ -13,7 +13,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
@@ -250,19 +249,14 @@ class GeneralLedgerService(
       throw CustomException("No mapping found for $glUUID", status = HttpStatus.NOT_FOUND)
     }
 
-    lateinit var glTransaction: SearchTransactionResponse
+    val glTransaction = generalLedgerApiClient.searchTransactions(
+      listOf(glUUID),
+      pageNumber = 1,
+      pageSize = 1,
+    ).content.firstOrNull()
 
-    // search transaction will always throw out of bounds if there is nothing matching
-    try {
-      glTransaction = generalLedgerApiClient.searchTransactions(
-        listOf(glUUID),
-        pageNumber = 1,
-        pageSize = 1,
-      ).content.first()
-    } catch (e: CustomException) {
-      if (e.message == "Page requested is out of range") {
-        throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
-      }
+    if (glTransaction == null) {
+      throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
     }
 
     return SyncGeneralLedgerTransactionResponse(
