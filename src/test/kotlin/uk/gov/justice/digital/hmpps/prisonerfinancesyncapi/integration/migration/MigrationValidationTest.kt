@@ -131,7 +131,7 @@ class MigrationValidationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody<MigrationValidationResponse>()
-      .returnResult()!!
+      .returnResult()
 
     assert(response.responseBody?.validated == true)
     assertThat(response.responseBody?.discrepancyDetails?.isEmpty())
@@ -167,7 +167,7 @@ class MigrationValidationTest : IntegrationTestBase() {
       .exchange()
       .expectStatus().isOk
       .expectBody<MigrationValidationResponse>()
-      .returnResult()!!
+      .returnResult()
 
     assertThat(response.responseBody?.validated).isFalse()
 

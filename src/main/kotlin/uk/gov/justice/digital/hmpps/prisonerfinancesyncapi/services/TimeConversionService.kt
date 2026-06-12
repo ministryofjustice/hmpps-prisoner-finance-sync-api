@@ -22,4 +22,6 @@ class TimeConversionService {
    * to an Instant at the start of that day in UTC.
    */
   fun toUtcStartOfDay(localDate: LocalDate): Instant = localDate.atStartOfDay(legacyZoneId).toInstant()
+
+  fun toLocalDateTime(instant: Instant): LocalDateTime = LocalDateTime.ofInstant(instant, ZoneId.of(legacyZoneId.id))
 }

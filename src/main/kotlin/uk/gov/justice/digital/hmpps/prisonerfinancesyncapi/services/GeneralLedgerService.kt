@@ -2,24 +2,27 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PagedTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.DailyReconciliationResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.verify.TransactionReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.time.Duration
-import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.math.abs
 
@@ -89,6 +92,8 @@ class GeneralLedgerService(
             entrySequence = transaction.entrySequence,
             glTransactionUuid = transactionGLUUID,
             createdAt = timeConversionService.toUtcInstant(request.createdAt),
+            caseloadId = request.caseloadId,
+            transactionType = transaction.type,
           ),
         )
         transactionGLUUIDs.add(transactionGLUUID)
@@ -207,24 +212,81 @@ class GeneralLedgerService(
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
   }
 
-  fun retrieveNomisGLTransactionsForDay(day: Instant): DailyReconciliationResponse {
-    val endDateTime = day.plus(Duration.ofDays(1)).minusNanos(1)
-
-    val nomisTransactionMappingsForTheDay = ledgerTransactionMappingRepository.findAllOnDate(day, endDateTime)
-    val transactionMap = nomisTransactionMappingsForTheDay.associateBy { it.glTransactionUuid }
-
-    val glUUIDs = nomisTransactionMappingsForTheDay.map { it.glTransactionUuid }
-    val glTransactions = generalLedgerApiClient.searchTransactions(glUUIDs)
-
-    val transactionReconciliations = glTransactions.map {
-      TransactionReconciliationResponse(
-        nomisTransactionId = transactionMap.getValue(it.id).legacyTransactionId,
-        glTransactionId = it.id,
-        transactionCreatedAt = transactionMap.getValue(it.id).createdAt,
-        postings = it.postings,
-      )
+  fun retrieveNomisGLTransactionByGlId(glUUID: UUID): SyncGeneralLedgerTransactionResponse? {
+    val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByGlTransactionUuid(glUUID)
+    if (transactionMapping == null) {
+      throw CustomException("No mapping found for $glUUID", status = HttpStatus.NOT_FOUND)
     }
 
-    return DailyReconciliationResponse(transactions = transactionReconciliations)
+    val glTransaction = generalLedgerApiClient.searchTransactions(
+      listOf(glUUID),
+      pageNumber = 1,
+      pageSize = 1,
+    ).content.firstOrNull()
+
+    if (glTransaction == null) {
+      throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
+    }
+
+    return SyncGeneralLedgerTransactionResponse(
+      synchronizedTransactionId = glUUID,
+      legacyTransactionId = transactionMapping.legacyTransactionId,
+      description = glTransaction.description,
+      reference = glTransaction.reference,
+      caseloadId = transactionMapping.caseloadId ?: "",
+      transactionType = transactionMapping.transactionType ?: "",
+      transactionTimestamp = timeConversionService.toLocalDateTime(glTransaction.timestamp),
+      createdAt = timeConversionService.toLocalDateTime(glTransaction.createdAt),
+      createdBy = "",
+      createdByDisplayName = "",
+      lastModifiedAt = LocalDateTime.now(),
+      lastModifiedBy = "",
+      lastModifiedByDisplayName = "",
+      generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+    )
+  }
+
+  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate, pageNumber: Int, pageSize: Int): PagedTransactionResponse {
+    val startDateUtc = timeConversionService.toUtcStartOfDay(startDate)
+    val endDateUtc = timeConversionService.toUtcStartOfDay(endDate.plusDays(1))
+
+    val transactionMappings = ledgerTransactionMappingRepository.findAllOnDate(
+      startDateUtc,
+      endDateUtc,
+    )
+
+    val glTransactions = generalLedgerApiClient.searchTransactions(
+      transactionMappings.map { it.glTransactionUuid },
+      pageSize = pageSize,
+      pageNumber = pageNumber,
+    )
+
+    val transactionMappingByGlId = transactionMappings.associateBy { it.glTransactionUuid }
+
+    return PagedTransactionResponse(
+      transactions = glTransactions.content.map {
+        SyncGeneralLedgerTransactionResponse(
+          synchronizedTransactionId = it.id,
+          legacyTransactionId = transactionMappingByGlId.getValue(it.id).legacyTransactionId,
+          description = it.description,
+          reference = it.reference,
+          caseloadId = transactionMappingByGlId.getValue(it.id).caseloadId ?: "",
+          transactionType = transactionMappingByGlId.getValue(it.id).transactionType ?: "",
+          transactionTimestamp = timeConversionService.toLocalDateTime(it.timestamp),
+          createdAt = timeConversionService.toLocalDateTime(it.createdAt),
+          createdBy = "",
+          createdByDisplayName = "",
+          lastModifiedAt = LocalDateTime.now(),
+          lastModifiedBy = "",
+          lastModifiedByDisplayName = "",
+          generalLedgerEntries = it.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+        )
+      },
+      pageNumber = glTransactions.pageNumber,
+      pageSize = glTransactions.pageSize,
+      totalElements = glTransactions.totalElements,
+      totalPages = glTransactions.totalPages,
+      isLastPage = glTransactions.isLastPage,
+    )
   }
 }

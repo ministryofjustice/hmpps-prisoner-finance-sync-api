@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PagedResponseSearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
@@ -158,7 +159,12 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun stubGetAccountNotFound(reference: String, scenarioName: String? = null, scenarioState: String = STARTED, nextState: String = "SECOND_CALL") {
+  fun stubGetAccountNotFound(
+    reference: String,
+    scenarioName: String? = null,
+    scenarioState: String = STARTED,
+    nextState: String = "SECOND_CALL",
+  ) {
     stubFor(
       get(urlPathEqualTo("/accounts"))
         .apply {
@@ -382,7 +388,11 @@ class GeneralLedgerApiMockServer :
     )
   }
 
-  fun verifyTransactionPosted(times: Int = 1, debtorSubAccountUuid: String? = null, creditorSubAccountUuid: String? = null) {
+  fun verifyTransactionPosted(
+    times: Int = 1,
+    debtorSubAccountUuid: String? = null,
+    creditorSubAccountUuid: String? = null,
+  ) {
     var verification = postRequestedFor(urlPathEqualTo("/transactions"))
       .withHeader("Idempotency-Key", matching(".*"))
 
@@ -408,11 +418,12 @@ class GeneralLedgerApiMockServer :
     reference: String? = null,
     returnUUID: UUID = UUID.randomUUID(),
     postings: List<PostingResponse> = emptyList(),
+    amount: Long = 1000,
   ): TransactionResponse {
     val response = TransactionResponse(
       id = returnUUID,
       reference = reference ?: "MOCK_TXN",
-      amount = 1000,
+      amount = amount,
       createdBy = "MOCK_USER",
       createdAt = Instant.now(),
       description = "Mock Transaction Description",
@@ -515,9 +526,43 @@ class GeneralLedgerApiMockServer :
     return response
   }
 
-  fun stubSearchTransactionsByUUIDs(glUUIDs: List<UUID>, transactionResponses: List<SearchTransactionResponse>): List<SearchTransactionResponse> {
+  fun stubSearchTransactionThrowsOutOfBoundsException() {
+    stubFor(
+      post(urlPathEqualTo("/transactions/search"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(400)
+            .withBody(
+              """
+                {
+                  "status": 400,
+                  "errorCode": "BadRequest",
+                  "userMessage": "Page requested is out of range",
+                  "developerMessage": "Page requested is out of range",
+                  "moreInfo": "more info"
+                }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  fun stubSearchTransactionsByUUIDs(
+    glUUIDs: List<UUID>,
+    transactionResponses: List<SearchTransactionResponse>,
+  ): PagedResponseSearchTransactionResponse {
     // This ensures that the mock behaves in the same way as the GL
-    val response = transactionResponses.filter { glUUIDs.contains(it.id) }
+    val results = transactionResponses.filter { glUUIDs.contains(it.id) }
+
+    val pagedResponse = PagedResponseSearchTransactionResponse(
+      content = results,
+      pageNumber = 1,
+      pageSize = results.size,
+      totalElements = results.size.toLong(),
+      totalPages = 1,
+      isLastPage = true,
+    )
 
     stubFor(
       post(urlPathEqualTo("/transactions/search"))
@@ -525,9 +570,31 @@ class GeneralLedgerApiMockServer :
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
             .withStatus(200)
-            .withBody(mapper.writeValueAsString(transactionResponses)),
+            .withBody(mapper.writeValueAsString(pagedResponse)),
         ),
     )
-    return response
+    return pagedResponse
+  }
+
+  fun stubSearchTransactionsByUUIDsThrows500() {
+    stubFor(
+      post(urlPathEqualTo("/transactions/search"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(500)
+            .withBody(
+              """
+                {
+                  "status": 500,
+                  "errorCode": "ServerError",
+                  "userMessage": "General Ledger Server Error",
+                  "developerMessage": "General Ledger Server Error",
+                  "moreInfo": "more info"
+                }
+              """.trimIndent(),
+            ),
+        ),
+    )
   }
 }

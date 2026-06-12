@@ -130,4 +130,25 @@ class LedgerAccountMappingServiceTest {
       assertThat(result).isEqualTo(isValid)
     }
   }
+
+  @Nested
+  @DisplayName("mapGLRefToNOMISCode")
+  inner class MapGLRefToNOMISCode {
+
+    @ParameterizedTest
+    @CsvSource(
+      "CASH, 2101",
+      "SPENDS, 2102",
+      "SAVINGS, 2103",
+      "1502:ADV, 1502",
+      "2501:CANT, 2501",
+      "2199:HOA, 2199",
+      "2199:WHF, 2199",
+      "7000:FRED, 7000",
+    )
+    fun `should map GL account reference to NOMIS account code`(inputReference: String, expectedCode: Int) {
+      val result = mappingService.convertGeneralLedgerReferenceToNOMISCode(inputReference)
+      assertThat(result).isEqualTo(expectedCode)
+    }
+  }
 }

@@ -10,6 +10,3 @@ data class TransactionReconciliationResponse(
   val transactionCreatedAt: Instant,
   val postings: List<SearchPostingResponse>,
 )
-data class DailyReconciliationResponse(
-  val transactions: List<TransactionReconciliationResponse>,
-)

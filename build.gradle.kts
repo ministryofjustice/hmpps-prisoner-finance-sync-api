@@ -180,6 +180,11 @@ configure<KtlintExtension> {
 // TEST TASKS
 // ==============================================================================
 
+tasks.withType<Test> {
+  // Allows Mockito to attach its agent dynamically on JDK 21+ without warnings or debugger conflicts
+  jvmArgs("-XX:+EnableDynamicAgentLoading")
+}
+
 tasks {
   register<Test>("unitTest") {
     group = "verification"

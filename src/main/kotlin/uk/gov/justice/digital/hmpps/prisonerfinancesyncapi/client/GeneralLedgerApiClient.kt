@@ -1,16 +1,19 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client
 
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.AccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.SubAccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateStatementBalanceRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PagedResponseSearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
@@ -23,6 +26,27 @@ class GeneralLedgerApiClient(
   private val subAccountApi: SubAccountControllerApi,
   private val transactionApi: TransactionControllerApi,
 ) {
+
+  private fun <T> handleExceptions(
+    block: () -> T,
+    message400: String = "Bad Request from General Ledger",
+    message404: String = "Not found",
+    message502: String = "Bad Gateway - General Ledger Unreachable or throwing an error",
+    message500: String = "Unexpected Error",
+  ): T {
+    try {
+      return block()
+    } catch (e: WebClientResponseException) {
+      when {
+        e.statusCode == HttpStatus.BAD_REQUEST && e.responseBodyAsString.contains("Page requested is out of range") ->
+          throw CustomException(message = "Page requested is out of range", status = HttpStatus.BAD_REQUEST)
+        e.statusCode == HttpStatus.BAD_REQUEST -> throw CustomException(message400, HttpStatus.BAD_REQUEST, e)
+        e.statusCode == HttpStatus.NOT_FOUND -> throw CustomException(message404, HttpStatus.NOT_FOUND, e)
+        e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR -> throw CustomException(message502, HttpStatus.BAD_GATEWAY, e)
+        else -> throw CustomException(message500, HttpStatus.INTERNAL_SERVER_ERROR, e)
+      }
+    }
+  }
 
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -83,8 +107,11 @@ class GeneralLedgerApiClient(
   fun getTransaction(transactionUUID: UUID): TransactionResponse? = transactionApi.getTransactionById(transactionUUID).block()
 
   // POST /transactions/search
-  fun searchTransactions(glTransactionUUIDs: List<UUID>): List<SearchTransactionResponse> {
-    val response = transactionApi.searchTransactions(glTransactionUUIDs).block()
+  fun searchTransactions(glTransactionUUIDs: List<UUID>, pageNumber: Int, pageSize: Int): PagedResponseSearchTransactionResponse {
+    var response = handleExceptions(
+      { transactionApi.searchTransactions(glTransactionUUIDs, pageNumber = pageNumber, pageSize = pageSize).block() },
+    )
+
     return response
       ?: throw IllegalStateException("GL Api returned null body for search transactions $response")
   }
