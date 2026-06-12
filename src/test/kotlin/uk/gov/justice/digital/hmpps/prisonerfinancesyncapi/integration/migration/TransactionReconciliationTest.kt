@@ -441,21 +441,6 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
     val timeConversion = TimeConversionService()
 
-    @Test
-    fun `should return no transactions when no transactions exist for the given date range`() {
-      generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
-
-      val transactionsResponse = webTestClient
-        .get()
-        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .exchange()
-        .expectStatus().isOk
-        .expectBody<PagedTransactionResponse>().returnResult().responseBody!!
-
-      assertThat(transactionsResponse.transactions).isEmpty()
-    }
-
     fun createTransactionAndStubGeneralLedger(legacyTransactionId: Long, transactionDateTime: LocalDateTime): Pair<TransactionResponse, List<SearchPostingResponse>> {
       val prisonNumber = "A9971EC"
       val prisonerAccountId: UUID = UUID.randomUUID()
@@ -506,6 +491,21 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       )
 
       return Pair(glTransaction, postingResponse)
+    }
+
+    @Test
+    fun `should return no transactions when no transactions exist for the given date range`() {
+      generalLedgerApi.stubSearchTransactionsByUUIDs(emptyList(), emptyList())
+
+      val transactionsResponse = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-01&endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<PagedTransactionResponse>().returnResult().responseBody!!
+
+      assertThat(transactionsResponse.transactions).isEmpty()
     }
 
     @Test
@@ -603,6 +603,17 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       webTestClient
         .get()
         .uri("/reconcile/offender-transactions?endDate=2025-01-02")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
+    @Test
+    fun `should return 400 when startDate is after endDate`() {
+      webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions?startDate=2025-01-03&endDate=2025-01-02")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isBadRequest
