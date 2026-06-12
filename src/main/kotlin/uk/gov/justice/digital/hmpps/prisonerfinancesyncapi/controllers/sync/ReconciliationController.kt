@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PagedTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
@@ -192,7 +192,7 @@ class ReconciliationController(
     @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate,
     @RequestParam(defaultValue = "1") @Min(1) pageNumber: Int,
     @RequestParam(defaultValue = "20") @Min(1) pageSize: Int,
-  ): ResponseEntity<PagedResponse<SyncGeneralLedgerTransactionResponse>> {
+  ): ResponseEntity<PagedTransactionResponse<SyncGeneralLedgerTransactionResponse>> {
     val response = generalLedgerService.retrieveNomisGLTransactionByDateRange(
       startDate = startDate,
       endDate = endDate,

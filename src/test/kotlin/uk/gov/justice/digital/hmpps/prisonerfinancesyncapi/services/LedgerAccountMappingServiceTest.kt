@@ -147,7 +147,7 @@ class LedgerAccountMappingServiceTest {
       "7000:FRED, 7000",
     )
     fun `should map GL account reference to NOMIS account code`(inputReference: String, expectedCode: Int) {
-      val result = mappingService.mapGLRefToNOMISCode(inputReference)
+      val result = mappingService.convertGeneralLedgerReferenceToNOMISCode(inputReference)
       assertThat(result).isEqualTo(expectedCode)
     }
   }

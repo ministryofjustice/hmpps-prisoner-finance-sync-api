@@ -39,7 +39,7 @@ class LedgerAccountMappingService {
     }
   }
 
-  fun mapGLRefToNOMISCode(referenceGLCode: String): Int {
+  fun convertGeneralLedgerReferenceToNOMISCode(referenceGLCode: String): Int {
     try {
       return mapSubAccountPrisonerReferenceToNOMIS(referenceGLCode)
     } catch (_: IllegalArgumentException) {

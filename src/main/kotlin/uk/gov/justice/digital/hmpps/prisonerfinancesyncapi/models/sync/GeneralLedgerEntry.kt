@@ -32,7 +32,7 @@ data class GeneralLedgerEntry(
 
     fun fromGeneralLedgerPostingResponse(glSearchPosting: SearchPostingResponse): GeneralLedgerEntry = GeneralLedgerEntry(
       entrySequence = glSearchPosting.entrySequence.toInt(),
-      code = accountMappingService.mapGLRefToNOMISCode(glSearchPosting.subAccountReference),
+      code = accountMappingService.convertGeneralLedgerReferenceToNOMISCode(glSearchPosting.subAccountReference),
       postingType = glSearchPosting.type.value,
       amount = (glSearchPosting.amount.toBigDecimal()).movePointLeft(2),
     )

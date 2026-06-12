@@ -17,13 +17,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.PagedResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PagedTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
@@ -451,9 +451,9 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
-        .expectBody<PagedResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
+        .expectBody<PagedTransactionResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
 
-      assertThat(transactionsResponse.content).isEmpty()
+      assertThat(transactionsResponse.transactions).isEmpty()
     }
 
     fun createTransactionAndStubGeneralLedger(legacyTransactionId: Long, transactionDateTime: LocalDateTime): Pair<TransactionResponse, List<SearchPostingResponse>> {
@@ -539,11 +539,11 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
-        .expectBody<PagedResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
+        .expectBody<PagedTransactionResponse<SyncGeneralLedgerTransactionResponse>>().returnResult().responseBody!!
 
-      assertThat(transactionsResponse.content).hasSize(1)
+      assertThat(transactionsResponse.transactions).hasSize(1)
 
-      val firstTransaction = transactionsResponse.content.first()
+      val firstTransaction = transactionsResponse.transactions.first()
 
       assertThat(firstTransaction.synchronizedTransactionId).isEqualTo(glTransaction.id)
       assertThat(firstTransaction.legacyTransactionId).isEqualTo(legacyTransactionId)
