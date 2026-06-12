@@ -102,7 +102,6 @@ class TransactionReconciliationTest : IntegrationTestBase() {
       returnUUID = returnGeneralLedgerUUID,
       postings = transactionPostings,
       amount = amount,
-      transactionTimestamp = transactionDate,
     )
 
     val postingSearchResponses = transactionResponse.postings.withIndex().map { (index, it) ->
