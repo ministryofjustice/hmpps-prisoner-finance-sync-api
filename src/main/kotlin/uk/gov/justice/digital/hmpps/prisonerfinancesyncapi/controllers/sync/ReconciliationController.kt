@@ -155,7 +155,7 @@ class ReconciliationController(
     value = [
       ApiResponse(
         responseCode = "200",
-        description = "Retrieve an offender transaction by a date range using data from the prisoner general ledger",
+        description = "Retrieve offender transactions by a date range using data from the prisoner general ledger",
         content = [Content(schema = Schema(implementation = SyncGeneralLedgerTransactionResponse::class))],
       ),
       ApiResponse(
@@ -191,8 +191,8 @@ class ReconciliationController(
     @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) startDate: LocalDate,
     @RequestParam(required = true) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) endDate: LocalDate,
     @RequestParam(defaultValue = "1") @Min(1) pageNumber: Int,
-    @RequestParam(defaultValue = "20") @Min(1) pageSize: Int,
-  ): ResponseEntity<PagedTransactionResponse<SyncGeneralLedgerTransactionResponse>> {
+    @RequestParam(defaultValue = "25") @Min(1) pageSize: Int,
+  ): ResponseEntity<PagedTransactionResponse> {
     val response = generalLedgerService.retrieveNomisGLTransactionByDateRange(
       startDate = startDate,
       endDate = endDate,
