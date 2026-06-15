@@ -212,29 +212,29 @@ class GeneralLedgerService(
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
   }
 
-  fun retrieveNomisGLTransactionByGlId(glUUID: UUID): SyncGeneralLedgerTransactionResponse? {
-    val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByGlTransactionUuid(glUUID)
-    if (transactionMapping == null) {
-      throw CustomException("No mapping found for $glUUID", status = HttpStatus.NOT_FOUND)
+  fun retrieveNomisGLTransactionByLegacyTransactionId(legacyTransactionId: Long): SyncGeneralLedgerTransactionResponse? {
+    val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
+    if (transactionMapping.isEmpty()) {
+      throw CustomException("No mapping found for $legacyTransactionId", status = HttpStatus.NOT_FOUND)
     }
 
     val glTransaction = generalLedgerApiClient.searchTransactions(
-      listOf(glUUID),
+      listOf(transactionMapping.first().glTransactionUuid),
       pageNumber = 1,
       pageSize = 1,
     ).content.firstOrNull()
 
     if (glTransaction == null) {
-      throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
+      throw CustomException("No gl transaction found for gl $legacyTransactionId", status = HttpStatus.NOT_FOUND)
     }
 
     return SyncGeneralLedgerTransactionResponse(
-      synchronizedTransactionId = glUUID,
-      legacyTransactionId = transactionMapping.legacyTransactionId,
+      synchronizedTransactionId = transactionMapping.first().glTransactionUuid, // TODO: wrong id
+      legacyTransactionId = legacyTransactionId,
       description = glTransaction.description,
       reference = glTransaction.reference,
-      caseloadId = transactionMapping.caseloadId ?: "",
-      transactionType = transactionMapping.transactionType ?: "",
+      caseloadId = transactionMapping.first().caseloadId ?: "",
+      transactionType = transactionMapping.first().transactionType ?: "",
       transactionTimestamp = timeConversionService.toLocalDateTime(glTransaction.timestamp),
       createdAt = timeConversionService.toLocalDateTime(glTransaction.createdAt),
       createdBy = "",

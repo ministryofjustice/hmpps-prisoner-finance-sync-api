@@ -31,7 +31,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.Reconciliati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
-import java.util.UUID
 
 @Validated
 @Tag(name = TAG_NOMIS_SYNC)
@@ -93,7 +92,7 @@ class ReconciliationController(
   )
   @GetMapping(
     path = [
-      "/reconcile/offender-transactions/{synchronizedTransactionId}",
+      "/reconcile/offender-transactions/{legacyTransactionId}",
     ],
     produces = [MediaType.APPLICATION_JSON_VALUE],
   )
@@ -138,8 +137,8 @@ class ReconciliationController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  fun getTransactionReconciliationById(@PathVariable synchronizedTransactionId: UUID): ResponseEntity<SyncGeneralLedgerTransactionResponse> {
-    val response = generalLedgerService.retrieveNomisGLTransactionByGlId(synchronizedTransactionId)
+  fun getTransactionReconciliationById(@PathVariable legacyTransactionId: Long): ResponseEntity<SyncGeneralLedgerTransactionResponse> {
+    val response = generalLedgerService.retrieveNomisGLTransactionByLegacyTransactionId(legacyTransactionId)
 
     return ResponseEntity.ok(response)
   }

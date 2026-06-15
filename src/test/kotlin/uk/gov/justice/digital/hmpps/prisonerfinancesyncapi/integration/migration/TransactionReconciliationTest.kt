@@ -205,7 +205,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
       val transactionResponse = webTestClient
         .get()
-        .uri("/reconcile/offender-transactions/${glTransactionResponse.id}")
+        .uri("/reconcile/offender-transactions/$legacyTransactionId")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
@@ -327,27 +327,27 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
       val error = webTestClient
         .get()
-        .uri("/reconcile/offender-transactions/${transactionResponse.id}")
+        .uri("/reconcile/offender-transactions/$legacyTransactionId")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isNotFound
         .expectBody<ErrorResponse>().returnResult().responseBody!!
 
-      assertThat(error.developerMessage).isEqualTo("No gl transaction found for gl ${transactionResponse.id}")
+      assertThat(error.developerMessage).isEqualTo("No gl transaction found for gl $legacyTransactionId")
     }
 
     @Test
     fun `should return a 404 when there is no mapping entry found in sync`() {
-      val incorrectUUID = UUID.randomUUID()
+      val incorrectId = 123
       val error = webTestClient
         .get()
-        .uri("/reconcile/offender-transactions/$incorrectUUID")
+        .uri("/reconcile/offender-transactions/$incorrectId")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isNotFound
         .expectBody<ErrorResponse>().returnResult().responseBody!!
 
-      assertThat(error.developerMessage).isEqualTo("No mapping found for $incorrectUUID")
+      assertThat(error.developerMessage).isEqualTo("No mapping found for $incorrectId")
     }
 
     @Test
@@ -361,9 +361,9 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
     @Test
     fun `should return 403 when given an incorrect role`() {
-      val incorrectUUID = UUID.randomUUID()
+      val incorrectId = 123
       webTestClient.get()
-        .uri("/reconcile/offender-transactions/$incorrectUUID")
+        .uri("/reconcile/offender-transactions/$incorrectId")
         .headers(setAuthorisation(roles = listOf("INCORRECT_ROLE")))
         .exchange()
         .expectStatus().isForbidden
@@ -426,7 +426,7 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
       val error = webTestClient
         .get()
-        .uri("/reconcile/offender-transactions/${glTransactionResponse.id}")
+        .uri("/reconcile/offender-transactions/$legacyTransactionId")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().is5xxServerError
