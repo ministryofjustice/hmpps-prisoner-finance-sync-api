@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.expectBody
@@ -17,6 +18,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
@@ -39,7 +42,9 @@ import java.util.UUID
   ],
 )
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
-class TransactionReconciliationTest : IntegrationTestBase() {
+class TransactionReconciliationTest(
+  @param:Autowired val transactionMappingRepository: GeneralLedgerTransactionMappingRepository,
+) : IntegrationTestBase() {
 
   private fun stubPrisonerCashToSpendsTransferResponsesFromGL(
     prisonNumber: String,
@@ -131,76 +136,74 @@ class TransactionReconciliationTest : IntegrationTestBase() {
 
   @Nested
   inner class ReconcileOffenderTransactionById {
-    // At present Syscon only sends one-to-one transactions.
-    // IE. CANT transactions are split into multiple one-to-one transactions
     @Test
-    fun `should return the general ledger transaction in Syscon format when given the corresponding ID`() {
+    fun `should return a one to one general ledger transaction in Syscon format when given the corresponding ID`() {
+      // ADV transaction LEI to Prisoner
       val legacyTransactionId = 12345L
-
       val prisonNumber = "A9971EC"
-      val prisonerAccountId: UUID = UUID.randomUUID()
-      val creditSubAccountId: UUID = UUID.randomUUID()
-      val debtorSubAccountId: UUID = UUID.randomUUID()
-
+      val caseload = "LEI"
+      val transactionType = "ADV"
+      val caseloadSubAccountCode = 1021
+      val glCaseloadAccountId: UUID = UUID.randomUUID()
+      val glPrisonNumberAccountId: UUID = UUID.randomUUID()
+      val glPrisonAdvAccountUUID: UUID = UUID.randomUUID()
+      val glPrisonerCashAccountUUID: UUID = UUID.randomUUID()
       val transactionDate = Instant.now()
-      val (glTransactionResponse, postingSearchResponses) = stubPrisonerCashToSpendsTransferResponsesFromGL(
-        prisonNumber = prisonNumber,
-        parentAccountUUID = prisonerAccountId,
-        creditSubAccountUUID = creditSubAccountId,
-        debtorSubAccountUUID = debtorSubAccountId,
-        transactionDate = transactionDate,
-        amount = 500,
-      )
+      val glTransactionId = UUID.randomUUID()
+      val amount = 500L
 
+      val mapping = GeneralLedgerTransactionMapping(
+        legacyTransactionId = legacyTransactionId,
+        entrySequence = 1,
+        glTransactionUuid = glTransactionId,
+        createdAt = transactionDate,
+        transactionType = transactionType,
+        caseloadId = caseload,
+      )
+      transactionMappingRepository.save(mapping)
+      transactionMappingRepository.flush()
+
+      val description = "Adv transaction LEI to Prisoner"
       generalLedgerApi.stubSearchTransactionsByUUIDs(
-        listOf(glTransactionResponse.id),
+        listOf(glTransactionId),
         listOf(
           SearchTransactionResponse(
-            id = glTransactionResponse.id,
+            id = glTransactionId,
             createdBy = "",
-            createdAt = glTransactionResponse.createdAt,
-            reference = glTransactionResponse.reference,
-            description = glTransactionResponse.description,
-            timestamp = glTransactionResponse.timestamp,
-            amount = glTransactionResponse.amount,
+            createdAt = transactionDate,
+            reference = "",
+            description = description,
+            timestamp = transactionDate,
+            amount = amount,
             entrySequence = 1,
-            postings = postingSearchResponses,
+            postings = listOf(
+              SearchPostingResponse(
+                id = UUID.randomUUID(),
+                createdBy = "",
+                createdAt = transactionDate,
+                type = SearchPostingResponse.Type.CR,
+                amount = amount,
+                subAccountID = glPrisonAdvAccountUUID,
+                subAccountReference = "$caseloadSubAccountCode:$transactionType",
+                accountID = glCaseloadAccountId,
+                accountReference = caseload,
+                entrySequence = 1,
+              ),
+              SearchPostingResponse(
+                id = UUID.randomUUID(),
+                createdBy = "",
+                createdAt = transactionDate,
+                type = SearchPostingResponse.Type.DR,
+                amount = amount,
+                subAccountID = glPrisonerCashAccountUUID,
+                subAccountReference = "CASH",
+                accountID = glPrisonNumberAccountId,
+                accountReference = prisonNumber,
+                entrySequence = 2,
+              ),
+            ),
           ),
         ),
-      )
-
-      val generalLedgerEntries = listOf(
-        GeneralLedgerEntry(
-          entrySequence = 1,
-          code = 2101,
-          postingType = "DR",
-          amount = BigDecimal.valueOf(500),
-        ),
-        GeneralLedgerEntry(
-          entrySequence = 2,
-          code = 2102,
-          postingType = "CR",
-          amount = BigDecimal.valueOf(500),
-        ),
-      )
-
-      val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
-        entrySequence = 1,
-        offenderId = 1,
-        offenderDisplayId = prisonNumber,
-        offenderBookingId = 1,
-        subAccountType = "",
-        amount = BigDecimal.valueOf(5.00),
-        generalLedgerEntries = generalLedgerEntries,
-        reference = glTransactionResponse.reference,
-      )
-
-      integrationTestHelpers.syncOffenderTransactions(
-        transactionId = legacyTransactionId,
-        caseloadId = "LEI",
-        transactionTimestamp = LocalDateTime.now(),
-        createdAt = LocalDateTime.now(),
-        offenderTransactions = listOf(offenderTransaction),
       )
 
       val transactionResponse = webTestClient
@@ -211,20 +214,20 @@ class TransactionReconciliationTest : IntegrationTestBase() {
         .expectStatus().isOk
         .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
 
-      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransactionResponse.id)
+      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransactionId) // not sure about this
       assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
-      assertThat(transactionResponse.transactionType).isEqualTo("ATOF")
-      assertThat(transactionResponse.description).isEqualTo("Mock Transaction Description")
+      assertThat(transactionResponse.transactionType).isEqualTo(transactionType)
+      assertThat(transactionResponse.description).isEqualTo(description)
       assertThat(transactionResponse.generalLedgerEntries.size).isEqualTo(2)
       assertThat(transactionResponse.generalLedgerEntries[0].entrySequence).isEqualTo(1)
-      assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(2101)
+      assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(caseloadSubAccountCode)
       assertThat(transactionResponse.generalLedgerEntries[0].postingType).isEqualTo("CR")
-      assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal("5.00"))
+      assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
 
       assertThat(transactionResponse.generalLedgerEntries[1].entrySequence).isEqualTo(2)
-      assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2102)
+      assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2101)
       assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
-      assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal("5.00"))
+      assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
     }
 
     @Test
