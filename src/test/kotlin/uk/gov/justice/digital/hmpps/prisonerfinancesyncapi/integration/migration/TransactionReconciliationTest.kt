@@ -231,6 +231,152 @@ class TransactionReconciliationTest(
     }
 
     @Test
+    fun `should return a one to many general ledger transaction in Syscon format when given the corresponding ID`() {
+      // CANT transaction LEI to Prisoners
+      val legacyTransactionId = 12345L
+      val transactionDate = Instant.now()
+      val amount = 500L
+
+      val prisonerOne = "A9971EC"
+      val glPrisonerOneAccountId: UUID = UUID.randomUUID()
+      val glPrisonerOneAccountUUID: UUID = UUID.randomUUID()
+      val glTransactionIdOne = UUID.randomUUID()
+
+      val prisonerTwo = "B9971EC"
+      val glPrisonerTwoAccountId: UUID = UUID.randomUUID()
+      val glPrisonerTwoAccountUUID: UUID = UUID.randomUUID()
+      val glTransactionIdTwo = UUID.randomUUID()
+
+      val caseload = "LEI"
+      val transactionType = "CANT"
+      val caseloadSubAccountCode = 1021
+      val glCaseloadAccountId: UUID = UUID.randomUUID()
+      val glPrisonCanteenAccountUUID: UUID = UUID.randomUUID()
+
+      val mappingOne = GeneralLedgerTransactionMapping(
+        legacyTransactionId = legacyTransactionId,
+        entrySequence = 1,
+        glTransactionUuid = glTransactionIdOne,
+        createdAt = transactionDate,
+        transactionType = transactionType,
+        caseloadId = caseload,
+      )
+      val mappingTwo = GeneralLedgerTransactionMapping(
+        legacyTransactionId = legacyTransactionId,
+        entrySequence = 1,
+        glTransactionUuid = glTransactionIdTwo,
+        createdAt = transactionDate,
+        transactionType = transactionType,
+        caseloadId = caseload,
+      )
+
+      transactionMappingRepository.saveAll(listOf(mappingOne, mappingTwo))
+      transactionMappingRepository.flush()
+
+      val description = "Adv transaction LEI to Prisoner"
+      generalLedgerApi.stubSearchTransactionsByUUIDs(
+        listOf(glTransactionIdOne, glTransactionIdTwo),
+        listOf(
+          SearchTransactionResponse(
+            id = glTransactionIdOne,
+            createdBy = "",
+            createdAt = transactionDate,
+            reference = "",
+            description = description,
+            timestamp = transactionDate,
+            amount = amount,
+            entrySequence = 1,
+            postings = listOf(
+              SearchPostingResponse(
+                id = UUID.randomUUID(),
+                createdBy = "",
+                createdAt = transactionDate,
+                type = SearchPostingResponse.Type.CR,
+                amount = amount,
+                subAccountID = glPrisonCanteenAccountUUID,
+                subAccountReference = "$caseloadSubAccountCode:$transactionType",
+                accountID = glCaseloadAccountId,
+                accountReference = caseload,
+                entrySequence = 1,
+              ),
+              SearchPostingResponse(
+                id = UUID.randomUUID(),
+                createdBy = "",
+                createdAt = transactionDate,
+                type = SearchPostingResponse.Type.DR,
+                amount = amount,
+                subAccountID = glPrisonerOneAccountUUID,
+                subAccountReference = "CASH",
+                accountID = glPrisonerOneAccountId,
+                accountReference = prisonerOne,
+                entrySequence = 2,
+              ),
+            ),
+          ),
+          SearchTransactionResponse(
+            id = glTransactionIdTwo,
+            createdBy = "",
+            createdAt = transactionDate,
+            reference = "",
+            description = description,
+            timestamp = transactionDate,
+            amount = amount,
+            entrySequence = 1,
+            postings = listOf(
+              SearchPostingResponse(
+                id = UUID.randomUUID(),
+                createdBy = "",
+                createdAt = transactionDate,
+                type = SearchPostingResponse.Type.CR,
+                amount = amount,
+                subAccountID = glPrisonCanteenAccountUUID,
+                subAccountReference = "$caseloadSubAccountCode:$transactionType",
+                accountID = glCaseloadAccountId,
+                accountReference = caseload,
+                entrySequence = 3,
+              ),
+              SearchPostingResponse(
+                id = UUID.randomUUID(),
+                createdBy = "",
+                createdAt = transactionDate,
+                type = SearchPostingResponse.Type.DR,
+                amount = amount,
+                subAccountID = glPrisonerTwoAccountUUID,
+                subAccountReference = "CASH",
+                accountID = glPrisonerTwoAccountId,
+                accountReference = prisonerTwo,
+                entrySequence = 4,
+              ),
+            ),
+          ),
+        ),
+      )
+
+      val transactionResponse = webTestClient
+        .get()
+        .uri("/reconcile/offender-transactions/$legacyTransactionId")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
+
+      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(null)
+      assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
+      assertThat(transactionResponse.transactionType).isEqualTo(transactionType)
+      assertThat(transactionResponse.description).isEqualTo(description)
+      assertThat(transactionResponse.generalLedgerEntries.size).isEqualTo(2)
+      assertThat(transactionResponse.generalLedgerEntries[0].entrySequence).isEqualTo(1)
+      assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(caseloadSubAccountCode)
+      assertThat(transactionResponse.generalLedgerEntries[0].postingType).isEqualTo("CR")
+      assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+
+      assertThat(transactionResponse.generalLedgerEntries[1].entrySequence).isEqualTo(2)
+      assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2101)
+      assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
+      assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+    }
+
+    @Test
     fun `should return 404 when the transaction ID is not found in GL`() {
       val legacyTransactionId = 12345L
 
