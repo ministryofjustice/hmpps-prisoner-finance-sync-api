@@ -271,8 +271,7 @@ class GeneralLedgerService(
     }
   }
 
-  fun retrieveNomisGLTransactionByLegacyTransactionId(legacyTransactionId: Long): SyncOffenderTransactionResponse? {
-    // todo unit tests for pagination
+  fun retrieveNOMISTransactionByLegacyTransactionId(legacyTransactionId: Long): SyncOffenderTransactionResponse {
     val transactionMappings = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
     if (transactionMappings.isEmpty()) {
       throw CustomException("No mapping found for $legacyTransactionId", status = HttpStatus.NOT_FOUND)

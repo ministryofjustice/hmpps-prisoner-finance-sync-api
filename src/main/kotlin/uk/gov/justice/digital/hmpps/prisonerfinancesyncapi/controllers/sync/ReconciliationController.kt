@@ -132,7 +132,7 @@ class ReconciliationController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun getTransactionReconciliationById(@PathVariable legacyTransactionId: Long): ResponseEntity<SyncOffenderTransactionResponse> {
-    val response = generalLedgerService.retrieveNomisGLTransactionByLegacyTransactionId(legacyTransactionId)
+    val response = generalLedgerService.retrieveNOMISTransactionByLegacyTransactionId(legacyTransactionId)
 
     return ResponseEntity.ok(response)
   }
