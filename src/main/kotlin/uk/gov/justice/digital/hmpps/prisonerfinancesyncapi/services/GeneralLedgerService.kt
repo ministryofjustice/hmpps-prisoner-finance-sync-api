@@ -17,16 +17,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PagedTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.math.abs
 
@@ -310,50 +306,6 @@ class GeneralLedgerService(
           transactionMappingByGlTransactionUUID.getValue(it.id),
         )
       },
-    )
-  }
-
-  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate, pageNumber: Int, pageSize: Int): PagedTransactionResponse {
-    val startDateUtc = timeConversionService.toUtcStartOfDay(startDate)
-    val endDateUtc = timeConversionService.toUtcStartOfDay(endDate.plusDays(1))
-
-    val transactionMappings = ledgerTransactionMappingRepository.findAllOnDate(
-      startDateUtc,
-      endDateUtc,
-    )
-
-    val glTransactions = generalLedgerApiClient.searchTransactions(
-      transactionMappings.map { it.glTransactionUuid },
-      pageSize = pageSize,
-      pageNumber = pageNumber,
-    )
-
-    val transactionMappingByGlId = transactionMappings.associateBy { it.glTransactionUuid }
-
-    return PagedTransactionResponse(
-      transactions = glTransactions.content.map {
-        SyncGeneralLedgerTransactionResponse(
-          synchronizedTransactionId = it.id,
-          legacyTransactionId = transactionMappingByGlId.getValue(it.id).legacyTransactionId,
-          description = it.description,
-          reference = it.reference,
-          caseloadId = transactionMappingByGlId.getValue(it.id).caseloadId ?: "",
-          transactionType = transactionMappingByGlId.getValue(it.id).transactionType ?: "",
-          transactionTimestamp = timeConversionService.toLocalDateTime(it.timestamp),
-          createdAt = timeConversionService.toLocalDateTime(it.createdAt),
-          createdBy = "",
-          createdByDisplayName = "",
-          lastModifiedAt = LocalDateTime.now(),
-          lastModifiedBy = "",
-          lastModifiedByDisplayName = "",
-          generalLedgerEntries = it.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
-        )
-      },
-      pageNumber = glTransactions.pageNumber,
-      pageSize = glTransactions.pageSize,
-      totalElements = glTransactions.totalElements,
-      totalPages = glTransactions.totalPages,
-      isLastPage = glTransactions.isLastPage,
     )
   }
 }
