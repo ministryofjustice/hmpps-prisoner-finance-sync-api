@@ -8,11 +8,12 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
@@ -215,50 +216,100 @@ class GeneralLedgerService(
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
   }
 
+  private fun isSubAccountTransfer(glTransaction: SearchTransactionResponse): Boolean = glTransaction.postings.all { it.accountType == SearchPostingResponse.AccountType.PRISONER }
+
+  private fun makeOffenderTransaction(
+    glTransaction: SearchTransactionResponse,
+    posting: SearchPostingResponse,
+    glTransactionMapping: GeneralLedgerTransactionMapping,
+    generalLedgerEntries: List<GeneralLedgerEntry>,
+  ) = OffenderTransaction(
+    entrySequence = glTransaction.entrySequence.toInt(),
+    offenderId = null,
+    offenderDisplayId = posting.accountReference,
+    offenderBookingId = null,
+    subAccountType = accountMapping.mapGlPrisonerSubAccountReferenceToNomisReference(
+      posting.subAccountReference,
+    ),
+    postingType = posting.type.name,
+    type = glTransactionMapping.transactionType ?: "",
+    description = glTransaction.description,
+    amount = glTransaction.amount.toBigDecimal().movePointLeft(2),
+    reference = glTransaction.reference,
+    generalLedgerEntries = generalLedgerEntries,
+  )
+
+  private fun mapGlTransactionToSyncOffenderTransactionResponse(
+    glTransaction: SearchTransactionResponse,
+    glTransactionMapping: GeneralLedgerTransactionMapping,
+  ): List<OffenderTransaction> {
+    // this if-clause probably won't work for ADJ transactions
+    if (isSubAccountTransfer(glTransaction)) {
+      val (firstPosting, secondPosting) = glTransaction.postings
+
+      return listOf(
+        makeOffenderTransaction(
+          glTransaction = glTransaction,
+          posting = firstPosting,
+          glTransactionMapping = glTransactionMapping,
+          generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+        ),
+        makeOffenderTransaction(
+          glTransaction = glTransaction,
+          posting = secondPosting,
+          glTransactionMapping = glTransactionMapping,
+          generalLedgerEntries = emptyList(),
+        ),
+      )
+    } else {
+      val prisonerPosting = glTransaction.postings.first { it.accountType == SearchPostingResponse.AccountType.PRISONER }
+
+      return listOf(
+        makeOffenderTransaction(
+          glTransaction = glTransaction,
+          posting = prisonerPosting,
+          glTransactionMapping = glTransactionMapping,
+          generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+        ),
+      )
+    }
+  }
+
   fun retrieveNomisGLTransactionByLegacyTransactionId(legacyTransactionId: Long): SyncOffenderTransactionResponse? {
     // todo unit tests for pagination
-    val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
-    if (transactionMapping.isEmpty()) {
+    val transactionMappings = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
+    if (transactionMappings.isEmpty()) {
       throw CustomException("No mapping found for $legacyTransactionId", status = HttpStatus.NOT_FOUND)
     }
+    val transactionMappingByGlTransactionUUID = transactionMappings.associateBy { it.glTransactionUuid }
 
-    val glTransaction = generalLedgerApiClient.searchTransactions(
-      listOf(transactionMapping.first().glTransactionUuid),
+    val glTransactions = generalLedgerApiClient.searchTransactions(
+      transactionMappings.map { it.glTransactionUuid },
       pageNumber = 1,
       pageSize = 9999,
-    ).content.firstOrNull()
+    ).content
 
-    if (glTransaction == null) {
+    if (glTransactions.isEmpty()) {
       throw CustomException("No gl transaction found for gl $legacyTransactionId", status = HttpStatus.NOT_FOUND)
     }
 
     return SyncOffenderTransactionResponse(
       synchronizedTransactionId = null, // id reference the old internal ledger, not required
       legacyTransactionId = legacyTransactionId,
-      caseloadId = transactionMapping.first().caseloadId ?: "",
-      transactionTimestamp = timeConversionService.toLocalDateTime(glTransaction.timestamp),
-      createdAt = timeConversionService.toLocalDateTime(glTransaction.createdAt),
+      caseloadId = transactionMappings.first().caseloadId ?: "",
+      transactionTimestamp = timeConversionService.toLocalDateTime(glTransactions.first().timestamp),
+      createdAt = timeConversionService.toLocalDateTime(glTransactions.first().createdAt),
       createdBy = "",
       createdByDisplayName = "",
-      lastModifiedAt = LocalDateTime.now(),
+      lastModifiedAt = null,
       lastModifiedBy = "",
       lastModifiedByDisplayName = "",
-      transactions =
-      listOf(
-        OffenderTransaction(
-          entrySequence = glTransaction.entrySequence.toInt(),
-          offenderId = null,
-          offenderDisplayId = "", // todo grab the first prisoner posting and get the subAccount name
-          offenderBookingId = null,
-          subAccountType = "", // todo another mapping service or find an existing one perhaps?
-          postingType = PostingType.DR.name, // todo instead of DR, should be the prisoner's posting posting-type
-          type = "", // todo grab the prison subAccount and extract the transaction type
-          description = glTransaction.description,
-          amount = glTransaction.amount.toBigDecimal().movePointLeft(2),
-          reference = glTransaction.reference,
-          generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
-        ),
-      ),
+      transactions = glTransactions.flatMap {
+        mapGlTransactionToSyncOffenderTransactionResponse(
+          it,
+          transactionMappingByGlTransactionUUID.getValue(it.id),
+        )
+      },
     )
   }
 

@@ -151,4 +151,26 @@ class LedgerAccountMappingServiceTest {
       assertThat(result).isEqualTo(expectedCode)
     }
   }
+
+  @Nested
+  @DisplayName("mapGlPrisonerSubAccountReferenceToNOMISreference")
+  inner class MapGlPrisonerSubAccountReferenceToNOMISReference {
+    @ParameterizedTest
+    @CsvSource(
+      "CASH, REG",
+      "SPENDS, SPND",
+      "SAVINGS, SAV",
+    )
+    fun `should map prisoner GL account reference to NOMIS account reference`(accountCode: String, expectedReference: String) {
+      val result = mappingService.mapGlPrisonerSubAccountReferenceToNomisReference(accountCode)
+      assertThat(result).isEqualTo(expectedReference)
+    }
+
+    @Test
+    fun `should throw exception for unknown prisoner code`() {
+      assertThatThrownBy {
+        mappingService.mapGlPrisonerSubAccountReferenceToNomisReference("ASXA")
+      }.isInstanceOf(IllegalArgumentException::class.java)
+    }
+  }
 }

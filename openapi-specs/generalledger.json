@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-06-11.514.5b15123"
+    "version" : "2026-06-17.525.2392af9"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1791,6 +1791,11 @@
             "format" : "uuid",
             "description" : "The ID of the account associated with the posting"
           },
+          "accountType" : {
+            "type" : "string",
+            "description" : "The account type, either Prison or Prisoner",
+            "enum" : [ "PRISONER", "PRISON" ]
+          },
           "accountReference" : {
             "type" : "string",
             "description" : "The reference of the account associated with the posting"
@@ -1801,7 +1806,7 @@
             "description" : "The entry sequence of the posting"
           }
         },
-        "required" : [ "accountID", "accountReference", "amount", "createdAt", "createdBy", "entrySequence", "id", "subAccountID", "subAccountReference", "type" ]
+        "required" : [ "accountID", "accountReference", "accountType", "amount", "createdAt", "createdBy", "entrySequence", "id", "subAccountID", "subAccountReference", "type" ]
       },
       "SearchTransactionResponse" : {
         "type" : "object",
