@@ -281,7 +281,7 @@ class GeneralLedgerService(
     val glTransactions = generalLedgerApiClient.searchTransactions(
       transactionMappings.map { it.glTransactionUuid },
       pageNumber = 1,
-      pageSize = 9999,
+      pageSize = 999,
     ).content
 
     if (glTransactions.isEmpty()) {

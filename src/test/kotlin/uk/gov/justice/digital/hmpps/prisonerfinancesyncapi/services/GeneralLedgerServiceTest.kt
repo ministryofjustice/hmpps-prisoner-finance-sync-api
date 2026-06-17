@@ -900,7 +900,7 @@ class GeneralLedgerServiceTest {
         generalLedgerApiClient.searchTransactions(
           mappings.map { it.glTransactionUuid },
           pageNumber = 1,
-          pageSize = 9999,
+          pageSize = 999,
         )
       }.thenReturn(
         PagedResponseSearchTransactionResponse(
@@ -954,7 +954,7 @@ class GeneralLedgerServiceTest {
         generalLedgerApiClient.searchTransactions(
           mappings.map { it.glTransactionUuid },
           pageNumber = 1,
-          pageSize = 9999,
+          pageSize = 999,
         )
       }.thenReturn(
         PagedResponseSearchTransactionResponse(
@@ -1088,7 +1088,7 @@ class GeneralLedgerServiceTest {
         generalLedgerApiClient.searchTransactions(
           mappings.map { it.glTransactionUuid },
           pageNumber = 1,
-          pageSize = 9999,
+          pageSize = 999,
         )
       }.thenReturn(
         PagedResponseSearchTransactionResponse(
@@ -1264,7 +1264,7 @@ class GeneralLedgerServiceTest {
         generalLedgerApiClient.searchTransactions(
           mappings.map { it.glTransactionUuid },
           pageNumber = 1,
-          pageSize = 9999,
+          pageSize = 999,
         )
       }.thenReturn(
         PagedResponseSearchTransactionResponse(
