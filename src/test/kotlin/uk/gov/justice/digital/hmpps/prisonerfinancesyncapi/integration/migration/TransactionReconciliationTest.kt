@@ -27,7 +27,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PagedTransactionResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.math.BigDecimal
@@ -45,6 +45,7 @@ import java.util.UUID
 class TransactionReconciliationTest(
   @param:Autowired val transactionMappingRepository: GeneralLedgerTransactionMappingRepository,
 ) : IntegrationTestBase() {
+  private lateinit var timeConversionService: TimeConversionService
 
   private fun stubPrisonerCashToSpendsTransferResponsesFromGL(
     prisonNumber: String,
@@ -212,22 +213,27 @@ class TransactionReconciliationTest(
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
-        .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
+        .expectBody<SyncOffenderTransactionResponse>().returnResult().responseBody!!
 
-      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(glTransactionId) // not sure about this
+      assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(null)
       assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
-      assertThat(transactionResponse.transactionType).isEqualTo(transactionType)
-      assertThat(transactionResponse.description).isEqualTo(description)
-      assertThat(transactionResponse.generalLedgerEntries.size).isEqualTo(2)
-      assertThat(transactionResponse.generalLedgerEntries[0].entrySequence).isEqualTo(1)
-      assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(caseloadSubAccountCode)
-      assertThat(transactionResponse.generalLedgerEntries[0].postingType).isEqualTo("CR")
-      assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+      assertThat(transactionResponse.caseloadId).isEqualTo(caseload)
+      assertThat(transactionResponse.transactionTimestamp).isEqualTo(timeConversionService.toLocalDateTime(transactionDate))
 
-      assertThat(transactionResponse.generalLedgerEntries[1].entrySequence).isEqualTo(2)
-      assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2101)
-      assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
-      assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+      val transaction = transactionResponse.transactions[0]
+      assertThat(transaction.description).isEqualTo(description)
+      assertThat(transaction.type).isEqualTo(transactionType)
+      assertThat(transaction.generalLedgerEntries.size).isEqualTo(2)
+      assertThat(transaction.offenderDisplayId).isEqualTo(prisonNumber)
+      assertThat(transaction.generalLedgerEntries[0].entrySequence).isEqualTo(1)
+      assertThat(transaction.generalLedgerEntries[0].code).isEqualTo(caseloadSubAccountCode)
+      assertThat(transaction.generalLedgerEntries[0].postingType).isEqualTo("CR")
+      assertThat(transaction.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+
+      assertThat(transaction.generalLedgerEntries[1].entrySequence).isEqualTo(2)
+      assertThat(transaction.generalLedgerEntries[1].code).isEqualTo(2101)
+      assertThat(transaction.generalLedgerEntries[1].postingType).isEqualTo("DR")
+      assertThat(transaction.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
     }
 
     @Test
@@ -263,7 +269,7 @@ class TransactionReconciliationTest(
       )
       val mappingTwo = GeneralLedgerTransactionMapping(
         legacyTransactionId = legacyTransactionId,
-        entrySequence = 1,
+        entrySequence = 2,
         glTransactionUuid = glTransactionIdTwo,
         createdAt = transactionDate,
         transactionType = transactionType,
@@ -358,22 +364,43 @@ class TransactionReconciliationTest(
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
-        .expectBody<SyncGeneralLedgerTransactionResponse>().returnResult().responseBody!!
+        .expectBody<SyncOffenderTransactionResponse>().returnResult().responseBody!!
 
       assertThat(transactionResponse.synchronizedTransactionId).isEqualTo(null)
       assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
-      assertThat(transactionResponse.transactionType).isEqualTo(transactionType)
-      assertThat(transactionResponse.description).isEqualTo(description)
-      assertThat(transactionResponse.generalLedgerEntries.size).isEqualTo(2)
-      assertThat(transactionResponse.generalLedgerEntries[0].entrySequence).isEqualTo(1)
-      assertThat(transactionResponse.generalLedgerEntries[0].code).isEqualTo(caseloadSubAccountCode)
-      assertThat(transactionResponse.generalLedgerEntries[0].postingType).isEqualTo("CR")
-      assertThat(transactionResponse.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+      assertThat(transactionResponse.caseloadId).isEqualTo(caseload)
+      assertThat(transactionResponse.transactionTimestamp).isEqualTo(timeConversionService.toLocalDateTime(transactionDate))
 
-      assertThat(transactionResponse.generalLedgerEntries[1].entrySequence).isEqualTo(2)
-      assertThat(transactionResponse.generalLedgerEntries[1].code).isEqualTo(2101)
-      assertThat(transactionResponse.generalLedgerEntries[1].postingType).isEqualTo("DR")
-      assertThat(transactionResponse.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+      val transactionOne = transactionResponse.transactions[0]
+      assertThat(transactionOne.description).isEqualTo(description)
+      assertThat(transactionOne.type).isEqualTo(transactionType)
+      assertThat(transactionOne.generalLedgerEntries.size).isEqualTo(2)
+      assertThat(transactionOne.offenderDisplayId).isEqualTo(prisonerOne)
+      assertThat(transactionOne.generalLedgerEntries[0].entrySequence).isEqualTo(1)
+      assertThat(transactionOne.generalLedgerEntries[0].code).isEqualTo(caseloadSubAccountCode)
+      assertThat(transactionOne.generalLedgerEntries[0].postingType).isEqualTo("CR")
+      assertThat(transactionOne.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+
+      assertThat(transactionOne.generalLedgerEntries[1].entrySequence).isEqualTo(2)
+      assertThat(transactionOne.generalLedgerEntries[1].code).isEqualTo(2101)
+      assertThat(transactionOne.generalLedgerEntries[1].postingType).isEqualTo("DR")
+      assertThat(transactionOne.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+
+      val transactionTwo = transactionResponse.transactions[1]
+      assertThat(transactionTwo.description).isEqualTo(description)
+      assertThat(transactionTwo.type).isEqualTo(transactionType)
+      assertThat(transactionTwo.generalLedgerEntries.size).isEqualTo(2)
+      assertThat(transactionTwo.offenderDisplayId).isEqualTo(prisonerOne)
+
+      assertThat(transactionTwo.generalLedgerEntries[0].entrySequence).isEqualTo(1)
+      assertThat(transactionTwo.generalLedgerEntries[0].code).isEqualTo(caseloadSubAccountCode)
+      assertThat(transactionTwo.generalLedgerEntries[0].postingType).isEqualTo("CR")
+      assertThat(transactionTwo.generalLedgerEntries[0].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
+
+      assertThat(transactionTwo.generalLedgerEntries[1].entrySequence).isEqualTo(2)
+      assertThat(transactionTwo.generalLedgerEntries[1].code).isEqualTo(2101)
+      assertThat(transactionTwo.generalLedgerEntries[1].postingType).isEqualTo("DR")
+      assertThat(transactionTwo.generalLedgerEntries[1].amount).isEqualTo(BigDecimal(amount).movePointLeft(2))
     }
 
     @Test

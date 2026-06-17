@@ -26,6 +26,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLe
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PagedTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
@@ -137,7 +138,7 @@ class ReconciliationController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  fun getTransactionReconciliationById(@PathVariable legacyTransactionId: Long): ResponseEntity<SyncGeneralLedgerTransactionResponse> {
+  fun getTransactionReconciliationById(@PathVariable legacyTransactionId: Long): ResponseEntity<SyncOffenderTransactionResponse> {
     val response = generalLedgerService.retrieveNomisGLTransactionByLegacyTransactionId(legacyTransactionId)
 
     return ResponseEntity.ok(response)
