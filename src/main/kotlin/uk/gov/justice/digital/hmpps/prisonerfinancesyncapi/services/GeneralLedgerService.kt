@@ -239,7 +239,6 @@ class GeneralLedgerService(
     glTransaction: SearchTransactionResponse,
     glTransactionMapping: GeneralLedgerTransactionMapping,
   ): List<OffenderTransaction> {
-    // this if-clause probably won't work for ADJ transactions
     if (isSubAccountTransfer(glTransaction)) {
       val (firstPosting, secondPosting) = glTransaction.postings
 
