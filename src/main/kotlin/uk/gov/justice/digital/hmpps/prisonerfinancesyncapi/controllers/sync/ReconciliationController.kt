@@ -95,7 +95,7 @@ class ReconciliationController(
       ApiResponse(
         responseCode = "200",
         description = "Retrieve an offender transaction by its ID using data from the prisoner general ledger",
-        content = [Content(schema = Schema(implementation = SyncGeneralLedgerTransactionResponse::class))],
+        content = [Content(schema = Schema(implementation = SyncOffenderTransactionResponse::class))],
       ),
       ApiResponse(
         responseCode = "400",
