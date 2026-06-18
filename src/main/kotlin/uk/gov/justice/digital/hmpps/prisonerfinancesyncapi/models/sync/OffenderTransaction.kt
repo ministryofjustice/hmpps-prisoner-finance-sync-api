@@ -16,7 +16,7 @@ data class OffenderTransaction(
   val entrySequence: Int,
 
   @field:Schema(description = "The internal ID of the offender.", example = "1015388", required = true)
-  val offenderId: Long,
+  val offenderId: Long?,
 
   @field:Pattern(
     regexp = VALIDATION_REGEX_PRISONER_ID,

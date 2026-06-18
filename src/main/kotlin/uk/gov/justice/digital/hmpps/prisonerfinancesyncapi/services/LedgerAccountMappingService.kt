@@ -9,6 +9,13 @@ class LedgerAccountMappingService {
   val prisonerSubAccounts = mapOf("CASH" to 2101, "SPENDS" to 2102, "SAVINGS" to 2103)
   val reversedPrisonerSubAccounts = prisonerSubAccounts.entries.associateBy({ it.value }, { it.key })
 
+  fun mapGlPrisonerSubAccountReferenceToNomisReference(referenceGLCode: String): String = when (referenceGLCode) {
+    "CASH" -> "REG"
+    "SPENDS" -> "SPND"
+    "SAVINGS" -> "SAV"
+    else -> throw IllegalArgumentException("Unknown GL Prisoner reference Code: $referenceGLCode")
+  }
+
   fun mapPrisonerSubAccount(nomisAccountCode: Int): String = reversedPrisonerSubAccounts[nomisAccountCode]
     ?: throw IllegalArgumentException("Unknown NOMIS Prisoner Account Code: $nomisAccountCode")
 

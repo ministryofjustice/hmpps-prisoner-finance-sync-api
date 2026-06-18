@@ -12,17 +12,17 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Gene
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PagedTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.math.abs
 
@@ -212,81 +212,98 @@ class GeneralLedgerService(
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
   }
 
-  fun retrieveNomisGLTransactionByGlId(glUUID: UUID): SyncGeneralLedgerTransactionResponse? {
-    val transactionMapping = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByGlTransactionUuid(glUUID)
-    if (transactionMapping == null) {
-      throw CustomException("No mapping found for $glUUID", status = HttpStatus.NOT_FOUND)
+  private fun isSubAccountTransfer(glTransaction: SearchTransactionResponse): Boolean = glTransaction.postings.all { it.accountType == SearchPostingResponse.AccountType.PRISONER }
+
+  private fun makeOffenderTransaction(
+    glTransaction: SearchTransactionResponse,
+    posting: SearchPostingResponse,
+    glTransactionMapping: GeneralLedgerTransactionMapping,
+    generalLedgerEntries: List<GeneralLedgerEntry>,
+  ) = OffenderTransaction(
+    entrySequence = glTransaction.entrySequence.toInt(),
+    offenderId = null,
+    offenderDisplayId = posting.accountReference,
+    offenderBookingId = null,
+    subAccountType = accountMapping.mapGlPrisonerSubAccountReferenceToNomisReference(
+      posting.subAccountReference,
+    ),
+    postingType = posting.type.name,
+    type = glTransactionMapping.transactionType ?: "",
+    description = glTransaction.description,
+    amount = glTransaction.amount.toBigDecimal().movePointLeft(2),
+    reference = glTransaction.reference,
+    generalLedgerEntries = generalLedgerEntries,
+  )
+
+  private fun mapGlTransactionToSyncOffenderTransactionResponse(
+    glTransaction: SearchTransactionResponse,
+    glTransactionMapping: GeneralLedgerTransactionMapping,
+  ): List<OffenderTransaction> {
+    if (isSubAccountTransfer(glTransaction)) {
+      val (firstPosting, secondPosting) = glTransaction.postings
+
+      return listOf(
+        makeOffenderTransaction(
+          glTransaction = glTransaction,
+          posting = firstPosting,
+          glTransactionMapping = glTransactionMapping,
+          generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+        ),
+        makeOffenderTransaction(
+          glTransaction = glTransaction,
+          posting = secondPosting,
+          glTransactionMapping = glTransactionMapping,
+          generalLedgerEntries = emptyList(),
+        ),
+      )
+    } else {
+      val prisonerPosting = glTransaction.postings.first { it.accountType == SearchPostingResponse.AccountType.PRISONER }
+
+      return listOf(
+        makeOffenderTransaction(
+          glTransaction = glTransaction,
+          posting = prisonerPosting,
+          glTransactionMapping = glTransactionMapping,
+          generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+        ),
+      )
     }
-
-    val glTransaction = generalLedgerApiClient.searchTransactions(
-      listOf(glUUID),
-      pageNumber = 1,
-      pageSize = 1,
-    ).content.firstOrNull()
-
-    if (glTransaction == null) {
-      throw CustomException("No gl transaction found for gl $glUUID", status = HttpStatus.NOT_FOUND)
-    }
-
-    return SyncGeneralLedgerTransactionResponse(
-      synchronizedTransactionId = glUUID,
-      legacyTransactionId = transactionMapping.legacyTransactionId,
-      description = glTransaction.description,
-      reference = glTransaction.reference,
-      caseloadId = transactionMapping.caseloadId ?: "",
-      transactionType = transactionMapping.transactionType ?: "",
-      transactionTimestamp = timeConversionService.toLocalDateTime(glTransaction.timestamp),
-      createdAt = timeConversionService.toLocalDateTime(glTransaction.createdAt),
-      createdBy = "",
-      createdByDisplayName = "",
-      lastModifiedAt = LocalDateTime.now(),
-      lastModifiedBy = "",
-      lastModifiedByDisplayName = "",
-      generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
-    )
   }
 
-  fun retrieveNomisGLTransactionByDateRange(startDate: LocalDate, endDate: LocalDate, pageNumber: Int, pageSize: Int): PagedTransactionResponse {
-    val startDateUtc = timeConversionService.toUtcStartOfDay(startDate)
-    val endDateUtc = timeConversionService.toUtcStartOfDay(endDate.plusDays(1))
-
-    val transactionMappings = ledgerTransactionMappingRepository.findAllOnDate(
-      startDateUtc,
-      endDateUtc,
-    )
+  fun retrieveNOMISTransactionByLegacyTransactionId(legacyTransactionId: Long): SyncOffenderTransactionResponse {
+    val transactionMappings = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
+    if (transactionMappings.isEmpty()) {
+      throw CustomException("No mapping found for $legacyTransactionId", status = HttpStatus.NOT_FOUND)
+    }
+    val transactionMappingByGlTransactionUUID = transactionMappings.associateBy { it.glTransactionUuid }
 
     val glTransactions = generalLedgerApiClient.searchTransactions(
       transactionMappings.map { it.glTransactionUuid },
-      pageSize = pageSize,
-      pageNumber = pageNumber,
-    )
+      pageNumber = 1,
+      pageSize = 999,
+    ).content
 
-    val transactionMappingByGlId = transactionMappings.associateBy { it.glTransactionUuid }
+    if (glTransactions.isEmpty()) {
+      throw CustomException("No gl transaction found for gl $legacyTransactionId", status = HttpStatus.NOT_FOUND)
+    }
 
-    return PagedTransactionResponse(
-      transactions = glTransactions.content.map {
-        SyncGeneralLedgerTransactionResponse(
-          synchronizedTransactionId = it.id,
-          legacyTransactionId = transactionMappingByGlId.getValue(it.id).legacyTransactionId,
-          description = it.description,
-          reference = it.reference,
-          caseloadId = transactionMappingByGlId.getValue(it.id).caseloadId ?: "",
-          transactionType = transactionMappingByGlId.getValue(it.id).transactionType ?: "",
-          transactionTimestamp = timeConversionService.toLocalDateTime(it.timestamp),
-          createdAt = timeConversionService.toLocalDateTime(it.createdAt),
-          createdBy = "",
-          createdByDisplayName = "",
-          lastModifiedAt = LocalDateTime.now(),
-          lastModifiedBy = "",
-          lastModifiedByDisplayName = "",
-          generalLedgerEntries = it.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+    return SyncOffenderTransactionResponse(
+      synchronizedTransactionId = null, // id reference the old internal ledger, not required
+      legacyTransactionId = legacyTransactionId,
+      caseloadId = transactionMappings.first().caseloadId ?: "",
+      transactionTimestamp = timeConversionService.toLocalDateTime(glTransactions.first().timestamp),
+      createdAt = timeConversionService.toLocalDateTime(glTransactions.first().createdAt),
+      createdBy = "",
+      createdByDisplayName = "",
+      lastModifiedAt = null,
+      lastModifiedBy = "",
+      lastModifiedByDisplayName = "",
+      transactions = glTransactions.flatMap {
+        mapGlTransactionToSyncOffenderTransactionResponse(
+          it,
+          transactionMappingByGlTransactionUUID.getValue(it.id),
         )
       },
-      pageNumber = glTransactions.pageNumber,
-      pageSize = glTransactions.pageSize,
-      totalElements = glTransactions.totalElements,
-      totalPages = glTransactions.totalPages,
-      isLastPage = glTransactions.isLastPage,
     )
   }
 }

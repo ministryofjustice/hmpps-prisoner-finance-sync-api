@@ -18,7 +18,7 @@ import java.util.UUID
     UniqueConstraint(columnNames = ["legacy_transaction_id", "entry_sequence"]),
   ],
   indexes = [
-    Index(name = "idx_gl_transaction_mapping_gl_transaction_uuid", columnList = "gl_transaction_uuid"),
+    Index(name = "idx_gl_transaction_mapping_legacy_transaction_id", columnList = "legacy_transaction_id"),
   ],
 )
 class GeneralLedgerTransactionMapping(
