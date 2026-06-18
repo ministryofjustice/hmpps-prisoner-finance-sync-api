@@ -1356,5 +1356,135 @@ class GeneralLedgerServiceTest {
       assertThat(transactionTwo.postingType).isEqualTo("DR")
       assertThat(transactionTwo.generalLedgerEntries).hasSize(0)
     }
+
+    @Test
+    fun `should map sub account transfer when entrySequences are not ordered`() {
+      val legacyTransactionId = 12345L
+      val prisonNumber = "A9971EC"
+      val caseload = "LEI"
+      val transactionType = "ATOF"
+      val glPrisonNumberAccountId: UUID = UUID.randomUUID()
+      val glPrisonerCashAccountUUID: UUID = UUID.randomUUID()
+      val glPrisonerSpendsAccountUUID: UUID = UUID.randomUUID()
+      val transactionDate = Instant.now()
+      val glTransactionId = UUID.randomUUID()
+      val amount = 500L
+      val description = "Test subaccount transfer transaction"
+
+      // only one mapping because there is only one GL transaction
+      val mappings = listOf(
+        GeneralLedgerTransactionMapping(
+          legacyTransactionId = legacyTransactionId,
+          entrySequence = 1,
+          glTransactionUuid = glTransactionId,
+          createdAt = transactionDate,
+          transactionType = transactionType,
+          caseloadId = caseload,
+        ),
+      )
+
+      whenever {
+        generalLedgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
+      }.thenReturn(mappings)
+
+      whenever {
+        generalLedgerApiClient.searchTransactions(
+          mappings.map { it.glTransactionUuid },
+          pageNumber = 1,
+          pageSize = 999,
+        )
+      }.thenReturn(
+        PagedResponseSearchTransactionResponse(
+          content = listOf(
+            SearchTransactionResponse(
+              id = glTransactionId,
+              createdBy = "",
+              createdAt = transactionDate,
+              reference = "",
+              description = description,
+              timestamp = transactionDate,
+              amount = amount,
+              entrySequence = 1,
+              postings = listOf(
+                SearchPostingResponse(
+                  id = UUID.randomUUID(),
+                  createdBy = "",
+                  createdAt = transactionDate,
+                  type = SearchPostingResponse.Type.DR,
+                  amount = amount,
+                  subAccountID = glPrisonerCashAccountUUID,
+                  subAccountReference = "CASH",
+                  accountID = glPrisonNumberAccountId,
+                  accountReference = prisonNumber,
+                  entrySequence = 2,
+                  accountType = SearchPostingResponse.AccountType.PRISONER,
+                ),
+                SearchPostingResponse(
+                  id = UUID.randomUUID(),
+                  createdBy = "",
+                  createdAt = transactionDate,
+                  type = SearchPostingResponse.Type.CR,
+                  amount = amount,
+                  subAccountID = glPrisonerSpendsAccountUUID,
+                  subAccountReference = "SPENDS",
+                  accountID = glPrisonNumberAccountId,
+                  accountReference = prisonNumber,
+                  entrySequence = 1,
+                  accountType = SearchPostingResponse.AccountType.PRISONER,
+                ),
+              ),
+            ),
+          ),
+          pageNumber = 1,
+          pageSize = 1,
+          totalElements = 1,
+          totalPages = 1,
+          isLastPage = true,
+        ),
+      )
+
+      val transactionResponse = generalLedgerService.retrieveNOMISTransactionByLegacyTransactionId(legacyTransactionId)
+
+      assertThat(transactionResponse.synchronizedTransactionId).isNull()
+      assertThat(transactionResponse.legacyTransactionId).isEqualTo(legacyTransactionId)
+      assertThat(transactionResponse.caseloadId).isEqualTo(caseload)
+      assertThat(transactionResponse.transactionTimestamp).isEqualTo(timeConversionService.toLocalDateTime(transactionDate))
+      assertThat(transactionResponse.createdAt).isEqualTo(timeConversionService.toLocalDateTime(transactionDate))
+      assertThat(transactionResponse.lastModifiedAt).isNull()
+
+      val expectedAmount = BigDecimal(amount).movePointLeft(2)
+
+      val (transactionOne, transactionTwo) = transactionResponse.transactions
+
+      assertThat(transactionOne.description).isEqualTo(description)
+      assertThat(transactionOne.type).isEqualTo(transactionType)
+      assertThat(transactionOne.amount).isEqualTo(expectedAmount)
+      assertThat(transactionOne.reference).isEqualTo("")
+      assertThat(transactionOne.generalLedgerEntries.size).isEqualTo(2)
+      assertThat(transactionOne.offenderDisplayId).isEqualTo(prisonNumber)
+      assertThat(transactionOne.subAccountType).isEqualTo("SPND")
+      assertThat(transactionOne.postingType).isEqualTo("CR")
+      assertThat(transactionOne.entrySequence).isEqualTo(1)
+
+      assertThat(transactionOne.generalLedgerEntries[0].entrySequence).isEqualTo(2)
+      assertThat(transactionOne.generalLedgerEntries[0].code).isEqualTo(2101)
+      assertThat(transactionOne.generalLedgerEntries[0].postingType).isEqualTo("DR")
+      assertThat(transactionOne.generalLedgerEntries[0].amount).isEqualTo(expectedAmount)
+
+      assertThat(transactionOne.generalLedgerEntries[1].entrySequence).isEqualTo(1)
+      assertThat(transactionOne.generalLedgerEntries[1].code).isEqualTo(2102)
+      assertThat(transactionOne.generalLedgerEntries[1].postingType).isEqualTo("CR")
+      assertThat(transactionOne.generalLedgerEntries[1].amount).isEqualTo(expectedAmount)
+
+      assertThat(transactionTwo.description).isEqualTo(description)
+      assertThat(transactionTwo.type).isEqualTo(transactionType)
+      assertThat(transactionTwo.amount).isEqualTo(expectedAmount)
+      assertThat(transactionTwo.reference).isEqualTo("")
+      assertThat(transactionTwo.offenderDisplayId).isEqualTo(prisonNumber)
+      assertThat(transactionTwo.subAccountType).isEqualTo("REG")
+      assertThat(transactionTwo.postingType).isEqualTo("DR")
+      assertThat(transactionTwo.generalLedgerEntries).hasSize(0)
+      assertThat(transactionTwo.entrySequence).isEqualTo(2)
+    }
   }
 }

@@ -219,8 +219,9 @@ class GeneralLedgerService(
     posting: SearchPostingResponse,
     glTransactionMapping: GeneralLedgerTransactionMapping,
     generalLedgerEntries: List<GeneralLedgerEntry>,
+    entrySequence: Int,
   ) = OffenderTransaction(
-    entrySequence = glTransaction.entrySequence.toInt(),
+    entrySequence = entrySequence,
     offenderId = null,
     offenderDisplayId = posting.accountReference,
     offenderBookingId = null,
@@ -240,7 +241,7 @@ class GeneralLedgerService(
     glTransactionMapping: GeneralLedgerTransactionMapping,
   ): List<OffenderTransaction> {
     if (isSubAccountTransfer(glTransaction)) {
-      val (firstPosting, secondPosting) = glTransaction.postings
+      val (firstPosting, secondPosting) = glTransaction.postings.sortedBy { it.entrySequence }
 
       return listOf(
         makeOffenderTransaction(
@@ -248,12 +249,14 @@ class GeneralLedgerService(
           posting = firstPosting,
           glTransactionMapping = glTransactionMapping,
           generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+          entrySequence = glTransaction.entrySequence.toInt(),
         ),
         makeOffenderTransaction(
           glTransaction = glTransaction,
           posting = secondPosting,
           glTransactionMapping = glTransactionMapping,
           generalLedgerEntries = emptyList(),
+          entrySequence = glTransaction.entrySequence.toInt() + 1,
         ),
       )
     } else {
@@ -265,6 +268,7 @@ class GeneralLedgerService(
           posting = prisonerPosting,
           glTransactionMapping = glTransactionMapping,
           generalLedgerEntries = glTransaction.postings.map { GeneralLedgerEntry.fromGeneralLedgerPostingResponse(it) },
+          entrySequence = glTransaction.entrySequence.toInt(),
         ),
       )
     }
