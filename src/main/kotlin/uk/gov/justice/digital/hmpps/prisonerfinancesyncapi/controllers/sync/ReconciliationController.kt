@@ -113,7 +113,7 @@ class ReconciliationController(
       ),
       ApiResponse(
         responseCode = "404",
-        description = "Not Found - Prison Number not found",
+        description = "Not Found - Legacy transaction id not found",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
