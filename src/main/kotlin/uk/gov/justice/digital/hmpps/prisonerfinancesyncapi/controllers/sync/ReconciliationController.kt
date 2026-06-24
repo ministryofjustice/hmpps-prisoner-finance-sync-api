@@ -22,14 +22,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @Validated
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
 class ReconciliationController(
-  @param:Autowired private val ledgerQueryService: LedgerQueryService,
   @param:Autowired private val reconciliationService: ReconciliationService,
   @param:Autowired private val generalLedgerService: GeneralLedgerService,
 ) {
@@ -74,11 +72,7 @@ class ReconciliationController(
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun listGeneralLedgerBalances(
     @PathVariable prisonId: String,
-  ): ResponseEntity<GeneralLedgerBalanceDetailsList> {
-    val items = ledgerQueryService.listGeneralLedgerBalances(prisonId)
-    val body = GeneralLedgerBalanceDetailsList(items)
-    return ResponseEntity.ok(body)
-  }
+  ): ResponseEntity<GeneralLedgerBalanceDetailsList> = throw RuntimeException("Not implemented")
 
   @Operation(
     summary = "Retrieve an offender transaction by its ID using data from the prisoner general ledger",

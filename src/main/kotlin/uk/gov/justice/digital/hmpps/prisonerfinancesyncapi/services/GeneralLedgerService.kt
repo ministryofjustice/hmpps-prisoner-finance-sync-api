@@ -11,7 +11,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralL
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
@@ -21,16 +20,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerE
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
-import kotlin.math.abs
 
 @Service("generalLedgerService")
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
-  private val ledgerQueryService: LedgerQueryService,
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
   private val idempotencyService: GeneralLedgerIdempotencyService,
@@ -166,6 +162,9 @@ class GeneralLedgerService(
   }
 
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
+    throw RuntimeException("Not yet implemented")
+    // TODO("Update implementation to only use the general ledger")
+    /*
     val subAccountsGL = getGLPrisonerBalances(prisonNumber)
 
     val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
@@ -210,6 +209,7 @@ class GeneralLedgerService(
     }
 
     return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
+     */
   }
 
   private fun isSubAccountTransfer(glTransaction: SearchTransactionResponse): Boolean = glTransaction.postings.all { it.accountType == SearchPostingResponse.AccountType.PRISONER }
