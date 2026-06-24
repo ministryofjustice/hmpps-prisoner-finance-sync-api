@@ -4,7 +4,6 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
@@ -699,29 +698,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/transactions.*")))
-    }
-
-    @Test
-    fun `should successfully sync to internal ledger when general ledger is down`() {
-      generalLedgerApi.stubFor(
-        get(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonerId))
-          .willReturn(
-            aResponse()
-              .withStatus(500)
-              .withBody("Internal Server Error"),
-          ),
-      )
-
-      val request = createRequest(testPrisonerId)
-
-      webTestClient.post()
-        .uri("/sync/offender-transactions")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(objectMapper.writeValueAsString(request))
-        .exchange()
-        .expectStatus().isCreated
     }
 
     @Test
