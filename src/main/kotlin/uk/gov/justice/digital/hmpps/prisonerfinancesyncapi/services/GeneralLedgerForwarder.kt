@@ -23,7 +23,7 @@ class GeneralLedgerForwarder(
     prisonNumber: String,
     block: () -> T,
   ): T? {
-    if (shouldSyncToGeneralLedger && testPrisonerIds.contains(prisonNumber)) {
+    if (shouldSyncToGeneralLedger && (testPrisonerIds.contains(prisonNumber) || testPrisonerIds.isEmpty())) {
       try {
         return block()
       } catch (e: WebClientResponseException) {

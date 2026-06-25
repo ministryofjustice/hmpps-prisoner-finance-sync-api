@@ -50,7 +50,20 @@ class GeneralLedgerForwarderTest {
   }
 
   @Test
-  fun `should call GL and return something when flags are enabled and prisoner matches`() {
+  fun `should call GL and return something when flag is enabled and prisoner matches`() {
+    val result = generalLedgerForwarder.executeIfEnabled(
+      "Test",
+      matchingPrisonerId,
+      { true },
+    )
+
+    assertThat(result).isTrue()
+  }
+
+  @Test
+  fun `should call GL and return something when flag is enabled and prisoner whitelist is empty`() {
+    generalLedgerForwarder = GeneralLedgerForwarder(true, emptyList())
+
     val result = generalLedgerForwarder.executeIfEnabled(
       "Test",
       matchingPrisonerId,
