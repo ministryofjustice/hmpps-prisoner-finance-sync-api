@@ -32,14 +32,13 @@ class GeneralLedgerService(
   private val idempotencyService: GeneralLedgerIdempotencyService,
   private val ledgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
   private val generalLedgerAccountResolver: GeneralLedgerAccountResolver,
-) : LedgerService,
-  ReconciliationService {
+) {
 
   private companion object {
     private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
   }
 
-  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
+  fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
     val transactionGLUUIDs = mutableListOf<UUID>()
     val requestCache = InMemoryAccountCache()
 
@@ -133,7 +132,7 @@ class GeneralLedgerService(
     telemetryClient.trackException(exception, properties, null)
   }
 
-  override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
+  fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
   fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceResponse> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
@@ -161,7 +160,7 @@ class GeneralLedgerService(
     return subAccounts
   }
 
-  override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
+  fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
     throw RuntimeException("Not yet implemented")
     // TODO("Update implementation to only use the general ledger")
     /*

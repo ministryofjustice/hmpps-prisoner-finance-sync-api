@@ -19,13 +19,12 @@ class GeneralLedgerMigrationService(
   private val timeConversionService: TimeConversionService,
   private val telemetryClient: TelemetryClient,
   private val accountResolver: GeneralLedgerAccountResolver,
-) : MigrationService {
-
+) {
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
   }
 
-  override fun migrateGeneralLedgerBalances(
+  fun migrateGeneralLedgerBalances(
     prisonId: String,
     request: GeneralLedgerBalancesSyncRequest,
   ) {
@@ -34,7 +33,7 @@ class GeneralLedgerMigrationService(
 
   val telemetryMigrationEvent = "prisoner-finance-sync-migration"
 
-  override fun migratePrisonerBalances(
+  fun migratePrisonerBalances(
     prisonNumber: String,
     request: PrisonerBalancesSyncRequest,
   ) {

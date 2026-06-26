@@ -21,14 +21,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLe
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @Validated
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
 class ReconciliationController(
-  @param:Autowired private val reconciliationService: ReconciliationService,
   @param:Autowired private val generalLedgerService: GeneralLedgerService,
 ) {
   @Operation(
@@ -50,7 +48,7 @@ class ReconciliationController(
   fun listPrisonerBalancesByEstablishment(
     @PathVariable prisonNumber: String,
   ): ResponseEntity<PrisonerEstablishmentBalanceDetailsList> {
-    val body = reconciliationService.reconcilePrisoner(prisonNumber)
+    val body = generalLedgerService.reconcilePrisoner(prisonNumber)
     return ResponseEntity.ok(body)
   }
 
