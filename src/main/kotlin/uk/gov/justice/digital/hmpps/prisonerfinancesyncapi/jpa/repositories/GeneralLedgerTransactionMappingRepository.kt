@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import java.time.Instant
-import java.util.UUID
 
 @Repository
 interface GeneralLedgerTransactionMappingRepository : JpaRepository<GeneralLedgerTransactionMapping, Long> {
@@ -16,5 +15,5 @@ interface GeneralLedgerTransactionMappingRepository : JpaRepository<GeneralLedge
 """,
   )
   fun findAllOnDate(dateStart: Instant, dateEnd: Instant): List<GeneralLedgerTransactionMapping>
-  fun findGeneralLedgerTransactionMappingByGlTransactionUuid(glUUID: UUID): GeneralLedgerTransactionMapping?
+  fun findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId: Long): List<GeneralLedgerTransactionMapping>
 }

@@ -313,7 +313,7 @@ class SyncControllerTest {
   inner class GetOffenderTransactionById {
     @Test
     fun `should return OK and the transaction when found`() {
-      val id = offenderTransactionResponse.synchronizedTransactionId
+      val id = offenderTransactionResponse.synchronizedTransactionId!!
       `when`(syncQueryService.getOffenderTransactionById(id)).thenReturn(offenderTransactionResponse)
       val response = syncController.getOffenderTransactionById(id)
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)

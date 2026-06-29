@@ -8,7 +8,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 @Service
 class GeneralLedgerForwarder(
   @Value("\${feature.general-ledger-api.enabled:false}") private val shouldSyncToGeneralLedger: Boolean,
-  @Value("\${feature.general-ledger-api.test-prisoner-ids:DISABLED}") private val testPrisonerIds: List<String>,
+  @Value("\${feature.general-ledger-api.test-prisoner-ids:}") private val testPrisonerIds: List<String>,
 ) {
 
   private companion object {
@@ -23,7 +23,7 @@ class GeneralLedgerForwarder(
     prisonNumber: String,
     block: () -> T,
   ): T? {
-    if (shouldSyncToGeneralLedger && testPrisonerIds.contains(prisonNumber)) {
+    if (shouldSyncToGeneralLedger && (testPrisonerIds.contains(prisonNumber) || testPrisonerIds.isEmpty())) {
       try {
         return block()
       } catch (e: WebClientResponseException) {

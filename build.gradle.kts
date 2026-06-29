@@ -7,9 +7,9 @@ import java.net.URI
 import java.nio.file.Files
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "10.5.0"
-  kotlin("plugin.spring") version "2.3.21"
-  id("org.jetbrains.kotlin.plugin.noarg") version "2.3.21"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "10.5.3"
+  kotlin("plugin.spring") version "2.4.0"
+  id("org.jetbrains.kotlin.plugin.noarg") version "2.4.0"
   id("org.openapi.generator") version "7.23.0"
   id("jacoco")
 }
@@ -28,7 +28,7 @@ dependencies {
 
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.0.6")
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.0")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
@@ -43,7 +43,7 @@ dependencies {
   testImplementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter-test:2.5.0")
   testImplementation("org.springframework.boot:spring-boot-starter-webflux-test")
   testImplementation("org.wiremock:wiremock-standalone:3.13.2")
-  testImplementation("io.swagger.parser.v3:swagger-parser:2.1.43") {
+  testImplementation("io.swagger.parser.v3:swagger-parser:2.1.45") {
     exclude(group = "io.swagger.core.v3")
   }
   testImplementation("org.testcontainers:postgresql:1.21.4")
