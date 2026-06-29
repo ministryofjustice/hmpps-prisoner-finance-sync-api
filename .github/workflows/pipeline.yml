@@ -126,12 +126,18 @@ jobs:
       environment: 'dev'
       app_version: '${{ needs.build.outputs.app_version }}'
       slack_notification: 'true'
-
+  dev_smoke_tests:
+    name: Dev smoke test
+    uses: ./.github/workflows/smoke-test-dev.yml
+    secrets: inherit
+    needs:
+      - deploy_dev
   deploy_preprod:
      name: Deploy to pre-production environment
      needs:
        - build
        - deploy_dev
+       - dev_smoke_tests
      uses: ministryofjustice/hmpps-github-actions/.github/workflows/deploy_env.yml@v2 # WORKFLOW_VERSION
      secrets: inherit
      with:

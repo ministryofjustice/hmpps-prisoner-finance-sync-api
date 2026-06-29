@@ -1,0 +1,17 @@
+name: Development Smoke Test
+on:
+  workflow_call:
+jobs:
+  dev-smoke-tests:
+    runs-on: [self-hosted, hmpps-github-actions-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Setup K6
+        uses: grafana/setup-k6-action@db07bd9765aac508ef18982e52ab937fe633a065 # v1
+      - name: Run main Smoke Test script
+        shell: bash
+        env:
+          DOMAIN: prisoner-finance-sync-api-dev.hmpps.service.justice.gov.uk
+        run: |
+          k6 run --summary-mode=full --quiet ./scripts/K6/smoke-tests.js
