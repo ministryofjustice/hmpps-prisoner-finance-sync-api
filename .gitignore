@@ -86,3 +86,5 @@ applicationinsights-agent-*.jar
 docs/architecture/plantuml
 docs/architecture/mermaid
 docs/architecture/**/*.json
+
+.snyk
