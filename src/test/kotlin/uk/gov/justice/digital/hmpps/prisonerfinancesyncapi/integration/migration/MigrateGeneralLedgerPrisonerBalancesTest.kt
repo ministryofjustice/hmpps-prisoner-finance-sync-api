@@ -23,10 +23,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerAccountPointInTimeBalance
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
@@ -58,12 +55,6 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
 
   @Autowired lateinit var nomisSyncPayloadRepository: NomisSyncPayloadRepository
 
-  @Autowired lateinit var transactionRepository: TransactionRepository
-
-  @Autowired lateinit var transactionEntryRepository: TransactionEntryRepository
-
-  @Autowired lateinit var accountRepository: AccountRepository
-
   @Autowired lateinit var timeConversionService: TimeConversionService
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
@@ -81,9 +72,6 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
   fun tearDown() {
     rootLogger.detachAppender(listAppender)
     nomisSyncPayloadRepository.deleteAll()
-    transactionEntryRepository.deleteAll()
-    transactionRepository.deleteAll()
-    accountRepository.deleteAll()
   }
 
   fun createSubAccountResponse(subAccountRef: String, parentUUID: UUID) = SubAccountResponse(

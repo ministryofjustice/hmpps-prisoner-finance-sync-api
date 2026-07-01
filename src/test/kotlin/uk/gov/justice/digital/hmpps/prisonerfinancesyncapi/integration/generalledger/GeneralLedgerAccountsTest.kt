@@ -4,9 +4,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
-import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
@@ -30,10 +28,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
@@ -62,12 +57,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
   @Autowired lateinit var nomisSyncPayloadRepository: NomisSyncPayloadRepository
 
-  @Autowired lateinit var transactionRepository: TransactionRepository
-
-  @Autowired lateinit var transactionEntryRepository: TransactionEntryRepository
-
-  @Autowired lateinit var accountRepository: AccountRepository
-
   private val testPrisonerId = "A1234AA"
 
   @Autowired
@@ -87,9 +76,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
   @AfterEach
   fun tearDown() {
     nomisSyncPayloadRepository.deleteAll()
-    transactionEntryRepository.deleteAll()
-    transactionRepository.deleteAll()
-    accountRepository.deleteAll()
   }
 
   private fun makeSubAccountResponse(reference: String, parentAccountId: UUID) = SubAccountResponse(
@@ -699,29 +685,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/transactions.*")))
-    }
-
-    @Test
-    fun `should successfully sync to internal ledger when general ledger is down`() {
-      generalLedgerApi.stubFor(
-        get(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonerId))
-          .willReturn(
-            aResponse()
-              .withStatus(500)
-              .withBody("Internal Server Error"),
-          ),
-      )
-
-      val request = createRequest(testPrisonerId)
-
-      webTestClient.post()
-        .uri("/sync/offender-transactions")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(objectMapper.writeValueAsString(request))
-        .exchange()
-        .expectStatus().isCreated
     }
 
     @Test

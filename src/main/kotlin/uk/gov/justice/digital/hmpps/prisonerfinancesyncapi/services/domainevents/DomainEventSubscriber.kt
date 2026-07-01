@@ -7,12 +7,10 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.Event
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.domainevents.HmppsDomainEvent
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.PrisonerAccountMergeService
 
 @Service
 class DomainEventSubscriber(
   private val gson: Gson,
-  private val prisonerAccountMergeService: PrisonerAccountMergeService,
 ) {
 
   @SqsListener("domainevents", factory = "hmppsQueueContainerFactoryProxy")
@@ -23,11 +21,8 @@ class DomainEventSubscriber(
 
       when (domainEvent.eventType) {
         PRISONER_MERGE_EVENT_TYPE -> {
-          log.info("Processing merge for ${domainEvent.additionalInformation.removedNomsNumber} -> ${domainEvent.additionalInformation.nomsNumber}")
-          prisonerAccountMergeService.consolidateAccounts(
-            domainEvent.additionalInformation.removedNomsNumber,
-            domainEvent.additionalInformation.nomsNumber,
-          )
+          log.warn("Prisoner Merge cannot be performed, implementation is missing in General Ledger. Merge for ${domainEvent.additionalInformation.removedNomsNumber} -> ${domainEvent.additionalInformation.nomsNumber}")
+          TODO("Not implemented in General Ledger Yet")
         }
         else -> {
           log.warn("Ignored unexpected event type: ${domainEvent.eventType}")

@@ -29,8 +29,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncQueryService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
 import java.util.UUID
@@ -38,8 +38,8 @@ import java.util.UUID
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
 class SyncController(
-  @param:Autowired private val syncService: SyncService,
   @param:Autowired private val syncQueryService: SyncQueryService,
+  @param:Autowired private val generalLedgerService: GeneralLedgerService,
 ) {
 
   @Operation(
@@ -90,13 +90,10 @@ class SyncController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  fun postOffenderTransaction(@Valid @RequestBody request: SyncOffenderTransactionRequest): ResponseEntity<SyncTransactionReceipt> {
-    val receipt = syncService.syncTransaction(request)
-    return when (receipt.action) {
-      SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)
-      SyncTransactionReceipt.Action.UPDATED -> ResponseEntity.ok(receipt)
-      SyncTransactionReceipt.Action.PROCESSED -> ResponseEntity.ok(receipt)
-    }
+  fun postOffenderTransaction(@Valid @RequestBody request: SyncOffenderTransactionRequest): ResponseEntity<List<UUID>> {
+    // TODO("Throw exceptions from the service, update the return type")
+    val response = generalLedgerService.syncOffenderTransaction(request)
+    return ResponseEntity.status(HttpStatus.CREATED).body(response)
   }
 
   @Operation(
@@ -147,15 +144,7 @@ class SyncController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  fun postGeneralLedgerTransaction(@Valid @RequestBody request: SyncGeneralLedgerTransactionRequest): ResponseEntity<SyncTransactionReceipt> {
-    val receipt = syncService.syncTransaction(request)
-
-    return when (receipt.action) {
-      SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)
-      SyncTransactionReceipt.Action.UPDATED -> ResponseEntity.ok(receipt)
-      SyncTransactionReceipt.Action.PROCESSED -> ResponseEntity.ok(receipt)
-    }
-  }
+  fun postGeneralLedgerTransaction(@Valid @RequestBody request: SyncGeneralLedgerTransactionRequest): ResponseEntity<SyncTransactionReceipt> = throw RuntimeException("Not implemented")
 
   @Operation(
     summary = "Retrieve general ledger transactions by date range",
