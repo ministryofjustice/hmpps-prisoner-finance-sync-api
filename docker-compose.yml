@@ -15,6 +15,7 @@ services:
       - DB_NAME=nomis_sync
       - DB_USER=postgres
       - DB_PASS=postgres
+      - GENERAL_LEDGER_API_URL=http://hmpps-prisoner-finance-general-ledger-api:8080
     depends_on:
       hmpps-auth:
         condition: service_started
@@ -57,14 +58,13 @@ services:
 
   hmpps-prisoner-finance-general-ledger-api:
     image: ghcr.io/ministryofjustice/hmpps-prisoner-finance-general-ledger-api:latest
-    platform: linux/amd64
     networks:
       - hmpps
     container_name: hmpps-prisoner-finance-general-ledger-api
     ports:
       - "8084:8080"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ping"]
     environment:
       - SERVER_PORT=8080
       - SPRING_PROFILES_ACTIVE=dev
@@ -73,6 +73,10 @@ services:
       - DB_NAME=general_ledger
       - DB_USER=postgres
       - DB_PASS=postgres
+      - CALC_BALANCE_QUEUE_NAME=calculated_balance_queue.fifo
+      - CALC_BALANCE_DLQ_NAME=calculated_balance_queue_dlq.fifo
+      - SQS_PROVIDER=localstack
+      - SQS_LOCALSTACK_URL=http://localstack:4566
     depends_on:
       hmpps-auth:
         condition: service_started

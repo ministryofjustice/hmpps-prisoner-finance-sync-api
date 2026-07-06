@@ -6,3 +6,20 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+
+general-ledger-api:
+  url: ${GENERAL_LEDGER_API_URL:http://localhost:8080}
+  client:
+    id: ${GENERAL_LEDGER_API_CLIENT_ID:hmpps-prisoner-finance-general-ledger-api}
+    secret: ${GENERAL_LEDGER_API_CLIENT_ID:clientsecret}
+
+hmpps.sqs:
+  provider: localstack
+  queues:
+    domainevents:
+      queueName: local_queue
+      dlqName: local_dlq
+      subscribeTopicId: domaineventsqueue
+  topics:
+    domaineventsqueue:
+      arn: arn:aws:sns:eu-west-2:000000000000:domain_events_queue
