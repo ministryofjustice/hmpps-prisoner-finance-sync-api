@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import java.util.UUID
 
 @Primary
@@ -13,16 +14,19 @@ class DualWriteLedgerService(
   @Qualifier("internalLedgerService") private val internalLedger: LedgerService,
   @Qualifier("generalLedgerService") private val generalLedger: LedgerService,
   private val generalLedgerForwarder: GeneralLedgerForwarder,
+  private val legacyTransactionFixService: LegacyTransactionFixService,
 ) : LedgerService {
 
   override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
-    val result = internalLedger.syncOffenderTransaction(request)
+    val fixedRequest = legacyTransactionFixService.fixLegacyTransactions(request)
+
+    val result = internalLedger.syncOffenderTransaction(fixedRequest)
     val offenderDisplayId = request.offenderTransactions.firstOrNull()?.offenderDisplayId ?: ""
 
     generalLedgerForwarder.executeIfEnabled(
       "Failed to sync Offender Transaction ${request.transactionId} to General Ledger",
       offenderDisplayId,
-      { generalLedger.syncOffenderTransaction(request) },
+      { generalLedger.syncOffenderTransaction(fixedRequest) },
     )
 
     return result

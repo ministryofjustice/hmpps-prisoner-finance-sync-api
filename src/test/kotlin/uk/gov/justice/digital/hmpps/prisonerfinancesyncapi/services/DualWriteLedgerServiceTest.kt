@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.Mockito.mock
+import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -15,6 +16,7 @@ import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
@@ -31,6 +33,9 @@ class DualWriteLedgerServiceTest {
   @Mock
   private lateinit var generalLedgerForwarder: GeneralLedgerForwarder
 
+  @Spy
+  private lateinit var legacyTransactionFixService: LegacyTransactionFixService
+
   private lateinit var dualWriteService: DualWriteLedgerService
 
   @BeforeEach
@@ -40,6 +45,7 @@ class DualWriteLedgerServiceTest {
       internalLedger,
       generalLedger,
       generalLedgerForwarder,
+      legacyTransactionFixService,
     )
   }
 
