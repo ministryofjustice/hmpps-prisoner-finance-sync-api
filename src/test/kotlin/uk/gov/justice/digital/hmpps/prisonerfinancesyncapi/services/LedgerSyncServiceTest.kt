@@ -15,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.capture
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.Account
@@ -73,27 +72,12 @@ class LedgerSyncServiceTest {
     }
 
     @Test
-    fun `should return random UUID when fixed request is empty (Filtered)`() {
-      val tx = createOffenderTransaction()
-      val request = createOffenderRequest(listOf(tx))
-
-      whenever(legacyTransactionFixService.fixLegacyTransactions(request))
-        .thenReturn(request.copy(offenderTransactions = emptyList()))
-
-      val result = ledgerSyncService.syncOffenderTransaction(request)
-
-      assertThat(result).isNotNull()
-      verify(prisonService, never()).getPrison(any())
-    }
-
-    @Test
     fun `should process transaction successfully when prison and account exist`() {
       val tx = createOffenderTransaction()
       val request = createOffenderRequest(listOf(tx))
       val prisonDbId = 100L
       val accountDbId = 200L
 
-      whenever(legacyTransactionFixService.fixLegacyTransactions(request)).thenReturn(request)
       whenever(prisonService.getPrison(request.caseloadId)).thenReturn(Prison(id = prisonDbId, code = request.caseloadId))
       whenever(timeConversionService.toUtcInstant(request.transactionTimestamp)).thenReturn(fixedNow)
 
@@ -131,7 +115,6 @@ class LedgerSyncServiceTest {
       val prisonDbId = 100L
       val accountDbId = 200L
 
-      whenever(legacyTransactionFixService.fixLegacyTransactions(request)).thenReturn(request)
       whenever(prisonService.getPrison(request.caseloadId)).thenReturn(null)
       whenever(prisonService.createPrison(request.caseloadId)).thenReturn(Prison(id = prisonDbId, code = request.caseloadId))
       whenever(timeConversionService.toUtcInstant(any())).thenReturn(fixedNow)
