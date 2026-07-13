@@ -15,11 +15,13 @@ import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED
+import com.github.tomakehurst.wiremock.verification.FindRequestsResult
 import org.junit.jupiter.api.extension.AfterAllCallback
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PagedResponseSearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PostingResponse
@@ -392,7 +394,7 @@ class GeneralLedgerApiMockServer :
     times: Int = 1,
     debtorSubAccountUuid: String? = null,
     creditorSubAccountUuid: String? = null,
-  ) {
+  ): FindRequestsResult {
     var verification = postRequestedFor(urlPathEqualTo("/transactions"))
       .withHeader("Idempotency-Key", matching(".*"))
 
@@ -409,6 +411,8 @@ class GeneralLedgerApiMockServer :
     }
 
     verify(times, verification)
+
+    return generalLedgerApi.findRequestsMatching(verification.build())
   }
 
   // POST /transactions
@@ -454,6 +458,30 @@ class GeneralLedgerApiMockServer :
     stubFor(mapping)
 
     return response
+  }
+
+  // POST /transactions
+  fun stubPostTransactionReturnsBadRequest() {
+    var mapping = post(urlEqualTo("/transactions"))
+      .withHeader("Idempotency-Key", matching(".*"))
+      .willReturn(
+        aResponse()
+          .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+          .withStatus(400)
+          .withBody(
+            """
+                {
+                  "status": 400,
+                  "errorCode": "BadRequest",
+                  "userMessage": "Bad Request",
+                  "developerMessage": "Bad Request",
+                  "moreInfo": "more info"
+                }
+              """,
+          ),
+      )
+
+    stubFor(mapping)
   }
 
   // GET /sub-accounts/$accountId/balance

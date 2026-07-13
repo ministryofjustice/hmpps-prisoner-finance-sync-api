@@ -34,6 +34,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Acco
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
@@ -1168,7 +1169,17 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), spendsSubRef)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), cashSubRef)
 
-      generalLedgerApi.verifyTransactionPosted(times = 1)
+      val postedTransactions = generalLedgerApi.verifyTransactionPosted(times = 1)
+
+      assertThat(postedTransactions.requests).hasSize(1)
+
+      val createTransactionRequest = objectMapper.readValue(
+        String(postedTransactions.requests[0].body),
+        CreateTransactionRequest::class.java,
+      )
+
+      assertThat(createTransactionRequest.postings).hasSize(2)
+      assertThat(createTransactionRequest.entrySequence).isEqualTo(1)
     }
 
     @Test
@@ -1238,7 +1249,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             offenderBookingId = 1227181,
             subAccountType = "REG",
             postingType = "CR",
-            type = "OT",
+            type = "ATOF",
             description = "Sub-Account Transfer",
             amount = amount,
             reference = null,
@@ -1259,7 +1270,17 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), spendsSubRef)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), cashSubRef)
 
-      generalLedgerApi.verifyTransactionPosted(times = 1)
+      val postedTransactions = generalLedgerApi.verifyTransactionPosted(times = 1)
+
+      assertThat(postedTransactions.requests).hasSize(1)
+
+      val createTransactionRequest = objectMapper.readValue(
+        String(postedTransactions.requests[0].body),
+        CreateTransactionRequest::class.java,
+      )
+
+      assertThat(createTransactionRequest.postings).hasSize(2)
+      assertThat(createTransactionRequest.entrySequence).isEqualTo(1)
     }
   }
 
