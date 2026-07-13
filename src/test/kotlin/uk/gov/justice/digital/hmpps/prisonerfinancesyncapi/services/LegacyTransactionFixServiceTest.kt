@@ -36,6 +36,7 @@ class LegacyTransactionFixServiceTest {
     offenderTransactionType: String,
     includeGeneralLedgerEntries: Boolean = false,
     subAccountType: String = "SPND",
+    entrySequence: Int = 2,
   ): SyncOffenderTransactionRequest = SyncOffenderTransactionRequest(
     transactionId = 485368707,
     requestId = UUID.fromString("a1b2c3d4-e5f6-7890-1234-567890abcdef"),
@@ -49,7 +50,7 @@ class LegacyTransactionFixServiceTest {
     lastModifiedByDisplayName = null,
     listOf(
       OffenderTransaction(
-        entrySequence = 2,
+        entrySequence = entrySequence,
         offenderId = 5306470,
         offenderDisplayId = "AA001AA",
         offenderBookingId = 2970777,
@@ -65,14 +66,29 @@ class LegacyTransactionFixServiceTest {
   )
 
   @Test
-  fun `should preserve SyncOffenderTransactionRequest when type is OT and no GL entries exist`() {
+  fun `should remove offender transactions from SyncOffenderTransactionRequest when type is OT and no GL entries exist`() {
     val result = legacyTransactionFixService.fixLegacyTransactions(createSyncOffenderTransactionRequest("OT"))
     assertThat(result.offenderTransactions).isNotNull()
     assertThat(result.offenderTransactions.isEmpty()).isTrue
   }
 
   @Test
-  fun `should preserve SyncOffenderTransactionRequest when type is ATOF and no GL entries exist`() {
+  fun `should remove offender transactions from SyncOffenderTransactionRequest when type is OT or ATOF regardless of the entrySequence`() {
+    var result = legacyTransactionFixService.fixLegacyTransactions(
+      createSyncOffenderTransactionRequest("OT", entrySequence = 1),
+    )
+    assertThat(result.offenderTransactions).isNotNull()
+    assertThat(result.offenderTransactions.isEmpty()).isTrue
+
+    result = legacyTransactionFixService.fixLegacyTransactions(
+      createSyncOffenderTransactionRequest("ATOF", entrySequence = 4),
+    )
+    assertThat(result.offenderTransactions).isNotNull()
+    assertThat(result.offenderTransactions.isEmpty()).isTrue
+  }
+
+  @Test
+  fun `should remove offender transactions from SyncOffenderTransactionRequest when type is ATOF and no GL entries exist`() {
     val result = legacyTransactionFixService.fixLegacyTransactions(createSyncOffenderTransactionRequest("ATOF"))
     assertThat(result.offenderTransactions).isNotNull()
     assertThat(result.offenderTransactions.isEmpty()).isTrue

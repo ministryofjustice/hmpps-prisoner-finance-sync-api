@@ -29,8 +29,7 @@ class LegacyTransactionFixService {
     val fixedOffenderTransactions = request.offenderTransactions.mapNotNull { offenderTransaction ->
 
       if (offenderTransaction.generalLedgerEntries.isEmpty() &&
-        TRANSACTION_TYPES_SKIPPED_IF_NO_GL_ENTRIES.contains(offenderTransaction.type) &&
-        offenderTransaction.entrySequence == 2
+        TRANSACTION_TYPES_SKIPPED_IF_NO_GL_ENTRIES.contains(offenderTransaction.type)
       ) {
         null // Skip this transaction as no GL entries
       } else if (offenderTransaction.type == TRANSACTION_TYPE_TIR && offenderTransaction.generalLedgerEntries.isEmpty()) {
