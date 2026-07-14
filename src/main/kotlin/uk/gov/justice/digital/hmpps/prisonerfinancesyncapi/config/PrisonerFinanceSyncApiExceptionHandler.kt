@@ -122,6 +122,17 @@ class PrisonerFinanceSyncApiExceptionHandler {
       ),
     ).also { log.info("Validation exception: {}", e.message) }
 
+  @ExceptionHandler(IllegalArgumentException::class)
+  fun handleIllegalArgumentException(e: IllegalArgumentException): ResponseEntity<ErrorResponse> = ResponseEntity
+    .status(BAD_REQUEST)
+    .body(
+      ErrorResponse(
+        status = BAD_REQUEST,
+        userMessage = "Illegal Argument failure: ${e.message}",
+        developerMessage = e.message,
+      ),
+    ).also { log.info("Illegal Argument exception: {}", e.message) }
+
   @ExceptionHandler(NoResourceFoundException::class)
   fun handleNoResourceFoundException(e: NoResourceFoundException): ResponseEntity<ErrorResponse> = ResponseEntity
     .status(NOT_FOUND)
@@ -153,7 +164,7 @@ class PrisonerFinanceSyncApiExceptionHandler {
         userMessage = "Unexpected error: ${e.message}",
         developerMessage = e.message,
       ),
-    ).also { log.error("Unexpected exception", e) }
+    ).also { log.error("Unexpected exception: [${e.message}]", e) }
 
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
