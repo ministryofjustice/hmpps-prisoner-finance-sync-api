@@ -73,7 +73,7 @@ class SyncService(
       processNewTransaction(request)
       log.info(
         """
-        Duplicate transaction request received 
+        New transaction request received 
         { 
           requestId: ${request.requestId}, 
           transactionId: ${request.transactionId}, 
@@ -91,14 +91,12 @@ class SyncService(
   }
 
   private fun processNewTransaction(request: SyncRequest): UUID {
-    return try {
-      processLedgerRequest(request)
+    try {
+      return processLedgerRequest(request)
     } catch (_: DataIntegrityViolationException) {
       log.warn("Race condition detected for transactionId: ${request.transactionId}. Retrying operation...")
-      null
-    } catch (firstTryEx: Exception) {
-      throw firstTryEx
-    } ?: processLedgerRequest(request) // throw anything we get the second time
+      return processLedgerRequest(request) // throw anything we get the second time
+    }
   }
 
   private fun processLedgerRequest(request: SyncRequest): UUID = when (request) {
