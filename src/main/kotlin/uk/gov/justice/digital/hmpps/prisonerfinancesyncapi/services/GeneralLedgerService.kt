@@ -84,6 +84,7 @@ class GeneralLedgerService(
             request.transactionId,
             transaction.entrySequence,
           ),
+          request.transactionId,
         )
 
         ledgerTransactionMappingRepository.save(
