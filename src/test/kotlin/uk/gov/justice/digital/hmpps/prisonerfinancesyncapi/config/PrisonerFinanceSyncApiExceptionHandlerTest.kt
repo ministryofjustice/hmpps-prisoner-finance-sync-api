@@ -1,15 +1,26 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config
 
+import com.microsoft.applicationinsights.TelemetryClient
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.InjectMocks
+import org.mockito.Mock
+import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.springframework.core.MethodParameter
 import org.springframework.http.HttpStatus.BAD_REQUEST
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
+@ExtendWith(MockitoExtension::class)
 class PrisonerFinanceSyncApiExceptionHandlerTest {
-  private val handler = PrisonerFinanceSyncApiExceptionHandler()
+
+  @Mock
+  private lateinit var telemetryClient: TelemetryClient
+
+  @InjectMocks
+  private lateinit var handler: PrisonerFinanceSyncApiExceptionHandler
 
   @Test
   fun `should return BAD_REQUEST with correct error response when MethodArgumentTypeMismatchException occurs`() {

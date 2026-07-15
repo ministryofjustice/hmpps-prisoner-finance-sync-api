@@ -1,7 +1,9 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config
 
+import com.microsoft.applicationinsights.TelemetryClient
 import jakarta.validation.ValidationException
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus.BAD_REQUEST
 import org.springframework.http.HttpStatus.FORBIDDEN
 import org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
@@ -16,10 +18,28 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.GeneralLedgerAccountNotFoundException
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.SyncOffenderTransactionsException
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @RestControllerAdvice
-class PrisonerFinanceSyncApiExceptionHandler {
+class PrisonerFinanceSyncApiExceptionHandler(
+  @param:Autowired private val telemetryClient: TelemetryClient,
+) {
+
+  @ExceptionHandler(SyncOffenderTransactionsException::class)
+  fun handleSyncOffenderTransactionsAltException(exception: SyncOffenderTransactionsException): ResponseEntity<ErrorResponse> = ResponseEntity
+    .status(exception.status)
+    .body(
+      ErrorResponse(
+        status = exception.status.value(),
+        userMessage = exception.message,
+        developerMessage = exception.message,
+      ),
+    ).also {
+      log.error("Error processing sync transaction: $exception.properties", exception)
+
+      telemetryClient.trackException(exception, exception.properties, null)
+    }
 
   @ExceptionHandler(CustomException::class)
   fun handleCustomException(e: CustomException): ResponseEntity<ErrorResponse> = ResponseEntity

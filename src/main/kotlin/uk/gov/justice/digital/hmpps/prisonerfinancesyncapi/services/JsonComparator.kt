@@ -13,15 +13,10 @@ class JsonComparator(private val objectMapper: ObjectMapper) {
   var ignoredFields: Set<String> = setOf("requestId")
 
   fun areJsonBodiesEqual(storedJson: String, newJson: String): Boolean {
-    return try {
-      val storedMap = jsonToMap(storedJson)
-      val newMap = jsonToMap(newJson)
+    val storedMap = jsonToMap(storedJson)
+    val newMap = jsonToMap(newJson)
 
-      return compareMaps(storedMap, newMap)
-    } catch (e: Exception) {
-      log.error("Failed to compare JSON bodies", e)
-      false
-    }
+    return compareMaps(storedMap, newMap)
   }
 
   private fun jsonToMap(jsonString: String): Map<String, Any?> = objectMapper.readValue(jsonString)

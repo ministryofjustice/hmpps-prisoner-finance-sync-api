@@ -1,11 +1,13 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class JsonComparatorTest {
 
@@ -50,10 +52,13 @@ class JsonComparatorTest {
     }
 
     @Test
-    fun `should return false for invalid JSON strings`() {
+    fun `should throw JsonParseException for invalid JSON strings`() {
       val json1 = """{"id": 1, "name": "test"}"""
       val json2 = """{"id": 1, "name": "test",}""" // Trailing comma makes it invalid
-      assertFalse(jsonComparator.areJsonBodiesEqual(json1, json2))
+
+      assertThrows<JsonParseException> {
+        jsonComparator.areJsonBodiesEqual(json1, json2)
+      }
     }
 
     @Test
