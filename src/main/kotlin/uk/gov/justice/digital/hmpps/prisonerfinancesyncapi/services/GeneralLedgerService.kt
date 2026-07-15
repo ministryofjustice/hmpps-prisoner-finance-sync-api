@@ -16,9 +16,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
 
@@ -29,73 +29,112 @@ class GeneralLedgerService(
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
   private val idempotencyService: GeneralLedgerIdempotencyService,
-  private val ledgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
+  private val generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
   private val generalLedgerAccountResolver: GeneralLedgerAccountResolver,
-) : LedgerService {
+  private val legacyTransactionFixService: LegacyTransactionFixService,
+) {
 
   private companion object {
     private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
   }
 
-  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
-    val transactionGLUUIDs = mutableListOf<UUID>()
-    val requestCache = InMemoryAccountCache()
+  data class SyncOffenderTransactionToGeneralLedgerResponse(
+    val previouslyMappedTransactionEntries: List<GeneralLedgerTransactionMapping>,
+    val unsuccessfullyMappedTransactionEntries: List<OffenderTransaction>,
+    val successfullyMappedTransactionEntries: List<GeneralLedgerTransactionMapping>,
+  )
 
-    request.offenderTransactions.forEach { transaction ->
+  private fun sendTransactionToGl(
+    transaction: OffenderTransaction,
+    fixedRequest: SyncOffenderTransactionRequest,
+    requestCache: InMemoryAccountCache,
+  ): UUID {
+    val offenderId = transaction.offenderDisplayId
+    val postings = transaction.generalLedgerEntries.map { entry ->
 
-      val offenderId = transaction.offenderDisplayId
-      val postings = transaction.generalLedgerEntries.map { entry ->
-
-        val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
-          prisonId = request.caseloadId,
-          offenderId = offenderId,
-          accountCode = entry.code,
-          transactionType = transaction.type,
-          parentCache = requestCache,
-        )
-
-        return@map CreatePostingRequest(
-          subAccountUuid,
-          type = CreatePostingRequest.Type.valueOf(entry.postingType),
-          entrySequence = entry.entrySequence.toLong(),
-          amount = entry.amount.toPence(),
-        )
-      }
-
-      val glRequest = CreateTransactionRequest(
-        reference = transaction.reference ?: "",
-        entrySequence = transaction.entrySequence.toLong(),
-        description = transaction.description,
-        timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
-        amount = transaction.amount.toPence(),
-        postings = postings,
+      val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
+        prisonId = fixedRequest.caseloadId,
+        offenderId = offenderId,
+        accountCode = entry.code,
+        transactionType = transaction.type,
+        parentCache = requestCache,
       )
 
+      return@map CreatePostingRequest(
+        subAccountUuid,
+        type = CreatePostingRequest.Type.valueOf(entry.postingType),
+        entrySequence = entry.entrySequence.toLong(),
+        amount = entry.amount.toPence(),
+      )
+    }
+
+    val glRequest = CreateTransactionRequest(
+      reference = transaction.reference ?: "",
+      entrySequence = transaction.entrySequence.toLong(),
+      description = transaction.description,
+      timestamp = timeConversionService.toUtcInstant(fixedRequest.transactionTimestamp),
+      amount = transaction.amount.toPence(),
+      postings = postings,
+    )
+
+    return generalLedgerApiClient.postTransaction(
+      glRequest,
+      idempotencyService.genTransactionIdempotencyKey(
+        fixedRequest.transactionId,
+        transaction.entrySequence,
+      ),
+      fixedRequest.transactionId,
+    )
+  }
+
+  fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): SyncOffenderTransactionToGeneralLedgerResponse {
+    val fixedRequest = legacyTransactionFixService.fixLegacyTransactions(request)
+
+//    TODO: Check if there are any offender transactions to even handle and decide what to do
+
+    val requestCache = InMemoryAccountCache()
+
+    val previouslyMappedTransactionEntries = generalLedgerTransactionMappingRepository
+      .findGeneralLedgerTransactionMappingByLegacyTransactionId(fixedRequest.transactionId).associateBy { it.entrySequence }
+
+    val unsuccessfullyMappedTransactionEntries = mutableListOf<OffenderTransaction>()
+    val successfullyMappedTransactionEntries = mutableListOf<GeneralLedgerTransactionMapping>()
+
+    for (transaction in fixedRequest.offenderTransactions) {
+      if (transaction.entrySequence in previouslyMappedTransactionEntries) {
+        log.info(
+          "For NOMIS Transaction ID=${fixedRequest.transactionId} Skipping transaction with entry sequence ${transaction.entrySequence} as it has already been mapped and processed in the " +
+            "general ledger",
+        )
+        continue
+      }
       try {
-        val transactionGLUUID = generalLedgerApiClient.postTransaction(
-          glRequest,
-          idempotencyService.genTransactionIdempotencyKey(
-            request.transactionId,
-            transaction.entrySequence,
-          ),
-          request.transactionId,
+        val transactionGLUUID = sendTransactionToGl(
+          transaction,
+          fixedRequest,
+          requestCache,
         )
 
-        ledgerTransactionMappingRepository.save(
-          GeneralLedgerTransactionMapping(
-            legacyTransactionId = request.transactionId,
-            entrySequence = transaction.entrySequence,
-            glTransactionUuid = transactionGLUUID,
-            createdAt = timeConversionService.toUtcInstant(request.createdAt),
-            caseloadId = request.caseloadId,
-            transactionType = transaction.type,
-          ),
+        val transactionMapping = GeneralLedgerTransactionMapping(
+          legacyTransactionId = fixedRequest.transactionId,
+          entrySequence = transaction.entrySequence,
+          glTransactionUuid = transactionGLUUID,
+          createdAt = timeConversionService.toUtcInstant(fixedRequest.createdAt),
+          caseloadId = fixedRequest.caseloadId,
+          transactionType = transaction.type,
         )
-        transactionGLUUIDs.add(transactionGLUUID)
+
+        generalLedgerTransactionMappingRepository.save(transactionMapping)
+
+        successfullyMappedTransactionEntries.add(transactionMapping)
       } catch (e: Exception) {
+        unsuccessfullyMappedTransactionEntries.add(
+          transaction,
+        )
+
         val properties = mapOf(
-          "requestId" to request.requestId.toString(),
-          "transactionId" to request.transactionId.toString(),
+          "requestId" to fixedRequest.requestId.toString(),
+          "transactionId" to fixedRequest.transactionId.toString(),
           "transactionType" to transaction.type,
           "entrySequence" to transaction.entrySequence.toString(),
           "exceptionMessage" to if (e is WebClientResponseException) {
@@ -109,21 +148,11 @@ class GeneralLedgerService(
       }
     }
 
-    if (request.offenderTransactions.isEmpty() || transactionGLUUIDs.count() != request.offenderTransactions.count()) {
-      val illegalStateException = IllegalStateException("Not All General Ledger Transaction were resolved")
-
-      val properties = mapOf(
-        "requestId" to request.requestId.toString(),
-        "transactionId" to request.transactionId.toString(),
-        "glTransactionsResolved" to transactionGLUUIDs.toString(),
-      )
-
-      logRequestAsError(properties, illegalStateException)
-
-      throw illegalStateException
-    }
-
-    return transactionGLUUIDs
+    return SyncOffenderTransactionToGeneralLedgerResponse(
+      previouslyMappedTransactionEntries = previouslyMappedTransactionEntries.values.toList(),
+      unsuccessfullyMappedTransactionEntries = unsuccessfullyMappedTransactionEntries,
+      successfullyMappedTransactionEntries = successfullyMappedTransactionEntries,
+    )
   }
 
   private fun logRequestAsError(properties: Map<String, String>, exception: Exception) {
@@ -131,8 +160,6 @@ class GeneralLedgerService(
 
     telemetryClient.trackException(exception, properties, null)
   }
-
-  override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
   fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
@@ -218,7 +245,7 @@ class GeneralLedgerService(
   }
 
   fun retrieveNOMISTransactionByLegacyTransactionId(legacyTransactionId: Long): SyncOffenderTransactionResponse {
-    val transactionMappings = ledgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
+    val transactionMappings = generalLedgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId)
     if (transactionMappings.isEmpty()) {
       throw CustomException("No mapping found for $legacyTransactionId", status = HttpStatus.NOT_FOUND)
     }

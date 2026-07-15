@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.SyncOffenderTransactionsException
@@ -30,8 +31,11 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService.SyncOffenderTransactionToGeneralLedgerResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
 import java.util.UUID
@@ -41,6 +45,8 @@ import java.util.UUID
 class SyncController(
   @param:Autowired private val syncService: SyncService,
   @param:Autowired private val syncQueryService: SyncQueryService,
+  private val generalLedgerService: GeneralLedgerService,
+  private val syncPayloadCaptureService: SyncPayloadCaptureService,
 ) {
 
   @Operation(
@@ -92,17 +98,54 @@ class SyncController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun postOffenderTransaction(@Valid @RequestBody request: SyncOffenderTransactionRequest): ResponseEntity<SyncTransactionReceipt> {
-    val receipt = try {
-      syncService.syncTransaction(request)
-    } catch (exception: Exception) {
-      throw SyncOffenderTransactionsException(request, exception)
+    if (request.offenderTransactions.isEmpty()) {
+      throw CustomException(
+        message = "Offender transactions missing",
+        status = HttpStatus.BAD_REQUEST,
+      )
     }
 
-    return when (receipt.action) {
+//    TODO: Add logging and status to payload table
+    val syncId = UUID.randomUUID()
+    syncPayloadCaptureService.captureAndStoreRequest(
+      request,
+      syncId,
+    )
+
+    val result = generalLedgerService.syncOffenderTransaction(request)
+    val receiptAction = getTransactionReceiptAction(result)
+
+//  TODO: Add summary of unsuccessful transactions and causes of fail i.e. 400/500
+    val receipt = SyncTransactionReceipt(
+      action = receiptAction,
+      requestId = request.requestId,
+      synchronizedTransactionId = syncId,
+    )
+
+    return when (receiptAction) {
       SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)
-      SyncTransactionReceipt.Action.UPDATED -> ResponseEntity.ok(receipt)
       SyncTransactionReceipt.Action.PROCESSED -> ResponseEntity.ok(receipt)
+      SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(receipt)
+      else -> throw IllegalStateException("Unexpected action: $receiptAction")
     }
+  }
+
+  private fun getTransactionReceiptAction(result: SyncOffenderTransactionToGeneralLedgerResponse): SyncTransactionReceipt.Action {
+    if (
+      result.previouslyMappedTransactionEntries.count() == 0 &&
+      result.unsuccessfullyMappedTransactionEntries.count() == 0 &&
+      result.successfullyMappedTransactionEntries.count() > 0
+    ) {
+      return SyncTransactionReceipt.Action.CREATED
+    }
+
+    if (
+      result.unsuccessfullyMappedTransactionEntries.count() > 0
+    ) {
+      return SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS
+    }
+
+    return SyncTransactionReceipt.Action.PROCESSED
   }
 
   @Operation(
@@ -164,6 +207,7 @@ class SyncController(
       SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)
       SyncTransactionReceipt.Action.UPDATED -> ResponseEntity.ok(receipt)
       SyncTransactionReceipt.Action.PROCESSED -> ResponseEntity.ok(receipt)
+      SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(receipt)
     }
   }
 
