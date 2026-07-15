@@ -30,13 +30,15 @@ open class LedgerSyncService(
       throw IllegalArgumentException("No offender transactions provided in the request.")
     }
 
-    val prison = prisonService.getPrison(request.caseloadId)
-      ?: prisonService.createPrison(request.caseloadId)
+    val fixedRequest = legacyTransactionFixService.fixLegacyTransactions(request)
 
-    val transactionTimestamp = timeConversionService.toUtcInstant(request.transactionTimestamp)
+    val prison = prisonService.getPrison(fixedRequest.caseloadId)
+      ?: prisonService.createPrison(fixedRequest.caseloadId)
+
+    val transactionTimestamp = timeConversionService.toUtcInstant(fixedRequest.transactionTimestamp)
     val synchronizedTransactionId = UUID.randomUUID()
 
-    request.offenderTransactions.forEach { offenderTransaction ->
+    fixedRequest.offenderTransactions.forEach { offenderTransaction ->
       val transactionEntries = offenderTransaction.generalLedgerEntries.map { glEntry ->
         val account = accountService.resolveAccount(
           glEntry.code,
@@ -74,6 +76,7 @@ open class LedgerSyncService(
     if (request.generalLedgerEntries.isEmpty()) {
       throw IllegalArgumentException("No general ledger entries provided in the request.")
     }
+
     val prison = prisonService.getPrison(request.caseloadId)
       ?: prisonService.createPrison(request.caseloadId)
 

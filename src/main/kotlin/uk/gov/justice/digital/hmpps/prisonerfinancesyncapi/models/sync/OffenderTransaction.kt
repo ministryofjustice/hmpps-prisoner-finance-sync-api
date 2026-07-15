@@ -53,8 +53,6 @@ data class OffenderTransaction(
 
   @field:Schema(
     description = "A list of general ledger entries associated with this offender transaction.",
-    format = "decimal",
-    example = "162.00",
     required = true,
   )
   @field:Valid

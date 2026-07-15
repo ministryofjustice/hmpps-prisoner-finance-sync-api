@@ -32,14 +32,14 @@ open class TransactionService(
     createdAt: Instant? = null,
   ): Transaction {
     if (entries.isEmpty()) {
-      throw IllegalArgumentException("Transaction must have at least one entry.")
+      throw IllegalArgumentException("Transaction must have at least one entry. Transaction ID: $legacyTransactionId - Transaction Type: $transactionType")
     }
 
     val totalDebits = entries.filter { it.third == PostingType.DR }.sumOf { it.second }
     val totalCredits = entries.filter { it.third == PostingType.CR }.sumOf { it.second }
 
     if (totalDebits.compareTo(totalCredits) != 0) {
-      throw IllegalArgumentException("Transaction is not balanced. Total debits and credits must be equal.")
+      throw IllegalArgumentException("Transaction is not balanced. Total debits and credits must be equal. Transaction ID: $legacyTransactionId - Total Debits: $totalDebits, Total Credits: $totalCredits)}")
     }
 
     val timestamp = transactionTimestamp?.let { Timestamp.from(it) } ?: Timestamp(System.currentTimeMillis())

@@ -21,7 +21,7 @@ class DualWriteLedgerService(
     val fixedRequest = legacyTransactionFixService.fixLegacyTransactions(request)
 
     val result = internalLedger.syncOffenderTransaction(fixedRequest)
-    val offenderDisplayId = request.offenderTransactions.firstOrNull()?.offenderDisplayId ?: ""
+    val offenderDisplayId = fixedRequest.offenderTransactions.firstOrNull()?.offenderDisplayId ?: ""
 
     generalLedgerForwarder.executeIfEnabled(
       "Failed to sync Offender Transaction ${request.transactionId} to General Ledger",
