@@ -465,7 +465,7 @@ class GeneralLedgerServiceTest {
       val uuid1 = UUID.randomUUID()
       val uuid2 = UUID.randomUUID()
 
-      whenever(generalLedgerApiClient.postTransaction(any(), any()))
+      whenever(generalLedgerApiClient.postTransaction(any(), any(), any()))
         .thenReturn(uuid1)
         .thenReturn(uuid2)
 
@@ -511,7 +511,7 @@ class GeneralLedgerServiceTest {
 
       makeMockSubAccountResolver(request)
 
-      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenReturn(UUID.randomUUID())
+      whenever(generalLedgerApiClient.postTransaction(any(), any(), eq(request.transactionId))).thenReturn(UUID.randomUUID())
 
       generalLedgerService.syncOffenderTransaction(request)
 
@@ -559,7 +559,7 @@ class GeneralLedgerServiceTest {
 
       val glException = RuntimeException("Validation failed for transaction")
 
-      whenever(generalLedgerApiClient.postTransaction(any(), any())).thenThrow(glException)
+      whenever(generalLedgerApiClient.postTransaction(any(), any(), eq(request.transactionId))).thenThrow(glException)
 
       assertThrows<IllegalStateException> {
         generalLedgerService.syncOffenderTransaction(request)
@@ -637,7 +637,7 @@ class GeneralLedgerServiceTest {
 
       val resolvedGlTransactionUUID = UUID.randomUUID()
 
-      whenever(generalLedgerApiClient.postTransaction(any(), any()))
+      whenever(generalLedgerApiClient.postTransaction(any(), any(), eq(request.transactionId)))
         .thenReturn(resolvedGlTransactionUUID)
         .thenThrow(glException)
 
@@ -759,11 +759,11 @@ class GeneralLedgerServiceTest {
         ),
       )
       val expectedUUID = UUID.randomUUID()
-      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequest), any())).thenReturn(expectedUUID)
+      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequest), any(), eq(transactionId))).thenReturn(expectedUUID)
 
       generalLedgerService.syncOffenderTransaction(request)
 
-      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequest), any())
+      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequest), any(), eq(transactionId))
     }
 
     @Test
@@ -853,13 +853,13 @@ class GeneralLedgerServiceTest {
           CreatePostingRequest(subAccountId = mapUUID.getValue("1-4"), type = CreatePostingRequest.Type.DR, entrySequence = 4, amount = amount.toPence()),
         ),
       )
-      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner1), any())).thenReturn(UUID.randomUUID())
-      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner2), any())).thenReturn(UUID.randomUUID())
+      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner1), any(), eq(transactionId))).thenReturn(UUID.randomUUID())
+      whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner2), any(), eq(transactionId))).thenReturn(UUID.randomUUID())
 
       generalLedgerService.syncOffenderTransaction(requestTransactionWithMultiplePrisoners)
 
-      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner1), any())
-      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner2), any())
+      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner1), any(), eq(transactionId))
+      verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner2), any(), eq(transactionId))
       verify(generalLedgerTransactionMappingRepository, times(2)).save(any())
     }
   }

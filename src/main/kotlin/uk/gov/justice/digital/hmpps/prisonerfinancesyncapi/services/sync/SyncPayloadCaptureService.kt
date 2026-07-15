@@ -27,7 +27,7 @@ class SyncPayloadCaptureService(
     requestBodyObject: T,
     synchronizedTransactionId: UUID? = null,
   ): NomisSyncPayload {
-    val rawBodyJson = safeSerializeRequest(requestBodyObject)
+    val rawBodyJson = objectMapper.writeValueAsString(requestBodyObject)
 
     var caseloadId: String? = null
     var transactionType = ""
@@ -41,12 +41,14 @@ class SyncPayloadCaptureService(
         requestTypeIdentifier = SyncOffenderTransactionRequest::class.simpleName
         transactionInstant = timeConversionService.toUtcInstant(requestBodyObject.transactionTimestamp)
       }
+
       is SyncGeneralLedgerTransactionRequest -> {
         caseloadId = requestBodyObject.caseloadId
         transactionType = requestBodyObject.transactionType
         requestTypeIdentifier = SyncGeneralLedgerTransactionRequest::class.simpleName
         transactionInstant = timeConversionService.toUtcInstant(requestBodyObject.transactionTimestamp)
       }
+
       else -> {
         requestTypeIdentifier = requestBodyObject::class.simpleName
         log.warn("Unrecognized request body type for capture: ${requestBodyObject::class.simpleName}. Storing with generic identifier.")
@@ -65,12 +67,5 @@ class SyncPayloadCaptureService(
       transactionTimestamp = transactionInstant,
     )
     return nomisSyncPayloadRepository.save(payload)
-  }
-
-  private fun safeSerializeRequest(requestBodyObject: Any): String = try {
-    objectMapper.writeValueAsString(requestBodyObject)
-  } catch (e: Exception) {
-    log.error("Could not serialize request body to JSON for capture. Type: ${requestBodyObject::class.simpleName}", e)
-    "{}"
   }
 }

@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.exceptions.SyncOffenderTransactionsException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionListResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
@@ -91,7 +92,12 @@ class SyncController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun postOffenderTransaction(@Valid @RequestBody request: SyncOffenderTransactionRequest): ResponseEntity<SyncTransactionReceipt> {
-    val receipt = syncService.syncTransaction(request)
+    val receipt = try {
+      syncService.syncTransaction(request)
+    } catch (exception: Exception) {
+      throw SyncOffenderTransactionsException(request, exception)
+    }
+
     return when (receipt.action) {
       SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)
       SyncTransactionReceipt.Action.UPDATED -> ResponseEntity.ok(receipt)
@@ -148,7 +154,11 @@ class SyncController(
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun postGeneralLedgerTransaction(@Valid @RequestBody request: SyncGeneralLedgerTransactionRequest): ResponseEntity<SyncTransactionReceipt> {
-    val receipt = syncService.syncTransaction(request)
+    val receipt = try {
+      syncService.syncTransaction(request)
+    } catch (exception: Exception) {
+      throw SyncOffenderTransactionsException(request, exception)
+    }
 
     return when (receipt.action) {
       SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)

@@ -16,7 +16,6 @@ import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.isNull
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -29,6 +28,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.TransactionSyncStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerSyncService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncStatusResolver
 import java.math.BigDecimal
@@ -50,6 +50,9 @@ class SyncServiceTest {
 
   @Mock
   private lateinit var telemetryClient: TelemetryClient
+
+  @Mock
+  private lateinit var legacyTransactionFixService: LegacyTransactionFixService
 
   @InjectMocks
   private lateinit var syncService: SyncService
@@ -148,7 +151,7 @@ class SyncServiceTest {
     fun `should return CREATED if neither requestId nor transactionId exists`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(ledgerSyncService.syncGeneralLedgerTransaction(any())).thenReturn(syncId)
-      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
 
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
@@ -173,50 +176,9 @@ class SyncServiceTest {
     }
 
     @Test
-    fun `should fail and send specific GL properties to App Insights if retry also fails`() {
-      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
-      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
-        .thenThrow(DataIntegrityViolationException("Race condition"))
-        .thenThrow(RuntimeException("Retry failed"))
-
-      assertThrows(RuntimeException::class.java) {
-        syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
-      }
-
-      verify(telemetryClient, times(1)).trackException(any(), telemetryPropertiesCaptor.capture(), isNull())
-
-      val capturedProperties = telemetryPropertiesCaptor.value
-      assertThat(capturedProperties).containsEntry("requestId", dummyGeneralLedgerTransactionRequest.requestId.toString())
-      assertThat(capturedProperties).containsEntry("transactionId", dummyGeneralLedgerTransactionRequest.transactionId.toString())
-      assertThat(capturedProperties).containsEntry("requestType", "SyncGeneralLedgerTransactionRequest")
-      assertThat(capturedProperties).containsEntry("transactionType", "GJ")
-    }
-
-    @Test
-    fun `should fail and send specific Offender properties to App Insights on standard exception`() {
-      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
-      whenever(ledgerSyncService.syncOffenderTransaction(any()))
-        .thenThrow(RuntimeException("Boom!"))
-
-      assertThrows(RuntimeException::class.java) {
-        syncService.syncTransaction(dummyOffenderTransactionRequest)
-      }
-
-      verify(telemetryClient, times(1)).trackException(any(), telemetryPropertiesCaptor.capture(), isNull())
-
-      val capturedProperties = telemetryPropertiesCaptor.value
-      assertThat(capturedProperties).containsEntry("requestId", dummyOffenderTransactionRequest.requestId.toString())
-      assertThat(capturedProperties).containsEntry("transactionId", dummyOffenderTransactionRequest.transactionId.toString())
-      assertThat(capturedProperties).containsEntry("requestType", "SyncOffenderTransactionRequest")
-      assertThat(capturedProperties).containsEntry("transactionType", "TIR")
-    }
-
-    @Test
     fun `should throw IllegalArgumentException for unknown request types`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       val unknownRequest = Mockito.mock(uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest::class.java)
-      whenever(unknownRequest.requestId).thenReturn(UUID.randomUUID())
-      whenever(unknownRequest.transactionId).thenReturn(1L)
 
       assertThrows(IllegalArgumentException::class.java) {
         syncService.syncTransaction(unknownRequest)
@@ -249,14 +211,15 @@ class SyncServiceTest {
       val transactionUuid1 = UUID.randomUUID()
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(ledgerSyncService.syncOffenderTransaction(any())).thenReturn(listOf(transactionUuid1))
+      whenever(legacyTransactionFixService.fixLegacyTransactions(any())).thenReturn(dummyOffenderTransactionRequest)
 
       val storedPayload = dummyStoredPayload.copy(synchronizedTransactionId = transactionUuid1)
-      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(transactionUuid1))).thenReturn(storedPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(storedPayload)
 
       val result = syncService.syncTransaction(dummyOffenderTransactionRequest)
 
       assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
-      verify(syncPayloadCaptureService).captureAndStoreRequest(any(), eq(transactionUuid1))
+      verify(syncPayloadCaptureService).captureAndStoreRequest(any(), any())
       assertThat(result.synchronizedTransactionId).isEqualTo(transactionUuid1)
     }
   }

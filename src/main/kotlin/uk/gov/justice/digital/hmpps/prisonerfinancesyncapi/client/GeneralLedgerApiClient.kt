@@ -40,9 +40,13 @@ class GeneralLedgerApiClient(
       when {
         e.statusCode == HttpStatus.BAD_REQUEST && e.responseBodyAsString.contains("Page requested is out of range") ->
           throw CustomException(message = "Page requested is out of range", status = HttpStatus.BAD_REQUEST)
+
         e.statusCode == HttpStatus.BAD_REQUEST -> throw CustomException(message400, HttpStatus.BAD_REQUEST, e)
+
         e.statusCode == HttpStatus.NOT_FOUND -> throw CustomException(message404, HttpStatus.NOT_FOUND, e)
+
         e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR -> throw CustomException(message502, HttpStatus.BAD_GATEWAY, e)
+
         else -> throw CustomException(message500, HttpStatus.INTERNAL_SERVER_ERROR, e)
       }
     }
@@ -93,8 +97,8 @@ class GeneralLedgerApiClient(
   }
 
   // POST /transactions
-  fun postTransaction(request: CreateTransactionRequest, idempotencyKey: UUID): UUID {
-    log.info("Posting transaction. Ref: ${request.reference}. Key: $idempotencyKey")
+  fun postTransaction(request: CreateTransactionRequest, idempotencyKey: UUID, transactionId: Long? = null): UUID {
+    log.info("Posting transaction. NOMIS transactionId: $transactionId. NOMIS entrySequence ${request.entrySequence}. Key: $idempotencyKey")
 
     val response = transactionApi.postTransaction(idempotencyKey, request)
       .block()
