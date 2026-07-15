@@ -4,7 +4,6 @@ import com.microsoft.applicationinsights.TelemetryClient
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -17,7 +16,6 @@ import org.mockito.Mockito
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.isNull
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -175,47 +173,6 @@ class SyncServiceTest {
 
       assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
       verify(ledgerSyncService, times(2)).syncGeneralLedgerTransaction(any())
-    }
-
-    @Disabled
-    @Test
-    fun `should fail and send specific GL properties to App Insights if retry also fails`() {
-      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
-      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
-        .thenThrow(DataIntegrityViolationException("Race condition"))
-        .thenThrow(RuntimeException("Retry failed"))
-
-      assertThrows(RuntimeException::class.java) {
-        syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
-      }
-
-      verify(telemetryClient, times(1)).trackException(any(), telemetryPropertiesCaptor.capture(), isNull())
-
-      val capturedProperties = telemetryPropertiesCaptor.value
-      assertThat(capturedProperties).containsEntry("requestId", dummyGeneralLedgerTransactionRequest.requestId.toString())
-      assertThat(capturedProperties).containsEntry("transactionId", dummyGeneralLedgerTransactionRequest.transactionId.toString())
-      assertThat(capturedProperties).containsEntry("requestType", "SyncGeneralLedgerTransactionRequest")
-      assertThat(capturedProperties).containsEntry("transactionType", "GJ")
-    }
-
-    @Disabled
-    @Test
-    fun `should fail and send specific Offender properties to App Insights on standard exception`() {
-      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
-      whenever(ledgerSyncService.syncOffenderTransaction(any()))
-        .thenThrow(RuntimeException("Boom!"))
-
-      assertThrows(RuntimeException::class.java) {
-        syncService.syncTransaction(dummyOffenderTransactionRequest)
-      }
-
-      verify(telemetryClient, times(1)).trackException(any(), telemetryPropertiesCaptor.capture(), isNull())
-
-      val capturedProperties = telemetryPropertiesCaptor.value
-      assertThat(capturedProperties).containsEntry("requestId", dummyOffenderTransactionRequest.requestId.toString())
-      assertThat(capturedProperties).containsEntry("transactionId", dummyOffenderTransactionRequest.transactionId.toString())
-      assertThat(capturedProperties).containsEntry("requestType", "SyncOffenderTransactionRequest")
-      assertThat(capturedProperties).containsEntry("transactionType", "TIR")
     }
 
     @Test
