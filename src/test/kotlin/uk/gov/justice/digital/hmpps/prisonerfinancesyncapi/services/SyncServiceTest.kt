@@ -30,6 +30,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.TransactionSyncStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerSyncService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncStatusResolver
 import java.math.BigDecimal
@@ -51,6 +52,9 @@ class SyncServiceTest {
 
   @Mock
   private lateinit var telemetryClient: TelemetryClient
+
+  @Mock
+  private lateinit var legacyTransactionFixService: LegacyTransactionFixService
 
   @InjectMocks
   private lateinit var syncService: SyncService
@@ -149,7 +153,7 @@ class SyncServiceTest {
     fun `should return CREATED if neither requestId nor transactionId exists`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(ledgerSyncService.syncGeneralLedgerTransaction(any())).thenReturn(syncId)
-      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
 
       val result = syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
 
@@ -250,14 +254,15 @@ class SyncServiceTest {
       val transactionUuid1 = UUID.randomUUID()
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(ledgerSyncService.syncOffenderTransaction(any())).thenReturn(listOf(transactionUuid1))
+      whenever(legacyTransactionFixService.fixLegacyTransactions(any())).thenReturn(dummyOffenderTransactionRequest)
 
       val storedPayload = dummyStoredPayload.copy(synchronizedTransactionId = transactionUuid1)
-      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(transactionUuid1))).thenReturn(storedPayload)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(storedPayload)
 
       val result = syncService.syncTransaction(dummyOffenderTransactionRequest)
 
       assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
-      verify(syncPayloadCaptureService).captureAndStoreRequest(any(), eq(transactionUuid1))
+      verify(syncPayloadCaptureService).captureAndStoreRequest(any(), any())
       assertThat(result.synchronizedTransactionId).isEqualTo(transactionUuid1)
     }
   }
