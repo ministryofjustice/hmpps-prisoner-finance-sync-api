@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities
 
+import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -45,4 +46,22 @@ data class NomisSyncPayload(
   @JdbcTypeCode(SqlTypes.JSON)
   @Column
   val body: String,
-)
+
+  @Column(name = "status")
+  var status: Status = Status.PROCESSING,
+
+  @Column(name = "attempts")
+  var attempts: Int = 1,
+) {
+  @Schema(description = "The processing status of the request.")
+  enum class Status {
+    @Schema(description = "The request is currently being processed..")
+    PROCESSING,
+
+    @Schema(description = "The request has been successfully processed..")
+    PROCESSED,
+
+    @Schema(description = "The request failed to be processed..")
+    FAILED,
+  }
+}

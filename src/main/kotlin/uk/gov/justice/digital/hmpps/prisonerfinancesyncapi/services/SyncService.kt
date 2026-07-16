@@ -40,10 +40,12 @@ class SyncService(
   }
 
   private fun <T : SyncRequest> processNewTransactionRequest(request: T): SyncTransactionReceipt {
-    val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, UUID.randomUUID())
+    val newSynchronizedTransactionId = UUID.randomUUID()
+    val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, newSynchronizedTransactionId)
 
     try {
       processNewLedgerRequestWithRetry(request)
+      syncPayloadCaptureService.updateProcessedRequestStatus(request)
 
       val receipt = SyncTransactionReceipt(
         requestId = newPayload.requestId,
@@ -56,6 +58,8 @@ class SyncService(
 
       return receipt
     } catch (unexpectedException: Exception) {
+      syncPayloadCaptureService.updateFailedRequestStatus(request)
+
       val receipt = SyncTransactionReceipt(
         requestId = newPayload.requestId,
         transactionId = newPayload.legacyTransactionId,
@@ -70,6 +74,8 @@ class SyncService(
   }
 
   private fun <T : SyncRequest> processDuplicateTransactionRequest(status: TransactionSyncStatus.Duplicate, request: T): SyncTransactionReceipt {
+    syncPayloadCaptureService.updateDuplicateRequestStatus(request)
+
     val receipt = SyncTransactionReceipt(
       requestId = request.requestId,
       transactionId = request.transactionId,
@@ -84,6 +90,7 @@ class SyncService(
 
   private fun <T : SyncRequest> processUpdatedTransactionRequest(status: TransactionSyncStatus.Updated, request: T): SyncTransactionReceipt {
     val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, status.synchronizedTransactionId)
+    syncPayloadCaptureService.updateUpdatedRequestStatus(request)
 
     val receipt = SyncTransactionReceipt(
       requestId = newPayload.requestId,

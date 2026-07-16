@@ -68,4 +68,38 @@ class SyncPayloadCaptureService(
     )
     return nomisSyncPayloadRepository.save(payload)
   }
+
+  fun <T : SyncRequest> updateFailedRequestStatus(request: T) {
+    val payload = nomisSyncPayloadRepository.findByRequestId(request.requestId)
+    if (payload != null) {
+      payload.status = NomisSyncPayload.Status.FAILED
+      nomisSyncPayloadRepository.save(payload)
+    }
+  }
+
+  fun <T : SyncRequest> updateProcessedRequestStatus(request: T) {
+    val payload = nomisSyncPayloadRepository.findByRequestId(request.requestId)
+    if (payload != null) {
+      payload.status = NomisSyncPayload.Status.PROCESSED
+      nomisSyncPayloadRepository.save(payload)
+    }
+  }
+
+  fun <T : SyncRequest> updateUpdatedRequestStatus(request: T) {
+    val payload = nomisSyncPayloadRepository.findByRequestId(request.requestId)
+    if (payload != null) {
+      payload.status = NomisSyncPayload.Status.PROCESSED
+      payload.attempts = payload.attempts + 1
+      nomisSyncPayloadRepository.save(payload)
+    }
+  }
+
+  fun <T : SyncRequest> updateDuplicateRequestStatus(request: T) {
+    val payload = nomisSyncPayloadRepository.findByRequestId(request.requestId)
+    if (payload != null) {
+      payload.status = NomisSyncPayload.Status.PROCESSED
+      payload.attempts = payload.attempts + 1
+      nomisSyncPayloadRepository.save(payload)
+    }
+  }
 }
