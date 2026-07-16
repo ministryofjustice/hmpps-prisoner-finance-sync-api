@@ -71,7 +71,7 @@ class SyncStatusResolverTest {
 
   @Test
   fun `should return Duplicate when requestId is already present in the sync logs`() {
-    whenever(syncQueryService.findByRequestId(dummyRequest.requestId)).thenReturn(dummyPayload)
+    whenever(syncQueryService.findByRequestIdAndNotFailed(dummyRequest.requestId)).thenReturn(dummyPayload)
 
     val result = syncStatusResolver.check(dummyRequest)
 
@@ -80,8 +80,8 @@ class SyncStatusResolverTest {
 
   @Test
   fun `should return Duplicate when transactionId exists and the payload is identical`() {
-    whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
-    whenever(syncQueryService.findByLegacyTransactionId(dummyRequest.transactionId)).thenReturn(dummyPayload)
+    whenever(syncQueryService.findByRequestIdAndNotFailed(any())).thenReturn(null)
+    whenever(syncQueryService.findByLegacyTransactionIdAndNotFailed(dummyRequest.transactionId)).thenReturn(dummyPayload)
     whenever(objectMapper.writeValueAsString(any())).thenReturn("{\"offenderTransactions\":[]}")
     whenever(jsonComparator.areJsonBodiesEqual(any(), any())).thenReturn(true)
 
@@ -92,8 +92,8 @@ class SyncStatusResolverTest {
 
   @Test
   fun `should return Updated when transactionId exists but the payload has changed`() {
-    whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
-    whenever(syncQueryService.findByLegacyTransactionId(dummyRequest.transactionId)).thenReturn(dummyPayload)
+    whenever(syncQueryService.findByRequestIdAndNotFailed(any())).thenReturn(null)
+    whenever(syncQueryService.findByLegacyTransactionIdAndNotFailed(dummyRequest.transactionId)).thenReturn(dummyPayload)
     whenever(objectMapper.writeValueAsString(any())).thenReturn("{\"offenderTransactions\":[{\"id\":1}]}")
     whenever(jsonComparator.areJsonBodiesEqual(any(), any())).thenReturn(false)
 
@@ -104,8 +104,8 @@ class SyncStatusResolverTest {
 
   @Test
   fun `should return New when neither the requestId nor the transactionId are found`() {
-    whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
-    whenever(syncQueryService.findByLegacyTransactionId(any())).thenReturn(null)
+    whenever(syncQueryService.findByRequestIdAndNotFailed(any())).thenReturn(null)
+    whenever(syncQueryService.findByLegacyTransactionIdAndNotFailed(any())).thenReturn(null)
 
     val result = syncStatusResolver.check(dummyRequest)
 
@@ -114,8 +114,8 @@ class SyncStatusResolverTest {
 
   @Test
   fun `should throw an exception when a serialization error occurs during the check`() {
-    whenever(syncQueryService.findByRequestId(any())).thenReturn(null)
-    whenever(syncQueryService.findByLegacyTransactionId(dummyRequest.transactionId)).thenReturn(dummyPayload)
+    whenever(syncQueryService.findByRequestIdAndNotFailed(any())).thenReturn(null)
+    whenever(syncQueryService.findByLegacyTransactionIdAndNotFailed(dummyRequest.transactionId)).thenReturn(dummyPayload)
 
     whenever(objectMapper.writeValueAsString(any())).thenThrow(RuntimeException("Serialization Error"))
 
