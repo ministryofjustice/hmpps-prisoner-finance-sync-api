@@ -23,7 +23,11 @@ class SyncQueryService(
 
   fun findByRequestId(requestId: UUID): NomisSyncPayload? = nomisSyncPayloadRepository.findByRequestId(requestId)
 
+  fun findByRequestIdAndNotFailed(requestId: UUID): NomisSyncPayload? = nomisSyncPayloadRepository.findByRequestIdAndStatusNot(requestId, NomisSyncPayload.Status.FAILED)
+
   fun findByLegacyTransactionId(transactionId: Long): NomisSyncPayload? = nomisSyncPayloadRepository.findFirstByLegacyTransactionIdOrderByTimestampDesc(transactionId)
+
+  fun findByLegacyTransactionIdAndNotFailed(transactionId: Long): NomisSyncPayload? = nomisSyncPayloadRepository.findFirstByLegacyTransactionIdAndStatusNotOrderByTimestampDesc(transactionId, NomisSyncPayload.Status.FAILED)
 
   fun findNomisSyncPayloadBySynchronizedTransactionId(synchronizedTransactionId: UUID): NomisSyncPayload? = nomisSyncPayloadRepository.findFirstBySynchronizedTransactionIdOrderByTimestampDesc(synchronizedTransactionId)
 

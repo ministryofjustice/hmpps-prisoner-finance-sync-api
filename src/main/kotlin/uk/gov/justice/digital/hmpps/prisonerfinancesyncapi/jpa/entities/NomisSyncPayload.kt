@@ -3,6 +3,8 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -47,11 +49,12 @@ data class NomisSyncPayload(
   @Column
   val body: String,
 
+  @Enumerated(EnumType.STRING)
   @Column(name = "status")
   var status: Status = Status.PROCESSING,
 
   @Column(name = "attempts")
-  var attempts: Int = 1,
+  var attempts: Long = 1,
 ) {
   @Schema(description = "The processing status of the request.")
   enum class Status {

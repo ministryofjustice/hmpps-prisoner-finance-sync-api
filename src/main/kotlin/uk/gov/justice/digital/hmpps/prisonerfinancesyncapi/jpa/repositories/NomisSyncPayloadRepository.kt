@@ -19,7 +19,11 @@ interface NomisSyncPayloadRepository :
 
   fun findByRequestId(requestId: UUID): NomisSyncPayload?
 
+  fun findByRequestIdAndStatusNot(requestId: UUID, status: NomisSyncPayload.Status): NomisSyncPayload?
+
   fun findFirstByLegacyTransactionIdOrderByTimestampDesc(transactionId: Long): NomisSyncPayload?
+
+  fun findFirstByLegacyTransactionIdAndStatusNotOrderByTimestampDesc(transactionId: Long, status: NomisSyncPayload.Status): NomisSyncPayload?
 
   @Query(
     """

@@ -89,7 +89,6 @@ class SyncPayloadCaptureService(
     val payload = nomisSyncPayloadRepository.findByRequestId(request.requestId)
     if (payload != null) {
       payload.status = NomisSyncPayload.Status.PROCESSED
-      payload.attempts = payload.attempts + 1
       nomisSyncPayloadRepository.save(payload)
     }
   }

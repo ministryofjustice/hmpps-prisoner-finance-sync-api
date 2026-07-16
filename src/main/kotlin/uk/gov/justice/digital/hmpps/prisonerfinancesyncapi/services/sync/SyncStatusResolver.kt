@@ -15,13 +15,13 @@ class SyncStatusResolver(
 ) {
   fun check(request: SyncRequest): TransactionSyncStatus {
     // Check if we have already received this request id
-    val existingPayloadByRequestId = syncQueryService.findByRequestId(request.requestId)
+    val existingPayloadByRequestId = syncQueryService.findByRequestIdAndNotFailed(request.requestId)
     if (existingPayloadByRequestId != null) {
       return TransactionSyncStatus.Duplicate(existingPayloadByRequestId.synchronizedTransactionId)
     }
 
     // Check if we already received this transaction
-    val existingPayloadByTransactionId = syncQueryService.findByLegacyTransactionId(request.transactionId)
+    val existingPayloadByTransactionId = syncQueryService.findByLegacyTransactionIdAndNotFailed(request.transactionId)
     if (existingPayloadByTransactionId != null) {
       val newBodyJson = objectMapper.writeValueAsString(request)
 
