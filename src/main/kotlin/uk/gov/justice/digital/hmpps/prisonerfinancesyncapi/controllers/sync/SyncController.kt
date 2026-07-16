@@ -102,7 +102,7 @@ class SyncController(
       SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)
       SyncTransactionReceipt.Action.UPDATED -> ResponseEntity.ok(receipt)
       SyncTransactionReceipt.Action.PROCESSED -> ResponseEntity.ok(receipt)
-      SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS -> ResponseEntity.ok(receipt)
+      SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(receipt)
     }
   }
 
