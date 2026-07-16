@@ -31,6 +31,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
+import kotlin.random.Random
 
 @ExtendWith(MockitoExtension::class)
 class SyncControllerTest {
@@ -101,6 +102,7 @@ class SyncControllerTest {
   private fun createReceipt(action: SyncTransactionReceipt.Action) = SyncTransactionReceipt(
     requestId = UUID.randomUUID(),
     synchronizedTransactionId = UUID.randomUUID(),
+    transactionId = Random.nextLong(),
     action = action,
   )
 

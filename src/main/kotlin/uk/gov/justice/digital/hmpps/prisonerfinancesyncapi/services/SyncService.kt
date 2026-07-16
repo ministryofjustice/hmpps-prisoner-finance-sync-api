@@ -25,86 +25,94 @@ class SyncService(
     private val log = LoggerFactory.getLogger(this::class.java)
   }
 
-  fun <T : SyncRequest> syncTransaction(
-    request: T,
-  ): SyncTransactionReceipt = when (val status = syncStatusResolver.check(request)) {
+  fun <T : SyncRequest> syncTransaction(request: T): SyncTransactionReceipt = when (val status = syncStatusResolver.check(request)) {
     is TransactionSyncStatus.Duplicate -> {
-      log.info(
-        """
-        Duplicate transaction request received 
-        { 
-          requestId: ${request.requestId}, 
-          transactionId: ${request.transactionId}, 
-          action: ${SyncTransactionReceipt.Action.PROCESSED}, 
-          synchronizedTransactionId: ${status.synchronizedTransactionId}
-        }
-        """,
-      )
-      SyncTransactionReceipt(
-        requestId = request.requestId,
-        synchronizedTransactionId = status.synchronizedTransactionId,
-        action = SyncTransactionReceipt.Action.PROCESSED,
-      )
+      processDuplicateTransactionRequest(status, request)
     }
 
     is TransactionSyncStatus.Updated -> {
-      val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, status.synchronizedTransactionId)
-      log.info(
-        """
-        Updated transaction request received 
-        { 
-          requestId: ${request.requestId}, 
-          transactionId: ${request.transactionId}, 
-          action: ${SyncTransactionReceipt.Action.PROCESSED}, 
-          synchronizedTransactionId: ${newPayload.synchronizedTransactionId}
-        }
-        """,
-      )
-      SyncTransactionReceipt(
-        requestId = request.requestId,
-        synchronizedTransactionId = newPayload.synchronizedTransactionId,
-        action = SyncTransactionReceipt.Action.UPDATED,
-      )
+      processUpdatedTransactionRequest(status, request)
     }
 
     is TransactionSyncStatus.New -> {
-      val synchronisedTransactionId = UUID.randomUUID()
-      val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, synchronisedTransactionId)
-      processNewTransaction(request)
-      log.info(
-        """
-        New transaction request received 
-        { 
-          requestId: ${request.requestId}, 
-          transactionId: ${request.transactionId}, 
-          action: ${SyncTransactionReceipt.Action.PROCESSED}, 
-          synchronizedTransactionId: $synchronisedTransactionId
-        }
-        """,
-      )
-      SyncTransactionReceipt(
-        requestId = request.requestId,
+      processNewTransactionRequest(request)
+    }
+  }
+
+  private fun <T : SyncRequest> processNewTransactionRequest(request: T): SyncTransactionReceipt {
+    val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, UUID.randomUUID())
+
+    try {
+      processNewLedgerRequestWithRetry(request)
+
+      val receipt = SyncTransactionReceipt(
+        requestId = newPayload.requestId,
+        transactionId = newPayload.legacyTransactionId,
         synchronizedTransactionId = newPayload.synchronizedTransactionId,
         action = SyncTransactionReceipt.Action.CREATED,
       )
+
+      log.info("Sync transaction: New transaction request received $receipt")
+
+      return receipt
+    } catch (unexpectedException: Exception) {
+      val receipt = SyncTransactionReceipt(
+        requestId = newPayload.requestId,
+        transactionId = newPayload.legacyTransactionId,
+        synchronizedTransactionId = newPayload.synchronizedTransactionId,
+        action = SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS,
+      )
+
+      log.error("Sync transaction: New transaction request received causing errors $receipt", unexpectedException)
+
+      throw unexpectedException
     }
   }
 
-  private fun processNewTransaction(request: SyncRequest): UUID {
+  private fun <T : SyncRequest> processDuplicateTransactionRequest(status: TransactionSyncStatus.Duplicate, request: T): SyncTransactionReceipt {
+    val receipt = SyncTransactionReceipt(
+      requestId = request.requestId,
+      transactionId = request.transactionId,
+      synchronizedTransactionId = status.synchronizedTransactionId,
+      action = SyncTransactionReceipt.Action.PROCESSED,
+    )
+
+    log.info("Sync transaction: Duplicate transaction request received $receipt")
+
+    return receipt
+  }
+
+  private fun <T : SyncRequest> processUpdatedTransactionRequest(status: TransactionSyncStatus.Updated, request: T): SyncTransactionReceipt {
+    val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, status.synchronizedTransactionId)
+
+    val receipt = SyncTransactionReceipt(
+      requestId = newPayload.requestId,
+      transactionId = newPayload.legacyTransactionId,
+      synchronizedTransactionId = newPayload.synchronizedTransactionId,
+      action = SyncTransactionReceipt.Action.UPDATED,
+    )
+
+    log.info("Sync transaction: Updated transaction request received $receipt")
+
+    return receipt
+  }
+
+  private fun <T : SyncRequest> processNewLedgerRequestWithRetry(request: T): UUID {
     try {
-      return processLedgerRequest(request)
+      return processNewLedgerRequest(request)
     } catch (_: DataIntegrityViolationException) {
       log.warn("Race condition detected for transactionId: ${request.transactionId}. Retrying operation...")
-      return processLedgerRequest(request) // throw anything we get the second time
+      return processNewLedgerRequest(request) // throw anything we get the second time
     }
   }
 
-  private fun processLedgerRequest(request: SyncRequest): UUID = when (request) {
+  private fun processNewLedgerRequest(request: SyncRequest): UUID = when (request) {
     is SyncOffenderTransactionRequest -> {
       val fixedRequest = legacyTransactionFixService.fixLegacyTransactions(request)
+
       ledgerSyncService.syncOffenderTransaction(fixedRequest)
         .firstOrNull()
-        ?: throw IllegalStateException("No transaction ID returned for offender sync")
+        ?: throw IllegalStateException("No transaction ID returned for transactionId: ${request.transactionId}")
     }
 
     is SyncGeneralLedgerTransactionRequest -> {

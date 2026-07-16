@@ -22,7 +22,7 @@ data class NomisSyncPayload(
   val timestamp: Instant,
 
   @Column(name = "legacy_transaction_id")
-  val legacyTransactionId: Long?,
+  val legacyTransactionId: Long,
 
   @Column(name = "synchronized_transaction_id")
   val synchronizedTransactionId: UUID,

@@ -25,6 +25,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLe
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.TransactionSyncStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerSyncService
@@ -178,7 +179,8 @@ class SyncServiceTest {
     @Test
     fun `should throw IllegalArgumentException for unknown request types`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
-      val unknownRequest = Mockito.mock(uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest::class.java)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
+      val unknownRequest = Mockito.mock(SyncRequest::class.java)
 
       assertThrows(IllegalArgumentException::class.java) {
         syncService.syncTransaction(unknownRequest)
