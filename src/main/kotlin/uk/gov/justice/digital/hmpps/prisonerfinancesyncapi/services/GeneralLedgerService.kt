@@ -144,26 +144,21 @@ class GeneralLedgerService(
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
 
     if (parentAccount == null) {
-      log.error("No parent account found for prisoner $prisonNumber")
-      return emptyMap()
+      throw CustomException("No General Ledger account found for prisoner $prisonNumber", status = HttpStatus.NOT_FOUND)
     }
 
-    if (parentAccount.subAccounts.isEmpty()) {
-      log.error("No sub accounts found for prisoner $prisonNumber")
-      return emptyMap()
-    }
+    val subaccounts = emptyMap<String, SubAccountBalanceResponse>()
+//    val subAccounts = mutableMapOf<String, SubAccountBalanceResponse>()
+//    for (account in parentAccount.subAccounts) {
+//      val subAccountBalance = generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id)
+//      if (subAccountBalance == null) {
+//        log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
+//        continue
+//      }
+//      subAccounts[account.reference] = subAccountBalance
+    // }
 
-    val subAccounts = mutableMapOf<String, SubAccountBalanceResponse>()
-    for (account in parentAccount.subAccounts) {
-      val subAccountBalance = generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id)
-      if (subAccountBalance == null) {
-        log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
-        continue
-      }
-      subAccounts[account.reference] = subAccountBalance
-    }
-
-    return subAccounts
+    return subaccounts
   }
 
   override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {

@@ -49,11 +49,12 @@ class ReconciliationController(
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  fun listPrisonerBalancesByEstablishment(
+  fun listPrisonerSubaccountBalances(
     @PathVariable prisonNumber: String,
-  ): ResponseEntity<PrisonerEstablishmentBalanceDetailsList> {
-    val body = reconciliationService.reconcilePrisoner(prisonNumber)
-    return ResponseEntity.ok(body)
+  ): ResponseEntity<Map<String, Any>> {
+
+    val prisonerBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
+    return ResponseEntity.ok(prisonerBalances)
   }
 
   @Operation(
