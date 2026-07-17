@@ -265,7 +265,7 @@ class NomisSyncPayloadRepositoryTest(
   inner class FindByLegacyTransactionId {
     @Test
     fun `should find the latest payload by legacy transaction ID`() {
-      val found = nomisSyncPayloadRepository.findFirstByLegacyTransactionIdOrderByTimestampDesc(payload1.legacyTransactionId!!)
+      val found = nomisSyncPayloadRepository.findFirstByLegacyTransactionIdOrderByTimestampDesc(payload1.legacyTransactionId)
       assertThat(found?.requestId).isEqualTo(payload1.requestId)
     }
   }

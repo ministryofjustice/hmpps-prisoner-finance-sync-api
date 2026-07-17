@@ -11,7 +11,6 @@ import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
@@ -85,42 +84,6 @@ class SyncQueryServiceTest {
   }
 
   @Nested
-  @DisplayName("findByRequestIdAndNotFailed")
-  inner class FindByRequestIdAndNotFailedTests {
-    @Test
-    fun `should return payload if found by requestId and status is not failed`() {
-      `when`(
-        nomisSyncPayloadRepository.findByRequestIdAndStatusNot(
-          any(),
-          eq(
-            NomisSyncPayload.Status.FAILED,
-          ),
-        ),
-      ).thenReturn(dummyPayload)
-
-      val result = syncQueryService.findByRequestIdAndNotFailed(dummyRequestId)
-
-      assertThat(result).isEqualTo(dummyPayload)
-    }
-
-    @Test
-    fun `should return null if not found by requestId`() {
-      `when`(
-        nomisSyncPayloadRepository.findByRequestIdAndStatusNot(
-          any(),
-          eq(
-            NomisSyncPayload.Status.FAILED,
-          ),
-        ),
-      ).thenReturn(null)
-
-      val result = syncQueryService.findByRequestIdAndNotFailed(dummyRequestId)
-
-      assertThat(result).isNull()
-    }
-  }
-
-  @Nested
   @DisplayName("findByLegacyTransactionId")
   inner class FindByLegacyTransactionIdTests {
     @Test
@@ -137,42 +100,6 @@ class SyncQueryServiceTest {
       `when`(nomisSyncPayloadRepository.findFirstByLegacyTransactionIdOrderByTimestampDesc(any())).thenReturn(null)
 
       val result = syncQueryService.findByLegacyTransactionId(dummyTransactionId)
-
-      assertThat(result).isNull()
-    }
-  }
-
-  @Nested
-  @DisplayName("findByLegacyTransactionIdAndNotFailed")
-  inner class FindByLegacyTransactionIdAndNotFailedTests {
-    @Test
-    fun `should return payload if found by legacyTransactionId`() {
-      `when`(
-        nomisSyncPayloadRepository.findFirstByLegacyTransactionIdAndStatusNotOrderByTimestampDesc(
-          any(),
-          eq(
-            NomisSyncPayload.Status.FAILED,
-          ),
-        ),
-      ).thenReturn(dummyPayload)
-
-      val result = syncQueryService.findByLegacyTransactionIdAndNotFailed(dummyTransactionId)
-
-      assertThat(result).isEqualTo(dummyPayload)
-    }
-
-    @Test
-    fun `should return null if not found by legacyTransactionId`() {
-      `when`(
-        nomisSyncPayloadRepository.findFirstByLegacyTransactionIdAndStatusNotOrderByTimestampDesc(
-          any(),
-          eq(
-            NomisSyncPayload.Status.FAILED,
-          ),
-        ),
-      ).thenReturn(null)
-
-      val result = syncQueryService.findByLegacyTransactionIdAndNotFailed(dummyTransactionId)
 
       assertThat(result).isNull()
     }

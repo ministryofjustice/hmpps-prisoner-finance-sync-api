@@ -6,4 +6,5 @@ sealed interface TransactionSyncStatus {
   data class Duplicate(val synchronizedTransactionId: UUID) : TransactionSyncStatus
   data class Updated(val synchronizedTransactionId: UUID) : TransactionSyncStatus
   object New : TransactionSyncStatus
+  data class Failed(val synchronizedTransactionId: UUID) : TransactionSyncStatus
 }

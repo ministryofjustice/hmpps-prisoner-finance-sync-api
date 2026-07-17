@@ -38,6 +38,10 @@ class SyncService(
     is TransactionSyncStatus.New -> {
       processNewTransactionRequest(request)
     }
+
+    is TransactionSyncStatus.Failed -> {
+      processNewTransactionRequest(request)
+    }
   }
 
   private fun <T : SyncRequest> processNewTransactionRequest(request: T): SyncTransactionReceipt {

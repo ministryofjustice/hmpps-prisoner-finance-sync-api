@@ -54,17 +54,17 @@ data class NomisSyncPayload(
   var status: Status = Status.PROCESSING,
 
   @Column(name = "attempts")
-  var attempts: Long = 1,
+  var attempts: Long = 0,
 ) {
   @Schema(description = "The processing status of the request.")
   enum class Status {
-    @Schema(description = "The request is currently being processed..")
+    @Schema(description = "The request is currently being processed.")
     PROCESSING,
 
-    @Schema(description = "The request has been successfully processed..")
+    @Schema(description = "The request has been successfully processed.")
     PROCESSED,
 
-    @Schema(description = "The request failed to be processed..")
+    @Schema(description = "The request failed to be processed.")
     FAILED,
   }
 }
