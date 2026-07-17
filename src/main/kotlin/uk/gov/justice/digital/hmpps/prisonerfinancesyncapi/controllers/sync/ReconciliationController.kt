@@ -53,7 +53,6 @@ class ReconciliationController(
   fun listPrisonerSubaccountBalances(
     @PathVariable prisonNumber: String,
   ): ResponseEntity<Map<String, SubAccountBalanceForReconciliation>> {
-
     val prisonerBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
     return ResponseEntity.ok(prisonerBalances)
   }

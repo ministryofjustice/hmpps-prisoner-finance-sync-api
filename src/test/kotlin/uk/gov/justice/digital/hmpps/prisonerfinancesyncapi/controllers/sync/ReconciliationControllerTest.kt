@@ -36,12 +36,12 @@ class ReconciliationControllerTest {
   }
 
   @Test
-  fun `should call reconcile prisoner when listing prisoners by establishment`() {
+  fun `should call getGLPrisonerBalances when listing the prisoners subaccount balances`() {
     val prisonNumber = "ABC123"
     val res = reconciliationController.listPrisonerSubaccountBalances(prisonNumber)
 
     assertThat(res.statusCode).isEqualTo(HttpStatusCode.valueOf(200))
-    verify(reconciliationService).reconcilePrisoner(prisonNumber)
+    verify(generalLedgerService).getGLPrisonerBalances(prisonNumber)
   }
 
   @Test

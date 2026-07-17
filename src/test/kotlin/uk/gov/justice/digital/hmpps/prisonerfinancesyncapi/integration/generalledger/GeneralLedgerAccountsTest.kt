@@ -1297,6 +1297,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       createdAt = Instant.now(),
       createdBy = "OMS_OWNER",
     )
+
     @Disabled
     @Test
     fun `should show balance discrepancy for a prisoner when general ledger and legacy GL amounts are different`() {
@@ -1725,7 +1726,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     }
 
     @Test
-    fun`should return 404 when a parent account does not exist in general ledger`() {
+    fun `should return 404 when a parent account does not exist in general ledger`() {
       generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
 
       webTestClient
@@ -1734,10 +1735,10 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isNotFound
-
     }
+
     @Test
-    fun`should return an empty list if the parent account exists with no subaccounts`() {
+    fun `should return an empty list if the parent account exists with no subaccounts`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
 
       val body = webTestClient
@@ -1750,13 +1751,14 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       assertThat(body).isEmpty()
     }
+
     @Test
-    fun`should return a list of subaccounts if the parent account exists with subaccounts`() {
-     val subaccounts = listOf(
-       createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "CASH" ),
-       createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "SPENDS" ),
-       createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "SAVINGS" )
-     )
+    fun `should return a list of subaccounts if the parent account exists with subaccounts`() {
+      val subaccounts = listOf(
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "CASH"),
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "SPENDS"),
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "SAVINGS"),
+      )
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, 1000)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[1].id, 2000)
@@ -1776,7 +1778,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       assertThat(body["2101"]?.totalBalance).isEqualTo(BigDecimal("10.00"))
       assertThat(body["2102"]?.totalBalance).isEqualTo(BigDecimal("20.00"))
       assertThat(body["2103"]?.totalBalance).isEqualTo(BigDecimal("0.00"))
-
     }
   }
 }

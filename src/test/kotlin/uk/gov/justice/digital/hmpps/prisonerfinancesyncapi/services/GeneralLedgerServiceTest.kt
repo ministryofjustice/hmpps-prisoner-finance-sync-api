@@ -42,7 +42,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
@@ -165,13 +164,12 @@ class GeneralLedgerServiceTest {
     fun `Should throw not found exception when prisoner parent account is not found`() {
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(null)
 
-     assertThatThrownBy {
+      assertThatThrownBy {
         generalLedgerService.getGLPrisonerBalances(prisonNumber)
       }.isInstanceOf(CustomException::class.java).hasMessageContaining("No General Ledger account found for prisoner")
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
       verifyNoMoreInteractions(generalLedgerApiClient)
-
     }
 
     @Test
@@ -232,8 +230,8 @@ class GeneralLedgerServiceTest {
           SubAccountBalanceResponse(
             subAccountId = subAccount.id,
             balanceDateTime = Instant.now(),
-            amount = 0L
-          )
+            amount = 0L,
+          ),
         )
       }
 

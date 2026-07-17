@@ -6,15 +6,14 @@ import java.time.Instant
 data class SubAccountBalanceForReconciliation(
   val totalBalance: BigDecimal,
   val holdBalance: BigDecimal,
-  val balanceDateTime: Instant
+  val balanceDateTime: Instant,
 ) {
   companion object {
-    fun fromSubAccountBalanceResponse (subAccountBalanceResponse: SubAccountBalanceResponse) =
-      SubAccountBalanceForReconciliation(
-        totalBalance = subAccountBalanceResponse.amount.toBigDecimal().movePointLeft(2).setScale(2),
-        // hardcoded for now
-        holdBalance = BigDecimal.ZERO,
-        balanceDateTime = subAccountBalanceResponse.balanceDateTime
-      )
+    fun fromSubAccountBalanceResponse(subAccountBalanceResponse: SubAccountBalanceResponse) = SubAccountBalanceForReconciliation(
+      totalBalance = subAccountBalanceResponse.amount.toBigDecimal().movePointLeft(2).setScale(2),
+      // hardcoded for now
+      holdBalance = BigDecimal.ZERO,
+      balanceDateTime = subAccountBalanceResponse.balanceDateTime,
+    )
   }
 }
