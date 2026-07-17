@@ -37,6 +37,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Tran
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -1768,9 +1769,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isOk()
         // TODO: make a DTO for subaccount balances, and confirm this looks correct
-        .expectBody<Map<String, Any>>().returnResult().responseBody!!
+        .expectBody<Map<String, SubAccountBalanceForReconciliation>>().returnResult().responseBody!!
 
-      assertThat(body).isEmpty()
+      assertThat(body).hasSize(3)
+      // 2101 is cash, 2102 is spends, 2103 is savings
+      assertThat(body["2101"]?.totalBalance).isEqualTo(BigDecimal("10.00"))
+      assertThat(body["2102"]?.totalBalance).isEqualTo(BigDecimal("20.00"))
+      assertThat(body["2103"]?.totalBalance).isEqualTo(BigDecimal("0.00"))
 
     }
   }

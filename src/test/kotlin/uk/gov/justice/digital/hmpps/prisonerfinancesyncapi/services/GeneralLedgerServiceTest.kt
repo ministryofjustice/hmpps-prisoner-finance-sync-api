@@ -148,159 +148,30 @@ class GeneralLedgerServiceTest {
     val prisonerAccounts = listOf("CASH", "SAVINGS", "SPENDS")
 
     @Test
-    fun `Should log reconciliation error when GL does NOT match internal Ledger`() {
-      val parentUUID = UUID.randomUUID()
-      val subAccounts = mutableListOf<SubAccountResponse>()
-
-      for (account in prisonerAccounts) {
-        subAccounts.add(
-          SubAccountResponse(
-            id = UUID.randomUUID(),
-            reference = account,
-            parentAccountId = parentUUID,
-            createdBy = "TEST",
-            createdAt = Instant.now(),
-          ),
-        )
-      }
-
-      mockAccount(offenderDisplayId, parentUUID, subAccounts)
-
-      // GL accounts
-      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 5)
-      for (account in subAccounts) {
-        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
-          .thenReturn(testGlBalance)
-      }
-
-      // InternalLedger
-      val internalLedgerBalances = listOf(
-        PrisonerEstablishmentBalanceDetails("LEI", 2101, BigDecimal("4"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("MDI", 2101, BigDecimal("4"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("LEI", 2102, BigDecimal("7"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("LEI", 2103, BigDecimal("2"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("MDI", 2103, BigDecimal("4"), BigDecimal.ZERO),
-      )
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(internalLedgerBalances)
-
-      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2101, internalLedgerBalances)).thenReturn(8)
-      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2102, internalLedgerBalances)).thenReturn(7)
-      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2103, internalLedgerBalances)).thenReturn(6)
-
-      generalLedgerService.reconcilePrisoner(prisonNumber)
-
-      val logs = listAppender.list.map { it.formattedMessage }
-      assertThat(logs).filteredOn { it.contains("Discrepancy found for prisoner") }.hasSize(3)
-
-      for (accountCode in accountMapping.prisonerSubAccounts.values) {
-        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, internalLedgerBalances)
-      }
-
-      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
-
-      for (account in subAccounts) {
-        verify(generalLedgerApiClient).findSubAccountBalanceByAccountId(account.id)
-      }
-    }
-
-    @Test
-    fun `Should not log reconciliation error when GL matches internal Ledger`() {
-      val parentUUID = UUID.randomUUID()
-      val subAccounts = mutableListOf<SubAccountResponse>()
-
-      for (account in prisonerAccounts) {
-        subAccounts.add(
-          SubAccountResponse(
-            id = UUID.randomUUID(),
-            reference = account,
-            parentAccountId = parentUUID,
-            createdBy = "TEST",
-            createdAt = Instant.now(),
-          ),
-        )
-      }
-
-      mockAccount(offenderDisplayId, parentUUID, subAccounts)
-
-      // GL accounts
-      val testGlBalance = SubAccountBalanceResponse(UUID.randomUUID(), Instant.now(), 5)
-      for (account in subAccounts) {
-        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id))
-          .thenReturn(testGlBalance)
-      }
-
-      // InternalLedger
-      val internalLedgerBalances = listOf(
-        PrisonerEstablishmentBalanceDetails("LEI", 2101, BigDecimal("4"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("MDI", 2101, BigDecimal("1"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("LEI", 2102, BigDecimal("5"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("LEI", 2103, BigDecimal("1"), BigDecimal.ZERO),
-        PrisonerEstablishmentBalanceDetails("MDI", 2103, BigDecimal("4"), BigDecimal.ZERO),
-      )
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(internalLedgerBalances)
-
-      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2101, internalLedgerBalances)).thenReturn(5)
-      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2102, internalLedgerBalances)).thenReturn(5)
-      whenever(ledgerQueryService.aggregatedLegacyBalanceForAccountCode(2103, internalLedgerBalances)).thenReturn(5)
-
-      generalLedgerService.reconcilePrisoner(prisonNumber)
-
-      val logs = listAppender.list.map { it.formattedMessage }
-
-      assertThat(logs).isEmpty()
-
-      for (accountCode in accountMapping.prisonerSubAccounts.values) {
-        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, internalLedgerBalances)
-      }
-
-      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
-
-      for (account in subAccounts) {
-        verify(generalLedgerApiClient).findSubAccountBalanceByAccountId(account.id)
-      }
-    }
-
-    @Test
-    fun `should calculate legacy balances when called`() {
-      val mockList = mock<List<PrisonerEstablishmentBalanceDetails>>()
-      whenever(ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)).thenReturn(mockList)
-      generalLedgerService.reconcilePrisoner(prisonNumber)
-
-      verify(ledgerQueryService).listPrisonerBalancesByEstablishment(prisonNumber)
-
-      for (accountCode in accountMapping.prisonerSubAccounts.values) {
-        verify(ledgerQueryService).aggregatedLegacyBalanceForAccountCode(accountCode, mockList)
-      }
-    }
-
-    @Test
-    fun `Should log error when prisoner does not have any sub account`() {
+    fun `Should return an empty list when the prisoner has no sub accounts`() {
       val mockAccount = mockAccount(offenderDisplayId, subAccounts = emptyList())
 
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(mockAccount)
 
-      generalLedgerService.reconcilePrisoner(prisonNumber)
+      val balances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
       verifyNoMoreInteractions(generalLedgerApiClient)
 
-      val logs = listAppender.list.map { it.formattedMessage }
-
-      assertThat(logs).contains("No sub accounts found for prisoner $prisonNumber")
+      assertThat(balances).isEmpty()
     }
 
     @Test
-    fun `Should log error when prisoner parent account is not found`() {
+    fun `Should throw not found exception when prisoner parent account is not found`() {
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(null)
 
-      generalLedgerService.reconcilePrisoner(prisonNumber)
+     assertThatThrownBy {
+        generalLedgerService.getGLPrisonerBalances(prisonNumber)
+      }.isInstanceOf(CustomException::class.java).hasMessageContaining("No General Ledger account found for prisoner")
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
       verifyNoMoreInteractions(generalLedgerApiClient)
 
-      val logs = listAppender.list.map { it.formattedMessage }
-
-      assertThat(logs).contains("No parent account found for prisoner $prisonNumber")
     }
 
     @Test
@@ -325,7 +196,7 @@ class GeneralLedgerServiceTest {
 
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
-      generalLedgerService.reconcilePrisoner(prisonNumber)
+      generalLedgerService.getGLPrisonerBalances(prisonNumber)
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
 
@@ -338,7 +209,7 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
-    fun `should get all Prisoner SUB accounts`() {
+    fun `Should get all prisoner sub accounts`() {
       val parentUUID = UUID.randomUUID()
       val subAccounts = mutableListOf<SubAccountResponse>()
 
@@ -356,11 +227,18 @@ class GeneralLedgerServiceTest {
 
       mockAccount(offenderDisplayId, parentUUID, subAccounts)
 
-      for (account in subAccounts) {
-        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id)).thenReturn(mock())
+      for (subAccount in subAccounts) {
+        whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(subAccount.id)).thenReturn(
+          SubAccountBalanceResponse(
+            subAccountId = subAccount.id,
+            balanceDateTime = Instant.now(),
+            amount = 0L
+          )
+        )
       }
 
-      generalLedgerService.reconcilePrisoner(prisonNumber)
+      val balances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
+      assertThat(balances).hasSize(prisonerAccounts.size)
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
 
