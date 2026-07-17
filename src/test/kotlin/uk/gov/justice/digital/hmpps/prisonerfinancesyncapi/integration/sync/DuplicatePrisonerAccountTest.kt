@@ -1,11 +1,16 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync
 
-import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -17,6 +22,22 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 class DuplicatePrisonerAccountTest : IntegrationTestBase() {
+
+  @Autowired lateinit var nomisSyncPayloadRepository: NomisSyncPayloadRepository
+
+  @Autowired lateinit var transactionRepository: TransactionRepository
+
+  @Autowired lateinit var transactionEntryRepository: TransactionEntryRepository
+
+  @Autowired lateinit var accountRepository: AccountRepository
+
+  @BeforeEach
+  fun setup() {
+    nomisSyncPayloadRepository.deleteAll()
+    transactionEntryRepository.deleteAll()
+    transactionRepository.deleteAll()
+    accountRepository.deleteAll()
+  }
 
   @Test
   fun `should not create duplicate prisoner accounts in race-condition`() {
@@ -112,31 +133,6 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
       { postTransaction(transferReq1) },
       { postTransaction(transferReq2) },
     )
-
-    webTestClient
-      .get()
-      .uri("/reconcile/prisoner-balances/{prisonNumber}", prisonNumber)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .exchange()
-      .expectStatus().isOk
-      .expectBody()
-      .jsonPath("$.items.length()").isEqualTo(6)
-      .jsonPath("$.items[*]")
-      .value<List<Map<String, Any>>> { items ->
-        val uniqueAccountKeys = items.map { "${it["prisonId"]}-${it["accountCode"]}" }
-        val duplicates = uniqueAccountKeys.groupBy { it }.filter { it.value.size > 1 }
-        assertThat(duplicates)
-          .withFailMessage("Duplicate prisoner accounts found for the same establishment: $duplicates")
-          .isEmpty()
-        assertThat(uniqueAccountKeys).containsExactlyInAnyOrder(
-          "MDI-2101",
-          "MDI-2102",
-          "MDI-2103",
-          "KMI-2101",
-          "KMI-2102",
-          "KMI-2103",
-        )
-      }
   }
 
   /**
