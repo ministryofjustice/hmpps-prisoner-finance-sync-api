@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.sync
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
@@ -52,8 +53,32 @@ class ReconciliationController(
               type = "object",
               additionalPropertiesSchema = SubAccountBalanceForReconciliation::class,
             ),
+            examples = [
+              ExampleObject(
+                name = "SubAccountBalances",
+                summary = "Example response",
+                value = """
+                    {
+                      "2101": {
+                        "totalBalance": 100.50,
+                        "holdBalance": 0,
+                        "balanceDateTime": "2026-07-17T12:55:12.813Z"
+                      },
+                      "2102": {
+                        "totalBalance": 50.00,
+                        "holdBalance": 10.0,
+                        "balanceDateTime": "2026-07-17T12:55:12.813Z"
+                      },
+                      "2103": {
+                        "totalBalance": 0,
+                        "holdBalance": 0,
+                        "balanceDateTime": "2026-07-17T12:55:12.813Z"
+                      }
+                    }
+                    """,
+              ),
+            ],
           ),
-
         ],
       ),
       ApiResponse(
