@@ -11,33 +11,27 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralL
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
-import kotlin.math.abs
 
 @Service("generalLedgerService")
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val accountMapping: LedgerAccountMappingService,
-  private val ledgerQueryService: LedgerQueryService,
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
   private val idempotencyService: GeneralLedgerIdempotencyService,
   private val ledgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
   private val generalLedgerAccountResolver: GeneralLedgerAccountResolver,
-) : LedgerService,
-  ReconciliationService {
+) : LedgerService {
 
   private companion object {
     private val log = LoggerFactory.getLogger(GeneralLedgerService::class.java)
@@ -140,77 +134,25 @@ class GeneralLedgerService(
 
   override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID = throw NotImplementedError("Syncing General Ledger Transactions is not yet supported in the new General Ledger Service")
 
-  fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceResponse> {
+  fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
 
     if (parentAccount == null) {
-      log.error("No parent account found for prisoner $prisonNumber")
-      return emptyMap()
+      throw CustomException("No General Ledger account found for prisoner $prisonNumber", status = HttpStatus.NOT_FOUND)
     }
 
-    if (parentAccount.subAccounts.isEmpty()) {
-      log.error("No sub accounts found for prisoner $prisonNumber")
-      return emptyMap()
-    }
-
-    val subAccounts = mutableMapOf<String, SubAccountBalanceResponse>()
+    val subAccounts = mutableMapOf<String, SubAccountBalanceForReconciliation>()
     for (account in parentAccount.subAccounts) {
       val subAccountBalance = generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id)
       if (subAccountBalance == null) {
         log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
         continue
       }
-      subAccounts[account.reference] = subAccountBalance
+      val accountCode = accountMapping.mapSubAccountPrisonerReferenceToNOMIS(account.reference).toString()
+      subAccounts[accountCode] = SubAccountBalanceForReconciliation.fromSubAccountBalanceResponse(subAccountBalance)
     }
 
     return subAccounts
-  }
-
-  override fun reconcilePrisoner(prisonNumber: String): PrisonerEstablishmentBalanceDetailsList {
-    val subAccountsGL = getGLPrisonerBalances(prisonNumber)
-
-    val legacyBalancesByEstablishment = ledgerQueryService.listPrisonerBalancesByEstablishment(prisonNumber)
-
-    for (accountCode in accountMapping.prisonerSubAccounts.keys) {
-      val legacyBalance = ledgerQueryService.aggregatedLegacyBalanceForAccountCode(
-        accountMapping.mapSubAccountPrisonerReferenceToNOMIS(accountCode),
-        legacyBalancesByEstablishment,
-      )
-
-      val glAccount = subAccountsGL[accountCode]
-      if (glAccount == null || legacyBalance != glAccount.amount) {
-        var message = "Discrepancy found for prisoner $prisonNumber"
-        if (glAccount == null) message = "Gl account not found for prisoner $prisonNumber"
-
-        val errorDetails = GeneralLedgerDiscrepancyDetails(
-          message = message,
-          prisonerId = prisonNumber,
-          accountType = accountCode,
-          legacyAggregatedBalance = legacyBalance,
-          generalLedgerBalance = glAccount?.amount ?: 0,
-          discrepancy = abs(legacyBalance - (glAccount?.amount ?: 0)),
-          glBreakdown = subAccountsGL.values.toList(),
-          legacyBreakdown = legacyBalancesByEstablishment,
-        )
-        log.warn("{}", errorDetails)
-
-        telemetryClient.trackEvent(
-          "prisoner-finance-sync-reconciliation-discrepancy-with-general-ledger",
-          mapOf(
-            "message" to errorDetails.message,
-            "prisonerId" to errorDetails.prisonerId,
-            "legacyAggregatedBalance" to errorDetails.legacyAggregatedBalance.toString(),
-            "generalLedgerBalance" to errorDetails.generalLedgerBalance.toString(),
-            "discrepancy" to errorDetails.discrepancy.toString(),
-            "glBreakdown" to errorDetails.glBreakdown.toString(),
-            "legacyBreakdown" to errorDetails.legacyBreakdown.toString(),
-          ),
-          null,
-        )
-      }
-    }
-
-    return PrisonerEstablishmentBalanceDetailsList(legacyBalancesByEstablishment)
   }
 
   private fun isSubAccountTransfer(glTransaction: SearchTransactionResponse): Boolean = glTransaction.postings.all { it.accountType == SearchPostingResponse.AccountType.PRISONER }

@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
+import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
@@ -36,6 +37,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Tran
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.GeneralLedgerDiscrepancyDetails
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -69,7 +71,8 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
   @Autowired lateinit var accountRepository: AccountRepository
 
-  private val testPrisonerId = "A1234AA"
+  private val testPrisonNumber = "A1234AA"
+  private val testPrisonerAccountUUID = UUID.randomUUID()
 
   @Autowired
   private lateinit var accountMapping: LedgerAccountMappingService
@@ -112,7 +115,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         OffenderTransaction(
           entrySequence = 1,
           offenderId = 1L,
-          offenderDisplayId = testPrisonerId,
+          offenderDisplayId = testPrisonNumber,
           offenderBookingId = 100L,
           subAccountType = "",
           postingType = "DR",
@@ -125,12 +128,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2102, "CR", BigDecimal("10.00")),
           ),
         )
-      val request = createRequest(testPrisonerId, caseloadId, listOf(transaction))
+      val request = createRequest(testPrisonNumber, caseloadId, listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, prisonerAccId)
       generalLedgerApi.stubGetAccount(
         request.caseloadId,
         prisonAccId,
@@ -147,7 +150,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.stubCreateSubAccountReturnsConflict(prisonerAccId, prisonerRef)
 
       generalLedgerApi.stubGetSubAccountNotFound(
-        testPrisonerId,
+        testPrisonNumber,
         prisonerRef,
       )
 
@@ -172,15 +175,15 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     @Test
     fun `should propagate RetryAfterConflictException when accountResolver fails to get parent account on the second try`() {
       val caseloadId = "TES"
-      val request = createRequest(testPrisonerId, caseloadId)
+      val request = createRequest(testPrisonNumber, caseloadId)
 
       val scenario = "ConflictScenario"
       val secondState = "SECOND_CALL"
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId, scenario, STARTED, secondState)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber, scenario, STARTED, secondState)
 
-      generalLedgerApi.stubCreateAccountReturnsConflict(testPrisonerId)
+      generalLedgerApi.stubCreateAccountReturnsConflict(testPrisonNumber)
 
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId, scenarioName = scenario, scenarioState = secondState)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber, scenarioName = scenario, scenarioState = secondState)
 
       webTestClient
         .post()
@@ -194,12 +197,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       val logs = listAppender.list.map {
         it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
       }
-      assertThat(logs).anyMatch { it.contains("Account not found after server responded with 409 for reference: $testPrisonerId") }
+      assertThat(logs).anyMatch { it.contains("Account not found after server responded with 409 for reference: $testPrisonNumber") }
 
       generalLedgerApi.verify(
         2,
         getRequestedFor(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
       )
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts")))
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
@@ -213,7 +216,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         OffenderTransaction(
           entrySequence = 1,
           offenderId = 1L,
-          offenderDisplayId = testPrisonerId,
+          offenderDisplayId = testPrisonNumber,
           offenderBookingId = 100L,
           subAccountType = "",
           postingType = "DR",
@@ -226,12 +229,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2102, "CR", BigDecimal("10.00")),
           ),
         )
-      val request = createRequest(testPrisonerId, caseloadId, listOf(transaction))
+      val request = createRequest(testPrisonNumber, caseloadId, listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, prisonerAccId)
       generalLedgerApi.stubGetAccount(
         request.caseloadId,
         prisonAccId,
@@ -248,7 +251,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.stubCreateSubAccountReturnsServerError(prisonerAccId, prisonerRef)
 
       generalLedgerApi.stubGetSubAccount(
-        testPrisonerId,
+        testPrisonNumber,
         prisonerRef,
       )
 
@@ -273,17 +276,17 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     @Test
     fun `should propagate Exception when accountResolver fails in create parent account`() {
       val caseloadId = "TES"
-      val request = createRequest(testPrisonerId, caseloadId)
+      val request = createRequest(testPrisonNumber, caseloadId)
 
       val scenario = "ConflictScenario"
       val secondState = "SECOND_CALL"
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId, scenario, STARTED, secondState)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber, scenario, STARTED, secondState)
 
       val parentAccountId = UUID.randomUUID()
 
-      generalLedgerApi.stubCreateAccountReturnsServerError(testPrisonerId)
+      generalLedgerApi.stubCreateAccountReturnsServerError(testPrisonNumber)
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, parentAccountId, scenarioName = scenario, scenarioState = secondState)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, parentAccountId, scenarioName = scenario, scenarioState = secondState)
 
       webTestClient
         .post()
@@ -302,7 +305,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(
         1,
         getRequestedFor(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
       )
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts")))
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
@@ -316,7 +319,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         OffenderTransaction(
           entrySequence = 1,
           offenderId = 1L,
-          offenderDisplayId = testPrisonerId,
+          offenderDisplayId = testPrisonNumber,
           offenderBookingId = 100L,
           subAccountType = "",
           postingType = "DR",
@@ -329,12 +332,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2102, "CR", BigDecimal("10.00")),
           ),
         )
-      val request = createRequest(testPrisonerId, caseloadId, listOf(transaction))
+      val request = createRequest(testPrisonNumber, caseloadId, listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, prisonerAccId)
       generalLedgerApi.stubGetAccount(
         request.caseloadId,
         prisonAccId,
@@ -351,7 +354,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.stubCreateSubAccountReturnsConflict(prisonerAccId, prisonerRef)
 
       generalLedgerApi.stubGetSubAccount(
-        testPrisonerId,
+        testPrisonNumber,
         prisonerRef,
       )
 
@@ -373,11 +376,11 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     @Test
     fun `should find parent account again when post parent account returns conflict 409`() {
       val caseloadId = "TES"
-      val request = createRequest(testPrisonerId, caseloadId)
+      val request = createRequest(testPrisonNumber, caseloadId)
 
       val scenario = "ConflictScenario"
       val secondState = "SECOND_CALL"
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId, scenario, STARTED, secondState)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber, scenario, STARTED, secondState)
 
       val prisonerRef1 = accountMapping.mapPrisonerSubAccount(
         request.offenderTransactions[0].generalLedgerEntries[0].code,
@@ -388,9 +391,9 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       val parentAccountId = UUID.randomUUID()
 
-      generalLedgerApi.stubCreateAccountReturnsConflict(testPrisonerId)
+      generalLedgerApi.stubCreateAccountReturnsConflict(testPrisonNumber)
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, parentAccountId, scenarioName = scenario, scenarioState = secondState)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, parentAccountId, scenarioName = scenario, scenarioState = secondState)
 
       generalLedgerApi.stubCreateSubAccount(parentAccountId, prisonerRef1)
       generalLedgerApi.stubCreateSubAccount(parentAccountId, prisonerRef2)
@@ -409,7 +412,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(
         2,
         getRequestedFor(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
       )
 
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/accounts")))
@@ -423,7 +426,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         OffenderTransaction(
           entrySequence = 1,
           offenderId = 1L,
-          offenderDisplayId = testPrisonerId,
+          offenderDisplayId = testPrisonNumber,
           offenderBookingId = 100L,
           subAccountType = "",
           postingType = "DR",
@@ -436,12 +439,12 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2102, "CR", BigDecimal("10.00")),
           ),
         )
-      val request = createRequest(testPrisonerId, "TES", listOf(transaction))
+      val request = createRequest(testPrisonNumber, "TES", listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, prisonerAccId)
       generalLedgerApi.stubGetAccount(
         request.caseloadId,
         prisonAccId,
@@ -456,7 +459,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       val prisonerRef = accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[1].code)
 
       generalLedgerApi.stubGetSubAccountNotFound(
-        testPrisonerId,
+        testPrisonNumber,
         prisonerRef,
       )
 
@@ -482,7 +485,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         OffenderTransaction(
           entrySequence = 1,
           offenderId = 1L,
-          offenderDisplayId = testPrisonerId,
+          offenderDisplayId = testPrisonNumber,
           offenderBookingId = 100L,
           subAccountType = "",
           postingType = "DR",
@@ -495,13 +498,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2103, "CR", BigDecimal("10.00")),
           ),
         )
-      val request = createRequest(testPrisonerId, "TES", listOf(transaction))
+      val request = createRequest(testPrisonNumber, "TES", listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
 
       generalLedgerApi.stubGetAccount(
-        testPrisonerId,
+        testPrisonNumber,
         prisonerAccId,
         listOf(
           makeSubAccountResponse(
@@ -540,7 +543,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         OffenderTransaction(
           entrySequence = 1,
           offenderId = 1L,
-          offenderDisplayId = testPrisonerId,
+          offenderDisplayId = testPrisonNumber,
           offenderBookingId = 100L,
           subAccountType = "",
           postingType = "DR",
@@ -553,7 +556,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
           ),
         )
-      val request = createRequest(testPrisonerId, "TES", listOf(transaction))
+      val request = createRequest(testPrisonNumber, "TES", listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
@@ -576,7 +579,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       )
 
       generalLedgerApi.stubGetAccount(
-        testPrisonerId,
+        testPrisonNumber,
         prisonerAccId,
         listOf(
           makeSubAccountResponse(
@@ -606,7 +609,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         OffenderTransaction(
           entrySequence = 1,
           offenderId = 1L,
-          offenderDisplayId = testPrisonerId,
+          offenderDisplayId = testPrisonNumber,
           offenderBookingId = 100L,
           subAccountType = "SPND",
           postingType = "DR",
@@ -619,13 +622,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
           ),
         )
-      val request = createRequest(testPrisonerId, "TES", listOf(transaction))
+      val request = createRequest(testPrisonNumber, "TES", listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
 
       generalLedgerApi.stubGetAccount(
-        testPrisonerId,
+        testPrisonNumber,
         prisonerAccId,
         listOf(
           makeSubAccountResponse(accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[1].code), prisonerAccId),
@@ -661,9 +664,9 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     @Test
     fun `should call general ledger to lookup an account and create it if not exists`() {
       val caseloadId = "TES"
-      val request = createRequest(testPrisonerId, caseloadId)
+      val request = createRequest(testPrisonNumber, caseloadId)
 
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
 
       val prisonerRef1 = accountMapping.mapPrisonerSubAccount(
         request.offenderTransactions[0].generalLedgerEntries[0].code,
@@ -675,7 +678,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       val parentAccountId = UUID.randomUUID()
 
       generalLedgerApi.stubCreateAccount(
-        testPrisonerId,
+        testPrisonNumber,
         parentAccountId,
       )
 
@@ -695,7 +698,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.verify(
         getRequestedFor(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
       )
 
       generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
@@ -706,7 +709,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     fun `should successfully sync to internal ledger when general ledger is down`() {
       generalLedgerApi.stubFor(
         get(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonerId))
+          .withQueryParam("reference", equalTo(testPrisonNumber))
           .willReturn(
             aResponse()
               .withStatus(500)
@@ -714,7 +717,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           ),
       )
 
-      val request = createRequest(testPrisonerId)
+      val request = createRequest(testPrisonNumber)
 
       webTestClient.post()
         .uri("/sync/offender-transactions")
@@ -798,9 +801,9 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       val prisonParentUuid = UUID.randomUUID()
       val prisonSubUuid = UUID.randomUUID().toString()
 
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
-      generalLedgerApi.stubCreateAccount(testPrisonerId, prisonerParentUuid)
-      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerId, prisonerSubRef)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+      generalLedgerApi.stubCreateAccount(testPrisonNumber, prisonerParentUuid)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, prisonerSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, prisonerSubRef, prisonerSubUuid)
 
       generalLedgerApi.stubGetAccountNotFound(prisonId)
@@ -826,7 +829,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 1,
             offenderId = 5306470,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 2970777,
             subAccountType = "SPND",
             postingType = "CR",
@@ -852,7 +855,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .expectBody()
         .jsonPath("$.action").isEqualTo("CREATED")
 
-      generalLedgerApi.verifyCreateAccount(testPrisonerId)
+      generalLedgerApi.verifyCreateAccount(testPrisonNumber)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), prisonerSubRef)
 
       generalLedgerApi.verifyCreateAccount(prisonId)
@@ -907,7 +910,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       val canteenSubRef = "2501:CANT"
       val spendsSubRef = "SPENDS"
 
-      val prisoner1 = testPrisonerId
+      val prisoner1 = testPrisonNumber
       val amount1 = BigDecimal("1.40")
 
       val prisoner2 = "Z9876ZZ"
@@ -1018,13 +1021,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(prisonId)
 
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
-      generalLedgerApi.stubCreateAccount(testPrisonerId, prisonerParentUuid)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+      generalLedgerApi.stubCreateAccount(testPrisonNumber, prisonerParentUuid)
 
-      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerId, spendsSubRef)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, spendsSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, spendsSubRef, spendsSubUuid)
 
-      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerId, cashSubRef)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, cashSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, cashSubRef, cashSubUuid)
 
       generalLedgerApi.stubPostTransaction(
@@ -1050,7 +1053,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 1,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "SPND",
             postingType = "DR",
@@ -1074,7 +1077,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
 
-      generalLedgerApi.verifyCreateAccount(testPrisonerId)
+      generalLedgerApi.verifyCreateAccount(testPrisonNumber)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), spendsSubRef)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), cashSubRef)
 
@@ -1095,13 +1098,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(prisonId)
 
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
-      generalLedgerApi.stubCreateAccount(testPrisonerId, prisonerParentUuid)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+      generalLedgerApi.stubCreateAccount(testPrisonNumber, prisonerParentUuid)
 
-      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerId, spendsSubRef)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, spendsSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, spendsSubRef, spendsSubUuid)
 
-      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerId, cashSubRef)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, cashSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, cashSubRef, cashSubUuid)
 
       generalLedgerApi.stubPostTransaction(
@@ -1127,7 +1130,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 1,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "SPND",
             postingType = "DR",
@@ -1144,7 +1147,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 2,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "REG",
             postingType = "CR",
@@ -1165,7 +1168,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
 
-      generalLedgerApi.verifyCreateAccount(testPrisonerId)
+      generalLedgerApi.verifyCreateAccount(testPrisonNumber)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), spendsSubRef)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), cashSubRef)
 
@@ -1196,13 +1199,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(prisonId)
 
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
-      generalLedgerApi.stubCreateAccount(testPrisonerId, prisonerParentUuid)
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+      generalLedgerApi.stubCreateAccount(testPrisonNumber, prisonerParentUuid)
 
-      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerId, spendsSubRef)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, spendsSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, spendsSubRef, spendsSubUuid)
 
-      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerId, cashSubRef)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, cashSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, cashSubRef, cashSubUuid)
 
       generalLedgerApi.stubPostTransaction(
@@ -1228,7 +1231,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 1,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "SPND",
             postingType = "DR",
@@ -1245,7 +1248,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 2,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "REG",
             postingType = "CR",
@@ -1266,7 +1269,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
 
-      generalLedgerApi.verifyCreateAccount(testPrisonerId)
+      generalLedgerApi.verifyCreateAccount(testPrisonNumber)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), spendsSubRef)
       generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), cashSubRef)
 
@@ -1295,6 +1298,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       createdBy = "OMS_OWNER",
     )
 
+    @Disabled
     @Test
     fun `should show balance discrepancy for a prisoner when general ledger and legacy GL amounts are different`() {
       // mock Internal Ledger
@@ -1316,7 +1320,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 1,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "SPND",
             postingType = "DR",
@@ -1349,7 +1353,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         createSubAccountResponse(prisonerAccId, kv.key)
       }.toList()
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, subAccountResponses)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, prisonerAccId, subAccountResponses)
 
       val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
@@ -1359,7 +1363,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       webTestClient
         .get()
-        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
@@ -1367,7 +1371,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(
         1,
         getRequestedFor(urlPathMatching("/accounts.*"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
       )
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
@@ -1375,8 +1379,8 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       subAccountResponses.forEach { subAccount ->
 
         val expectedLog = GeneralLedgerDiscrepancyDetails(
-          message = "Discrepancy found for prisoner $testPrisonerId",
-          prisonerId = testPrisonerId,
+          message = "Discrepancy found for prisoner $testPrisonNumber",
+          prisonerId = testPrisonNumber,
           accountType = subAccount.reference,
           legacyAggregatedBalance = 1000L,
           generalLedgerBalance = 100L,
@@ -1415,6 +1419,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       }
     }
 
+    @Disabled
     @Test
     fun `should not show balance discrepancy for a prisoner when general ledger and legacy GL amounts match`() {
       // mock Internal Ledger
@@ -1436,7 +1441,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 1,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "SPND",
             postingType = "DR",
@@ -1469,7 +1474,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         createSubAccountResponse(prisonerAccId, kv.key)
       }.toList()
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, subAccountResponses)
+      generalLedgerApi.stubGetAccount(testPrisonNumber, prisonerAccId, subAccountResponses)
 
       val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
@@ -1479,7 +1484,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       webTestClient
         .get()
-        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
@@ -1487,7 +1492,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(
         1,
         getRequestedFor(urlPathMatching("/accounts.*"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
       )
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
@@ -1502,6 +1507,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       }
     }
 
+    @Disabled
     @Test
     fun `should show balance discrepancy for a prisoner when general ledger when does not return sub accounts`() {
       // mock Internal Ledger
@@ -1523,7 +1529,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           OffenderTransaction(
             entrySequence = 1,
             offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
+            offenderDisplayId = testPrisonNumber,
             offenderBookingId = 1227181,
             subAccountType = "SPND",
             postingType = "DR",
@@ -1552,13 +1558,13 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       // mock GL
       val prisonerAccId = UUID.randomUUID()
 
-      generalLedgerApi.stubGetAccount(testPrisonerId, prisonerAccId, emptyList())
+      generalLedgerApi.stubGetAccount(testPrisonNumber, prisonerAccId, emptyList())
 
       val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
 
       webTestClient
         .get()
-        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk
@@ -1566,15 +1572,123 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(
         1,
         getRequestedFor(urlPathMatching("/accounts.*"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
       )
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
 
       accountMapping.prisonerSubAccounts.keys.forEach { reference ->
         val expectedLog = GeneralLedgerDiscrepancyDetails(
-          message = "Gl account not found for prisoner $testPrisonerId",
-          prisonerId = testPrisonerId,
+          message = "Gl account not found for prisoner $testPrisonNumber",
+          prisonerId = testPrisonNumber,
+          accountType = reference,
+          legacyAggregatedBalance = 1000L,
+          generalLedgerBalance = 0L,
+          discrepancy = 1000L,
+          glBreakdown = subAccountReturnedResponses,
+          legacyBreakdown = listOf(
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2101,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2102,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+            PrisonerEstablishmentBalanceDetails(
+              prisonId = "TES",
+              accountCode = 2103,
+              totalBalance = BigDecimal("10.00"),
+              holdBalance = BigDecimal(0),
+            ),
+          ),
+        )
+
+        val logs = listAppender.list.map {
+          it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
+        }
+        assertThat(logs).anyMatch { it.contains(expectedLog.toString()) }
+      }
+
+      generalLedgerApi.verify(0, getRequestedFor(urlPathMatching("/sub-accounts/.*/balance")))
+    }
+
+    @Disabled
+    @Test
+    fun `should show balance discrepancy for a prisoner when general ledger when does not return parent account`() {
+      // mock Internal Ledger
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        requestId = UUID.randomUUID(),
+        caseloadId = "TES",
+        transactionTimestamp = timestamp,
+        createdAt = timestamp,
+        createdBy = "OMS_OWNER",
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 2607103,
+            offenderDisplayId = testPrisonNumber,
+            offenderBookingId = 1227181,
+            subAccountType = "SPND",
+            postingType = "DR",
+            type = "OT",
+            description = "Sub-Account Transfer",
+            amount = BigDecimal("30.0"),
+            reference = null,
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "DR", BigDecimal("30.0")),
+              GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.0")),
+              GeneralLedgerEntry(3, 2102, "CR", BigDecimal("10.0")),
+              GeneralLedgerEntry(4, 2103, "CR", BigDecimal("10.0")),
+            ),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isCreated
+
+      // mock GL
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+
+      val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
+
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk
+
+      generalLedgerApi.verify(
+        1,
+        getRequestedFor(urlPathMatching("/accounts.*"))
+          .withQueryParam("reference", equalTo(testPrisonNumber)),
+      )
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+
+      accountMapping.prisonerSubAccounts.keys.forEach { reference ->
+        val expectedLog = GeneralLedgerDiscrepancyDetails(
+          message = "Gl account not found for prisoner $testPrisonNumber",
+          prisonerId = testPrisonNumber,
           accountType = reference,
           legacyAggregatedBalance = 1000L,
           generalLedgerBalance = 0L,
@@ -1612,110 +1726,58 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should show balance discrepancy for a prisoner when general ledger when does not return parent account`() {
-      // mock Internal Ledger
-      val transactionId = Random.nextLong(10000, 99999)
-      val timestamp = LocalDateTime.now()
-
-      val request = SyncOffenderTransactionRequest(
-        transactionId = transactionId,
-        requestId = UUID.randomUUID(),
-        caseloadId = "TES",
-        transactionTimestamp = timestamp,
-        createdAt = timestamp,
-        createdBy = "OMS_OWNER",
-        createdByDisplayName = "OMS_OWNER",
-        lastModifiedAt = null,
-        lastModifiedBy = null,
-        lastModifiedByDisplayName = null,
-        offenderTransactions = listOf(
-          OffenderTransaction(
-            entrySequence = 1,
-            offenderId = 2607103,
-            offenderDisplayId = testPrisonerId,
-            offenderBookingId = 1227181,
-            subAccountType = "SPND",
-            postingType = "DR",
-            type = "OT",
-            description = "Sub-Account Transfer",
-            amount = BigDecimal("30.0"),
-            reference = null,
-            generalLedgerEntries = listOf(
-              GeneralLedgerEntry(1, 1501, "DR", BigDecimal("30.0")),
-              GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.0")),
-              GeneralLedgerEntry(3, 2102, "CR", BigDecimal("10.0")),
-              GeneralLedgerEntry(4, 2103, "CR", BigDecimal("10.0")),
-            ),
-          ),
-        ),
-      )
-
-      webTestClient.post()
-        .uri("/sync/offender-transactions")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(objectMapper.writeValueAsString(request))
-        .exchange()
-        .expectStatus().isCreated
-
-      // mock GL
-      generalLedgerApi.stubGetAccountNotFound(testPrisonerId)
-
-      val subAccountReturnedResponses = mutableListOf<SubAccountBalanceResponse>()
+    fun `should return 404 when a parent account does not exist in general ledger`() {
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
 
       webTestClient
         .get()
-        .uri("/reconcile/prisoner-balances/$testPrisonerId")
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
-        .expectStatus().isOk
+        .expectStatus().isNotFound
+    }
 
-      generalLedgerApi.verify(
-        1,
-        getRequestedFor(urlPathMatching("/accounts.*"))
-          .withQueryParam("reference", equalTo(testPrisonerId)),
+    @Test
+    fun `should return an empty list if the parent account exists with no subaccounts`() {
+      generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
+
+      val body = webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk()
+        .expectBody<Map<String, Any>>().returnResult().responseBody!!
+
+      assertThat(body).isEmpty()
+    }
+
+    @Test
+    fun `should return a list of subaccounts if the parent account exists with subaccounts`() {
+      val subaccounts = listOf(
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "CASH"),
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "SPENDS"),
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "SAVINGS"),
       )
-      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts/.*/sub-accounts.*")))
-      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/transactions.*")))
+      generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
+      generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, 1000)
+      generalLedgerApi.stubGetSubAccountBalance(subaccounts[1].id, 2000)
+      generalLedgerApi.stubGetSubAccountBalance(subaccounts[2].id, 0)
 
-      accountMapping.prisonerSubAccounts.keys.forEach { reference ->
-        val expectedLog = GeneralLedgerDiscrepancyDetails(
-          message = "Gl account not found for prisoner $testPrisonerId",
-          prisonerId = testPrisonerId,
-          accountType = reference,
-          legacyAggregatedBalance = 1000L,
-          generalLedgerBalance = 0L,
-          discrepancy = 1000L,
-          glBreakdown = subAccountReturnedResponses,
-          legacyBreakdown = listOf(
-            PrisonerEstablishmentBalanceDetails(
-              prisonId = "TES",
-              accountCode = 2101,
-              totalBalance = BigDecimal("10.00"),
-              holdBalance = BigDecimal(0),
-            ),
-            PrisonerEstablishmentBalanceDetails(
-              prisonId = "TES",
-              accountCode = 2102,
-              totalBalance = BigDecimal("10.00"),
-              holdBalance = BigDecimal(0),
-            ),
-            PrisonerEstablishmentBalanceDetails(
-              prisonId = "TES",
-              accountCode = 2103,
-              totalBalance = BigDecimal("10.00"),
-              holdBalance = BigDecimal(0),
-            ),
-          ),
-        )
+      val body = webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isOk()
+        // TODO: make a DTO for subaccount balances, and confirm this looks correct
+        .expectBody<Map<String, SubAccountBalanceForReconciliation>>().returnResult().responseBody!!
 
-        val logs = listAppender.list.map {
-          it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
-        }
-        assertThat(logs).anyMatch { it.contains(expectedLog.toString()) }
-      }
-
-      generalLedgerApi.verify(0, getRequestedFor(urlPathMatching("/sub-accounts/.*/balance")))
+      assertThat(body).hasSize(3)
+      // 2101 is cash, 2102 is spends, 2103 is savings
+      assertThat(body["2101"]?.totalBalance).isEqualTo(BigDecimal("10.00"))
+      assertThat(body["2102"]?.totalBalance).isEqualTo(BigDecimal("20.00"))
+      assertThat(body["2103"]?.totalBalance).isEqualTo(BigDecimal("0.00"))
     }
   }
 }

@@ -17,11 +17,10 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ReconciliationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
@@ -30,11 +29,10 @@ import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 @RestController
 class ReconciliationController(
   @param:Autowired private val ledgerQueryService: LedgerQueryService,
-  @param:Autowired private val reconciliationService: ReconciliationService,
   @param:Autowired private val generalLedgerService: GeneralLedgerService,
 ) {
   @Operation(
-    summary = "Get a list of all subaccount balances for a prisoner, grouped by establishment where transactions occurred",
+    summary = "Get all sub account balances for a prisoner across all prisons",
   )
   @GetMapping(
     path = [
@@ -44,16 +42,59 @@ class ReconciliationController(
   )
   @ApiResponses(
     value = [
-      ApiResponse(responseCode = "200", description = "OK", content = [Content(schema = Schema(implementation = PrisonerEstablishmentBalanceDetailsList::class))]),
+      ApiResponse(
+        responseCode = "200",
+        description = "OK",
+        content = [
+          Content(
+            mediaType = "application/json",
+            schema = Schema(
+              type = "object",
+              additionalPropertiesSchema = SubAccountBalanceForReconciliation::class,
+            ),
+          ),
+
+        ],
+      ),
+      ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "404",
+        description = "Not Found - Prisoner not found",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "General Ledger threw an unexpected 5XX error.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
     ],
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  fun listPrisonerBalancesByEstablishment(
+  fun listPrisonerSubaccountBalances(
     @PathVariable prisonNumber: String,
-  ): ResponseEntity<PrisonerEstablishmentBalanceDetailsList> {
-    val body = reconciliationService.reconcilePrisoner(prisonNumber)
-    return ResponseEntity.ok(body)
+  ): ResponseEntity<Map<String, SubAccountBalanceForReconciliation>> {
+    val prisonerBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
+    return ResponseEntity.ok(prisonerBalances)
   }
 
   @Operation(
