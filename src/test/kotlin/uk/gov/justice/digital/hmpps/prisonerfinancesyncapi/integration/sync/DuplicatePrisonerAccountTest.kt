@@ -40,7 +40,7 @@ class DuplicatePrisonerAccountTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `should not create duplicate prisoner accounts in race-condition`() {
+  fun `should create multiple transactions regardless of race condition for the same account`() {
     val testOffenderId = 123L
     val prisonNumber = uniquePrisonNumber()
     val transferAmount = BigDecimal("324.00")
