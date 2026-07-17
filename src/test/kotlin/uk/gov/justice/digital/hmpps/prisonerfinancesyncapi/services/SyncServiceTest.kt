@@ -146,6 +146,16 @@ class SyncServiceTest {
       assertThat(result.requestId).isEqualTo(dummyGeneralLedgerTransactionRequest.requestId)
       assertThat(result.synchronizedTransactionId).isEqualTo(syncId)
       verify(ledgerSyncService, times(0)).syncGeneralLedgerTransaction(any())
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.PROCESSED))
+    }
+
+    @Test
+    fun `should record that the payload was PROCESSED if a request with the same requestId already exists`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.Duplicate(syncId))
+
+      syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.PROCESSED))
     }
 
     @Test
@@ -163,6 +173,17 @@ class SyncServiceTest {
     }
 
     @Test
+    fun `should record that the payload was PROCESSED if neither requestId nor transactionId exists`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
+      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any())).thenReturn(syncId)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
+
+      syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.PROCESSED))
+    }
+
+    @Test
     fun `should retry and succeed when DataIntegrityViolationException occurs`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
@@ -177,6 +198,19 @@ class SyncServiceTest {
     }
 
     @Test
+    fun `should record that the payload was PROCESSED when DataIntegrityViolationException occurs`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
+      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
+        .thenThrow(DataIntegrityViolationException("Race condition"))
+        .thenReturn(syncId)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
+
+      syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.PROCESSED))
+    }
+
+    @Test
     fun `should throw IllegalArgumentException for unknown request types`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
       whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
@@ -185,6 +219,33 @@ class SyncServiceTest {
       assertThrows(IllegalArgumentException::class.java) {
         syncService.syncTransaction(unknownRequest)
       }
+    }
+
+    @Test
+    fun `should record that the payload FAILED for unknown request types`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
+      val unknownRequest = Mockito.mock(SyncRequest::class.java)
+
+      assertThrows(IllegalArgumentException::class.java) {
+        syncService.syncTransaction(unknownRequest)
+      }
+
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.FAILED))
+    }
+
+    @Test
+    fun `should record that the payload FAILED if an unexpected exception is thrown`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.New)
+      whenever(ledgerSyncService.syncGeneralLedgerTransaction(any()))
+        .thenThrow(RuntimeException("Unexpected exception"))
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), any())).thenReturn(dummyStoredPayload)
+
+      assertThrows(RuntimeException::class.java) {
+        syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+      }
+
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.FAILED))
     }
 
     @Test
@@ -198,6 +259,15 @@ class SyncServiceTest {
     }
 
     @Test
+    fun `should record that the payload was PROCESSED if the body JSON is identical to existing transaction`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.Duplicate(syncId))
+
+      syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.PROCESSED))
+    }
+
+    @Test
     fun `should return UPDATED if the body JSON is different to existing transaction`() {
       whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.Updated(syncId))
       whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
@@ -206,6 +276,16 @@ class SyncServiceTest {
 
       assertThat(result.action).isEqualTo(SyncTransactionReceipt.Action.UPDATED)
       verify(syncPayloadCaptureService).captureAndStoreRequest(any(), eq(syncId))
+    }
+
+    @Test
+    fun `should record that the payload was PROCESSED if the body JSON is different to existing transaction`() {
+      whenever(syncStatusResolver.check(any())).thenReturn(TransactionSyncStatus.Updated(syncId))
+      whenever(syncPayloadCaptureService.captureAndStoreRequest(any(), eq(syncId))).thenReturn(dummyStoredPayload)
+
+      syncService.syncTransaction(dummyGeneralLedgerTransactionRequest)
+
+      verify(syncPayloadCaptureService).updatePayloadStatus(any(), eq(NomisSyncPayload.Status.PROCESSED))
     }
 
     @Test

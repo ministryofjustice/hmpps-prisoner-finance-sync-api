@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.NomisSyncPayload
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncRequest
@@ -45,7 +46,7 @@ class SyncService(
 
     try {
       processNewLedgerRequestWithRetry(request)
-      syncPayloadCaptureService.updateProcessedRequestStatus(request)
+      syncPayloadCaptureService.updatePayloadStatus(request, NomisSyncPayload.Status.PROCESSED)
 
       val receipt = SyncTransactionReceipt(
         requestId = newPayload.requestId,
@@ -58,7 +59,7 @@ class SyncService(
 
       return receipt
     } catch (unexpectedException: Exception) {
-      syncPayloadCaptureService.updateFailedRequestStatus(request)
+      syncPayloadCaptureService.updatePayloadStatus(request, NomisSyncPayload.Status.FAILED)
 
       val receipt = SyncTransactionReceipt(
         requestId = newPayload.requestId,
@@ -74,7 +75,7 @@ class SyncService(
   }
 
   private fun <T : SyncRequest> processDuplicateTransactionRequest(status: TransactionSyncStatus.Duplicate, request: T): SyncTransactionReceipt {
-    syncPayloadCaptureService.updateDuplicateRequestStatus(request)
+    syncPayloadCaptureService.updatePayloadStatus(request, NomisSyncPayload.Status.PROCESSED)
 
     val receipt = SyncTransactionReceipt(
       requestId = request.requestId,
@@ -90,7 +91,7 @@ class SyncService(
 
   private fun <T : SyncRequest> processUpdatedTransactionRequest(status: TransactionSyncStatus.Updated, request: T): SyncTransactionReceipt {
     val newPayload = syncPayloadCaptureService.captureAndStoreRequest(request, status.synchronizedTransactionId)
-    syncPayloadCaptureService.updateUpdatedRequestStatus(request)
+    syncPayloadCaptureService.updatePayloadStatus(request, NomisSyncPayload.Status.PROCESSED)
 
     val receipt = SyncTransactionReceipt(
       requestId = newPayload.requestId,
