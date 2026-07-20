@@ -47,7 +47,7 @@ import java.util.UUID
 import kotlin.random.Random
 
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
-class GeneralLedgerAccountsTest : IntegrationTestBase() {
+class GeneralLedgerTest : IntegrationTestBase() {
 
   @Autowired
   private lateinit var objectMapper: ObjectMapper
@@ -842,7 +842,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verifyTransactionPosted(1, debtorSubAccountUuid = prisonSubUuid, creditorSubAccountUuid = prisonerSubUuid)
     }
 
-//    @Disabled("Impossible to trigger as the internal sync service fails first")
     @Test
     fun `should throw exception when there are no transactions`() {
       val prisonId = "LEI"
@@ -862,6 +861,50 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         lastModifiedBy = null,
         lastModifiedByDisplayName = null,
         offenderTransactions = emptyList(),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isBadRequest
+    }
+
+    @Test
+    fun `should throw exception when there are no transactions after fixing the transaction`() {
+      val prisonId = "LEI"
+
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp.plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            offenderDisplayId = testPrisonNumber,
+            offenderBookingId = null,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "OT",
+            description = "",
+            amount = BigDecimal("10.00"),
+            reference = null,
+            generalLedgerEntries = emptyList(),
+            entrySequence = 1,
+            offenderId = 1L,
+          )
+        ),
       )
 
       webTestClient.post()

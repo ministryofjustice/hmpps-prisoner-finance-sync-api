@@ -105,7 +105,6 @@ class SyncController(
       )
     }
 
-//    TODO: Add logging and status to payload table
     val syncId = UUID.randomUUID()
     syncPayloadCaptureService.captureAndStoreRequest(
       request,
@@ -115,7 +114,6 @@ class SyncController(
     val result = generalLedgerService.syncOffenderTransaction(request)
     val receiptAction = getTransactionReceiptAction(result)
 
-//  TODO: Add summary of unsuccessful transactions and causes of fail i.e. 400/500
     val receipt = SyncTransactionReceipt(
       action = receiptAction,
       requestId = request.requestId,

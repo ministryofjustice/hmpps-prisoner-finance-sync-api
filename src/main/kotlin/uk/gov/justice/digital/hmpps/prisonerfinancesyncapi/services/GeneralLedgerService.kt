@@ -90,7 +90,10 @@ class GeneralLedgerService(
   fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): SyncOffenderTransactionToGeneralLedgerResponse {
     val fixedRequest = legacyTransactionFixService.fixLegacyTransactions(request)
 
-//    TODO: Check if there are any offender transactions to even handle and decide what to do
+    if(fixedRequest.offenderTransactions.isEmpty()) {
+      log.error("Error: No offender transactions found in request ${request.transactionId}")
+      throw CustomException("No offender transactions found in request", status = HttpStatus.BAD_REQUEST)
+    }
 
     val requestCache = InMemoryAccountCache()
 
