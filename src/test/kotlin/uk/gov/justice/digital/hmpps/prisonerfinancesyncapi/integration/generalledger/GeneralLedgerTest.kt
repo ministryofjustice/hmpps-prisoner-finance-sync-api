@@ -843,6 +843,84 @@ class GeneralLedgerTest : IntegrationTestBase() {
     }
 
     @Test
+    fun `should return 422 if general ledger returns an error for any of the offender transactions`() {
+      val prisonId = "LEI"
+      val amount = BigDecimal("5.00")
+
+      val prisonerSubRef = "SPENDS"
+      val prisonSubRef = "1502:ADV"
+
+      val prisonerParentUuid = UUID.randomUUID()
+      val prisonerSubUuid = UUID.randomUUID().toString()
+      val prisonParentUuid = UUID.randomUUID()
+      val prisonSubUuid = UUID.randomUUID().toString()
+
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+      generalLedgerApi.stubCreateAccount(testPrisonNumber, prisonerParentUuid)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, prisonerSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, prisonerSubRef, prisonerSubUuid)
+
+      generalLedgerApi.stubGetAccountNotFound(prisonId)
+      generalLedgerApi.stubCreateAccount(prisonId, prisonParentUuid)
+      generalLedgerApi.stubGetSubAccountNotFound(prisonId, prisonSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonParentUuid, prisonSubRef, prisonSubUuid)
+
+      generalLedgerApi.stubPostTransactionReturnsBadRequest()
+
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp.plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = testPrisonNumber,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "ADV",
+            description = "Test Transaction for Balance Check",
+            amount = amount,
+            reference = "REF-$transactionId",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 2102, "CR", amount),
+              GeneralLedgerEntry(2, 1502, "DR", amount),
+            ),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody()
+        .jsonPath("$.action").isEqualTo("PROCESSED_WITH_ERRORS")
+
+      generalLedgerApi.verifyCreateAccount(testPrisonNumber)
+      generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), prisonerSubRef)
+
+      generalLedgerApi.verifyCreateAccount(prisonId)
+      generalLedgerApi.verifyCreateSubAccount(prisonParentUuid.toString(), prisonSubRef)
+
+      generalLedgerApi.verifyTransactionPosted(1, debtorSubAccountUuid = prisonSubUuid, creditorSubAccountUuid = prisonerSubUuid)
+    }
+
+    @Test
     fun `should throw exception when there are no transactions`() {
       val prisonId = "LEI"
 
@@ -903,7 +981,7 @@ class GeneralLedgerTest : IntegrationTestBase() {
             generalLedgerEntries = emptyList(),
             entrySequence = 1,
             offenderId = 1L,
-          )
+          ),
         ),
       )
 

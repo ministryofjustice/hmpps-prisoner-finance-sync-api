@@ -127,6 +127,146 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
   }
 
   @Test
+  fun `200 OK - when transaction is already in the system under a different request id`() {
+    val caseloadId = uniqueCaseloadId()
+    val prisonNumber = uniquePrisonNumber()
+
+    val newTransactionRequest = createSyncOffenderTransactionRequest(
+      caseloadId,
+      prisonNumber,
+      generalLedgerEntries = listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
+      ),
+    )
+
+    val parentAccountUuid = UUID.randomUUID()
+    val cashSubAccountUuid = UUID.randomUUID()
+    val spendsSubAccountUuid = UUID.randomUUID()
+
+    generalLedgerApi.stubGetAccount(
+      returnUuid = parentAccountUuid,
+      reference = prisonNumber,
+      subAccounts = listOf(
+        SubAccountResponse(
+          id = cashSubAccountUuid,
+          reference = "CASH",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = spendsSubAccountUuid,
+          reference = "SPENDS",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    generalLedgerApi.stubPostTransaction(
+      debtorSubAccountUuid = cashSubAccountUuid.toString(),
+      creditorSubAccountUuid = spendsSubAccountUuid.toString(),
+    )
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isCreated
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("CREATED")
+
+    val duplicateTransactionRequest = newTransactionRequest.copy(requestId = UUID.randomUUID())
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(duplicateTransactionRequest)
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("PROCESSED")
+  }
+
+  @Test
+  fun `200 OK - when transaction is already in the system under the same request id`() {
+    val caseloadId = uniqueCaseloadId()
+    val prisonNumber = uniquePrisonNumber()
+
+    val newTransactionRequest = createSyncOffenderTransactionRequest(
+      caseloadId,
+      prisonNumber,
+      generalLedgerEntries = listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
+      ),
+    )
+
+    val parentAccountUuid = UUID.randomUUID()
+    val cashSubAccountUuid = UUID.randomUUID()
+    val spendsSubAccountUuid = UUID.randomUUID()
+
+    generalLedgerApi.stubGetAccount(
+      returnUuid = parentAccountUuid,
+      reference = prisonNumber,
+      subAccounts = listOf(
+        SubAccountResponse(
+          id = cashSubAccountUuid,
+          reference = "CASH",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = spendsSubAccountUuid,
+          reference = "SPENDS",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    generalLedgerApi.stubPostTransaction(
+      debtorSubAccountUuid = cashSubAccountUuid.toString(),
+      creditorSubAccountUuid = spendsSubAccountUuid.toString(),
+    )
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isCreated
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("CREATED")
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("PROCESSED")
+  }
+
+  @Test
   fun `400 Bad Request - when transaction amount has more than 2 decimal places`() {
     val caseloadId = uniqueCaseloadId()
     val prisonNumber = uniquePrisonNumber()
