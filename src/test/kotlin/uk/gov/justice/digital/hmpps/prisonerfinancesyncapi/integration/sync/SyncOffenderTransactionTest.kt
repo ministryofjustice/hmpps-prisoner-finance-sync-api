@@ -2,7 +2,10 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.sync
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
@@ -10,14 +13,36 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.createSyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniqueCaseloadId
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.TestBuilders.Companion.uniquePrisonNumber
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
+import java.util.UUID
 
+@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
 class SyncOffenderTransactionTest : IntegrationTestBase() {
 
   @Autowired
   private lateinit var objectMapper: ObjectMapper
+
+  @Autowired lateinit var nomisSyncPayloadRepository: NomisSyncPayloadRepository
+
+  @BeforeEach
+  fun setup() {
+    generalLedgerApi.resetAll()
+    hmppsAuth.stubGrantToken()
+  }
+
+  @AfterEach
+  fun tearDown() {
+    nomisSyncPayloadRepository.deleteAll()
+  }
 
   @Test
   fun `401 unauthorised`() {
@@ -49,7 +74,45 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
     val caseloadId = uniqueCaseloadId()
     val prisonNumber = uniquePrisonNumber()
 
-    val newTransactionRequest = createSyncOffenderTransactionRequest(caseloadId, prisonNumber)
+    val newTransactionRequest = createSyncOffenderTransactionRequest(
+      caseloadId,
+      prisonNumber,
+      generalLedgerEntries = listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
+      ),
+    )
+
+    val parentAccountUuid = UUID.randomUUID()
+    val cashSubAccountUuid = UUID.randomUUID()
+    val spendsSubAccountUuid = UUID.randomUUID()
+
+    generalLedgerApi.stubGetAccount(
+      returnUuid = parentAccountUuid,
+      reference = prisonNumber,
+      subAccounts = listOf(
+        SubAccountResponse(
+          id = cashSubAccountUuid,
+          reference = "CASH",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = spendsSubAccountUuid,
+          reference = "SPENDS",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    generalLedgerApi.stubPostTransaction(
+      debtorSubAccountUuid = cashSubAccountUuid.toString(),
+      creditorSubAccountUuid = spendsSubAccountUuid.toString(),
+    )
+
     webTestClient
       .post()
       .uri("/sync/offender-transactions")
@@ -61,6 +124,146 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
       .expectStatus().isCreated
       .expectBody()
       .jsonPath("$.action").isEqualTo("CREATED")
+  }
+
+  @Test
+  fun `200 OK - when transaction is already in the system under a different request id`() {
+    val caseloadId = uniqueCaseloadId()
+    val prisonNumber = uniquePrisonNumber()
+
+    val newTransactionRequest = createSyncOffenderTransactionRequest(
+      caseloadId,
+      prisonNumber,
+      generalLedgerEntries = listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
+      ),
+    )
+
+    val parentAccountUuid = UUID.randomUUID()
+    val cashSubAccountUuid = UUID.randomUUID()
+    val spendsSubAccountUuid = UUID.randomUUID()
+
+    generalLedgerApi.stubGetAccount(
+      returnUuid = parentAccountUuid,
+      reference = prisonNumber,
+      subAccounts = listOf(
+        SubAccountResponse(
+          id = cashSubAccountUuid,
+          reference = "CASH",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = spendsSubAccountUuid,
+          reference = "SPENDS",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    generalLedgerApi.stubPostTransaction(
+      debtorSubAccountUuid = cashSubAccountUuid.toString(),
+      creditorSubAccountUuid = spendsSubAccountUuid.toString(),
+    )
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isCreated
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("CREATED")
+
+    val duplicateTransactionRequest = newTransactionRequest.copy(requestId = UUID.randomUUID())
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(duplicateTransactionRequest)
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("PROCESSED")
+  }
+
+  @Test
+  fun `200 OK - when transaction is already in the system under the same request id`() {
+    val caseloadId = uniqueCaseloadId()
+    val prisonNumber = uniquePrisonNumber()
+
+    val newTransactionRequest = createSyncOffenderTransactionRequest(
+      caseloadId,
+      prisonNumber,
+      generalLedgerEntries = listOf(
+        GeneralLedgerEntry(entrySequence = 1, code = 2101, postingType = "DR", amount = BigDecimal("162.00")),
+        GeneralLedgerEntry(entrySequence = 2, code = 2102, postingType = "CR", amount = BigDecimal("162.00")),
+      ),
+    )
+
+    val parentAccountUuid = UUID.randomUUID()
+    val cashSubAccountUuid = UUID.randomUUID()
+    val spendsSubAccountUuid = UUID.randomUUID()
+
+    generalLedgerApi.stubGetAccount(
+      returnUuid = parentAccountUuid,
+      reference = prisonNumber,
+      subAccounts = listOf(
+        SubAccountResponse(
+          id = cashSubAccountUuid,
+          reference = "CASH",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+        SubAccountResponse(
+          id = spendsSubAccountUuid,
+          reference = "SPENDS",
+          parentAccountId = parentAccountUuid,
+          createdBy = "",
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    generalLedgerApi.stubPostTransaction(
+      debtorSubAccountUuid = cashSubAccountUuid.toString(),
+      creditorSubAccountUuid = spendsSubAccountUuid.toString(),
+    )
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isCreated
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("CREATED")
+
+    webTestClient
+      .post()
+      .uri("/sync/offender-transactions")
+      .accept(MediaType.APPLICATION_JSON)
+      .contentType(MediaType.APPLICATION_JSON)
+      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      .bodyValue(newTransactionRequest)
+      .exchange()
+      .expectStatus().isOk
+      .expectBody()
+      .jsonPath("$.action").isEqualTo("PROCESSED")
   }
 
   @Test

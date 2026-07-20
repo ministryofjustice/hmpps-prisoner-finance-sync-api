@@ -4,9 +4,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
-import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
@@ -15,15 +13,14 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
@@ -41,6 +38,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
 import java.math.BigDecimal
 import java.time.Instant
@@ -48,14 +46,8 @@ import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
 
-@TestPropertySource(
-  properties = [
-    "feature.general-ledger-api.enabled=true",
-    "feature.general-ledger-api.test-prisoner-ids=A1234AA",
-  ],
-)
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
-class GeneralLedgerAccountsTest : IntegrationTestBase() {
+class GeneralLedgerTest : IntegrationTestBase() {
 
   @Autowired
   private lateinit var objectMapper: ObjectMapper
@@ -93,8 +85,8 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
     accountRepository.deleteAll()
   }
 
-  private fun makeSubAccountResponse(reference: String, parentAccountId: UUID) = SubAccountResponse(
-    UUID.randomUUID(),
+  private fun makeSubAccountResponse(reference: String, parentAccountId: UUID, subAccountId: UUID = UUID.randomUUID()) = SubAccountResponse(
+    subAccountId,
     reference,
     parentAccountId,
     "TEST",
@@ -151,13 +143,16 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         prisonerRef,
       )
 
-      webTestClient.post()
+      val receipt = webTestClient.post()
         .uri("/sync/offender-transactions")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(objectMapper.writeValueAsString(request))
         .exchange()
-        .expectStatus().isCreated
+        .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody<SyncTransactionReceipt>().returnResult().responseBody!!
+
+      assertThat(receipt.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS)
 
       val logs = listAppender.list.map {
         it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
@@ -182,14 +177,17 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccountNotFound(testPrisonNumber, scenarioName = scenario, scenarioState = secondState)
 
-      webTestClient
+      val receipt = webTestClient
         .post()
         .uri("/sync/offender-transactions")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(objectMapper.writeValueAsString(request))
         .exchange()
-        .expectStatus().isCreated
+        .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody<SyncTransactionReceipt>().returnResult().responseBody!!
+
+      assertThat(receipt.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS)
 
       val logs = listAppender.list.map {
         it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
@@ -252,13 +250,16 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         prisonerRef,
       )
 
-      webTestClient.post()
+      val receipt = webTestClient.post()
         .uri("/sync/offender-transactions")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(objectMapper.writeValueAsString(request))
         .exchange()
-        .expectStatus().isCreated
+        .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody<SyncTransactionReceipt>().returnResult().responseBody!!
+
+      assertThat(receipt.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS)
 
       val logs = listAppender.list.map {
         it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
@@ -285,14 +286,19 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
 
       generalLedgerApi.stubGetAccount(testPrisonNumber, parentAccountId, scenarioName = scenario, scenarioState = secondState)
 
-      webTestClient
+      val response = webTestClient
         .post()
         .uri("/sync/offender-transactions")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(objectMapper.writeValueAsString(request))
         .exchange()
-        .expectStatus().isCreated
+        .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody<SyncTransactionReceipt>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS)
 
       val logs = listAppender.list.map {
         it.formattedMessage + (it.throwableProxy?.let { proxy -> " " + proxy.message } ?: "")
@@ -556,6 +562,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       val request = createRequest(testPrisonNumber, "TES", listOf(transaction))
 
       val prisonerAccId = UUID.randomUUID()
+      val prisonerSubAccounId = UUID.randomUUID()
       val prisonAccId = UUID.randomUUID()
 
       val prisonRef = accountMapping.mapPrisonSubAccount(
@@ -563,6 +570,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         request.offenderTransactions[0].type,
       )
       val prisonerRef = accountMapping.mapPrisonerSubAccount(transaction.generalLedgerEntries[1].code)
+      val prisonSubAccounId = UUID.randomUUID()
 
       generalLedgerApi.stubGetAccount(
         request.caseloadId,
@@ -571,6 +579,7 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           makeSubAccountResponse(
             prisonRef,
             prisonAccId,
+            subAccountId = prisonSubAccounId,
           ),
         ),
       )
@@ -582,8 +591,14 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
           makeSubAccountResponse(
             prisonerRef,
             prisonAccId,
+            subAccountId = prisonerSubAccounId,
           ),
         ),
+      )
+
+      generalLedgerApi.stubPostTransaction(
+        creditorSubAccountUuid = prisonerSubAccounId.toString(),
+        debtorSubAccountUuid = prisonSubAccounId.toString(),
       )
 
       webTestClient.post()
@@ -702,45 +717,6 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verify(1, postRequestedFor(urlPathMatching("/transactions.*")))
     }
 
-    @Test
-    fun `should successfully sync to internal ledger when general ledger is down`() {
-      generalLedgerApi.stubFor(
-        get(urlPathEqualTo("/accounts"))
-          .withQueryParam("reference", equalTo(testPrisonNumber))
-          .willReturn(
-            aResponse()
-              .withStatus(500)
-              .withBody("Internal Server Error"),
-          ),
-      )
-
-      val request = createRequest(testPrisonNumber)
-
-      webTestClient.post()
-        .uri("/sync/offender-transactions")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(objectMapper.writeValueAsString(request))
-        .exchange()
-        .expectStatus().isCreated
-    }
-
-    @Test
-    fun `should not call General Ledger for non-test prisoners`() {
-      val otherPrisonerId = "Z9999ZZ"
-      val request = createRequest(otherPrisonerId)
-
-      webTestClient.post()
-        .uri("/sync/offender-transactions")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(objectMapper.writeValueAsString(request))
-        .exchange()
-        .expectStatus().isCreated
-
-      generalLedgerApi.verify(0, getRequestedFor(urlPathEqualTo("/accounts")))
-    }
-
     private fun createRequest(
       offenderId: String,
       caseloadId: String = "MDI",
@@ -808,6 +784,11 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.stubGetSubAccountNotFound(prisonId, prisonSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonParentUuid, prisonSubRef, prisonSubUuid)
 
+      generalLedgerApi.stubPostTransaction(
+        creditorSubAccountUuid = prisonerSubUuid,
+        debtorSubAccountUuid = prisonSubUuid,
+      )
+
       val transactionId = Random.nextLong(10000, 99999)
       val timestamp = LocalDateTime.now()
 
@@ -861,12 +842,87 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
       generalLedgerApi.verifyTransactionPosted(1, debtorSubAccountUuid = prisonSubUuid, creditorSubAccountUuid = prisonerSubUuid)
     }
 
-    @Disabled("Impossible to trigger as the internal sync service fails first")
+    @Test
+    fun `should return 422 if general ledger returns an error for any of the offender transactions`() {
+      val prisonId = "LEI"
+      val amount = BigDecimal("5.00")
+
+      val prisonerSubRef = "SPENDS"
+      val prisonSubRef = "1502:ADV"
+
+      val prisonerParentUuid = UUID.randomUUID()
+      val prisonerSubUuid = UUID.randomUUID().toString()
+      val prisonParentUuid = UUID.randomUUID()
+      val prisonSubUuid = UUID.randomUUID().toString()
+
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+      generalLedgerApi.stubCreateAccount(testPrisonNumber, prisonerParentUuid)
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonNumber, prisonerSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonerParentUuid, prisonerSubRef, prisonerSubUuid)
+
+      generalLedgerApi.stubGetAccountNotFound(prisonId)
+      generalLedgerApi.stubCreateAccount(prisonId, prisonParentUuid)
+      generalLedgerApi.stubGetSubAccountNotFound(prisonId, prisonSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonParentUuid, prisonSubRef, prisonSubUuid)
+
+      generalLedgerApi.stubPostTransactionReturnsBadRequest()
+
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp.plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = testPrisonNumber,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "ADV",
+            description = "Test Transaction for Balance Check",
+            amount = amount,
+            reference = "REF-$transactionId",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 2102, "CR", amount),
+              GeneralLedgerEntry(2, 1502, "DR", amount),
+            ),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+        .expectBody()
+        .jsonPath("$.action").isEqualTo("PROCESSED_WITH_ERRORS")
+
+      generalLedgerApi.verifyCreateAccount(testPrisonNumber)
+      generalLedgerApi.verifyCreateSubAccount(prisonerParentUuid.toString(), prisonerSubRef)
+
+      generalLedgerApi.verifyCreateAccount(prisonId)
+      generalLedgerApi.verifyCreateSubAccount(prisonParentUuid.toString(), prisonSubRef)
+
+      generalLedgerApi.verifyTransactionPosted(1, debtorSubAccountUuid = prisonSubUuid, creditorSubAccountUuid = prisonerSubUuid)
+    }
+
     @Test
     fun `should throw exception when there are no transactions`() {
       val prisonId = "LEI"
-
-      generalLedgerApi.stubGetAccount(prisonId)
 
       val transactionId = Random.nextLong(10000, 99999)
       val timestamp = LocalDateTime.now()
@@ -891,13 +947,51 @@ class GeneralLedgerAccountsTest : IntegrationTestBase() {
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(objectMapper.writeValueAsString(request))
         .exchange()
-        .expectStatus().isCreated
-        .expectBody()
-        .jsonPath("$.action").isEqualTo("CREATED")
+        .expectStatus().isBadRequest
+    }
 
-      generalLedgerApi.verifyCreateAccount(prisonId)
+    @Test
+    fun `should throw exception when there are no transactions after fixing the transaction`() {
+      val prisonId = "LEI"
 
-      generalLedgerApi.verifyTransactionPosted(times = 0)
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp.plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            offenderDisplayId = testPrisonNumber,
+            offenderBookingId = null,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "OT",
+            description = "",
+            amount = BigDecimal("10.00"),
+            reference = null,
+            generalLedgerEntries = emptyList(),
+            entrySequence = 1,
+            offenderId = 1L,
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isBadRequest
     }
 
     @Test

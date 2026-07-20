@@ -36,5 +36,8 @@ data class SyncTransactionReceipt(
 
     @Schema(description = "The request was already processed, and a new transaction was not created.")
     PROCESSED,
+
+    @Schema(description = "The request was partially processed but there were some errors")
+    PROCESSED_WITH_ERRORS,
   }
 }

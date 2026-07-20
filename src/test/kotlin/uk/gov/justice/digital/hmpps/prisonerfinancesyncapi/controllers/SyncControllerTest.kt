@@ -8,11 +8,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.sync.SyncController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
@@ -24,8 +27,11 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService.SyncOffenderTransactionToGeneralLedgerResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -40,6 +46,12 @@ class SyncControllerTest {
 
   @Mock
   private lateinit var syncQueryService: SyncQueryService
+
+  @Mock
+  private lateinit var generalLedgerService: GeneralLedgerService
+
+  @Mock
+  private lateinit var syncPayloadCaptureService: SyncPayloadCaptureService
 
   @InjectMocks
   private lateinit var syncController: SyncController
@@ -144,31 +156,65 @@ class SyncControllerTest {
     @Test
     fun `should return CREATED when transaction is new`() {
       val request = createOffenderTransactionRequest()
-      val receipt = createReceipt(SyncTransactionReceipt.Action.CREATED)
-      `when`(syncService.syncTransaction(any<SyncOffenderTransactionRequest>())).thenReturn(receipt)
+      whenever { generalLedgerService.syncOffenderTransaction(any()) }.thenReturn(
+        SyncOffenderTransactionToGeneralLedgerResponse(
+          previouslyMappedTransactionEntries = emptyList(),
+          unsuccessfullyMappedTransactionEntries = emptyList(),
+          successfullyMappedTransactionEntries = listOf(mock()),
+        ),
+      )
+
       val response = syncController.postOffenderTransaction(request)
       assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED)
-      assertThat(response.body).isEqualTo(receipt)
+      assertThat(response.body?.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
     }
 
     @Test
-    fun `should return OK when transaction is updated`() {
+    fun `should return OK when transaction is sent without updates`() {
       val request = createOffenderTransactionRequest()
-      val receipt = createReceipt(SyncTransactionReceipt.Action.UPDATED)
-      `when`(syncService.syncTransaction(any<SyncOffenderTransactionRequest>())).thenReturn(receipt)
+      whenever { generalLedgerService.syncOffenderTransaction(any()) }.thenReturn(
+        SyncOffenderTransactionToGeneralLedgerResponse(
+          previouslyMappedTransactionEntries = listOf(mock()),
+          unsuccessfullyMappedTransactionEntries = emptyList(),
+          successfullyMappedTransactionEntries = emptyList(),
+        ),
+      )
+
       val response = syncController.postOffenderTransaction(request)
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isEqualTo(receipt)
+      assertThat(response.body?.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED)
     }
 
     @Test
-    fun `should return OK when transaction is processed`() {
+    fun `should return OK when transaction contains transactions that were previously processed and new ones`() {
       val request = createOffenderTransactionRequest()
-      val receipt = createReceipt(SyncTransactionReceipt.Action.PROCESSED)
-      `when`(syncService.syncTransaction(any<SyncOffenderTransactionRequest>())).thenReturn(receipt)
+      whenever { generalLedgerService.syncOffenderTransaction(any()) }.thenReturn(
+        SyncOffenderTransactionToGeneralLedgerResponse(
+          previouslyMappedTransactionEntries = listOf(mock()),
+          unsuccessfullyMappedTransactionEntries = emptyList(),
+          successfullyMappedTransactionEntries = listOf(mock()),
+        ),
+      )
+
       val response = syncController.postOffenderTransaction(request)
       assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isEqualTo(receipt)
+      assertThat(response.body?.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED)
+    }
+
+    @Test
+    fun `should return UNPROCESSABLE_ENTITY when transaction is processed with errors`() {
+      val request = createOffenderTransactionRequest()
+      whenever { generalLedgerService.syncOffenderTransaction(any()) }.thenReturn(
+        SyncOffenderTransactionToGeneralLedgerResponse(
+          previouslyMappedTransactionEntries = listOf(mock()),
+          unsuccessfullyMappedTransactionEntries = listOf(mock()),
+          successfullyMappedTransactionEntries = listOf(mock()),
+        ),
+      )
+
+      val response = syncController.postOffenderTransaction(request)
+      assertThat(response.statusCode).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+      assertThat(response.body?.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS)
     }
   }
 
@@ -214,7 +260,7 @@ class SyncControllerTest {
       val startDate = LocalDate.of(2025, 1, 1)
       val endDate = LocalDate.of(2025, 1, 31)
       val transactions = listOf(generalLedgerTransactionResponse)
-      val page = PageImpl(transactions, org.springframework.data.domain.PageRequest.of(0, 20), 1)
+      val page = PageImpl(transactions, PageRequest.of(0, 20), 1)
 
       `when`(syncQueryService.getGeneralLedgerTransactionsByDate(startDate, endDate, 0, 20)).thenReturn(page)
       val response = syncController.getGeneralLedgerTransactionsByDate(startDate, endDate, 0, 20)
@@ -253,7 +299,7 @@ class SyncControllerTest {
       val startDate = LocalDate.of(2025, 1, 1)
       val endDate = LocalDate.of(2025, 1, 31)
       val transactions = listOf(offenderTransactionResponse)
-      val page = PageImpl(transactions, org.springframework.data.domain.PageRequest.of(0, 20), 1)
+      val page = PageImpl(transactions, PageRequest.of(0, 20), 1)
 
       `when`(syncQueryService.getOffenderTransactionsByDate(startDate, endDate, 0, 20)).thenReturn(page)
       val response = syncController.getOffenderTransactionsByDate(startDate, endDate, 0, 20)
