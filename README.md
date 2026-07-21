@@ -86,18 +86,13 @@ will also reset the database
 This project uses Testcontainers for integration testing.
 
 ### Running Tests
-You do not need to manually start any Docker containers to run the tests. The test suite will automatically spin up a LocalStack container on a random port.
+You do not need to manually start any Docker containers to run the tests.
 
 ```bash
 ./gradlew check
 # or
 ./gradlew integrationTest
 ```
-
-### Running Tests in IntelliJ
-Simply run the test class or method.
-- If port 4566 is free, Testcontainers will start a managed LocalStack instance.
-- If port 4566 is in use the tests will detect this and use your running instance instead.
 
 ## Architecture
 
@@ -124,17 +119,6 @@ Is available on a running local server at http://localhost:8080/swagger-ui/index
 ### Health
 - `/health`: provides information about the application health and its dependencies. 
 - `/info`: provides information about the version of deployed application.
-
-### Mocking AWS locally 
-DPS event driven architecture requires subscription to queues. 
-To emulate this environment for local development we use [LocalStack](https://localstack.cloud/).
-
-This is included automatically in the `docker-compose.yml` file on port `4566`.
-If you wish to run LocalStack in isolation (for example, to support running tests repeatedly), you can use the dedicated compose file:
-
-```bash
-docker-compose -f docker-compose-localstack.yaml up -d
-```
 
 ## Using local API endpoints
 

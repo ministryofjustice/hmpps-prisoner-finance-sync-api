@@ -28,10 +28,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
@@ -54,12 +51,6 @@ class GeneralLedgerTest : IntegrationTestBase() {
 
   @Autowired lateinit var nomisSyncPayloadRepository: NomisSyncPayloadRepository
 
-  @Autowired lateinit var transactionRepository: TransactionRepository
-
-  @Autowired lateinit var transactionEntryRepository: TransactionEntryRepository
-
-  @Autowired lateinit var accountRepository: AccountRepository
-
   private val testPrisonNumber = "A1234AA"
   private val testPrisonerAccountUUID = UUID.randomUUID()
 
@@ -80,9 +71,6 @@ class GeneralLedgerTest : IntegrationTestBase() {
   @AfterEach
   fun tearDown() {
     nomisSyncPayloadRepository.deleteAll()
-    transactionEntryRepository.deleteAll()
-    transactionRepository.deleteAll()
-    accountRepository.deleteAll()
   }
 
   private fun makeSubAccountResponse(reference: String, parentAccountId: UUID, subAccountId: UUID = UUID.randomUUID()) = SubAccountResponse(

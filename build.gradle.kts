@@ -47,7 +47,6 @@ dependencies {
     exclude(group = "io.swagger.core.v3")
   }
   testImplementation("org.testcontainers:postgresql:1.21.4")
-  testImplementation("org.testcontainers:localstack:1.21.4")
 }
 
 kotlin {

@@ -22,14 +22,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @Validated
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
 class ReconciliationController(
-  @param:Autowired private val ledgerQueryService: LedgerQueryService,
   @param:Autowired private val generalLedgerService: GeneralLedgerService,
 ) {
   @Operation(
@@ -133,18 +131,18 @@ class ReconciliationController(
   )
   @ApiResponses(
     value = [
-      ApiResponse(responseCode = "200", description = "OK", content = [Content(schema = Schema(implementation = GeneralLedgerBalanceDetailsList::class))]),
+      ApiResponse(
+        responseCode = "501",
+        description = "This endpoint is not yet implemented.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
     ],
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun listGeneralLedgerBalances(
     @PathVariable prisonId: String,
-  ): ResponseEntity<GeneralLedgerBalanceDetailsList> {
-    val items = ledgerQueryService.listGeneralLedgerBalances(prisonId)
-    val body = GeneralLedgerBalanceDetailsList(items)
-    return ResponseEntity.ok(body)
-  }
+  ): ResponseEntity<GeneralLedgerBalanceDetailsList> = ResponseEntity.status(501).build()
 
   @Operation(
     summary = "Retrieve an offender transaction by its ID using data from the prisoner general ledger",
