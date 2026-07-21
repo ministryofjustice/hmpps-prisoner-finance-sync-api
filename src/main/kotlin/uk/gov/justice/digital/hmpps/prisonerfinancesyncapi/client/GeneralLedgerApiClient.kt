@@ -74,8 +74,15 @@ class GeneralLedgerApiClient(
     ?.firstOrNull()
 
   // GET /sub-accounts/{accountId}/balance
-  fun findSubAccountBalanceByAccountId(accountId: UUID): SubAccountBalanceResponse? = subAccountApi.getSubAccountBalance(accountId)
-    .block()
+  fun findSubAccountBalanceByAccountId(accountId: UUID): SubAccountBalanceResponse? {
+    val response = handleExceptions(
+      block = {
+        subAccountApi.getSubAccountBalance(accountId)
+          .block()
+      },
+    )
+    return response ?: throw IllegalStateException("Received null response when finding sub-account balance for $accountId")
+  }
 
   // GET /sub-accounts?reference={subRef}&accountReference={parentRef}
   fun findSubAccount(parentReference: String, subAccountReference: String): SubAccountResponse? = subAccountApi.findSubAccounts(subAccountReference, parentReference)
