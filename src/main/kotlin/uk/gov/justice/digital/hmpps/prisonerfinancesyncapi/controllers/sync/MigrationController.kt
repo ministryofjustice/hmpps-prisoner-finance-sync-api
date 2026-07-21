@@ -22,11 +22,15 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.GeneralLedgerMigrationService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.MigrationPayloadCaptureService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
-class MigrationController(@param:Autowired private val migrationService: GeneralLedgerMigrationService) {
+class MigrationController(
+  @param:Autowired private val migrationService: GeneralLedgerMigrationService,
+  @param:Autowired private val migrationPayloadCaptureService: MigrationPayloadCaptureService,
+) {
 
   @Operation(
     summary = "Migrate general ledger balances for a single prison",
@@ -70,6 +74,7 @@ class MigrationController(@param:Autowired private val migrationService: General
     @PathVariable prisonId: String,
     @RequestBody @Valid request: GeneralLedgerBalancesSyncRequest,
   ): ResponseEntity<Void> {
+    migrationPayloadCaptureService.captureGeneralLedgerMigrationRequest(prisonId, request)
     // TODO implement this method: migrationService.migrateGeneralLedgerBalances(prisonId, request)
     return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build()
   }
@@ -116,6 +121,8 @@ class MigrationController(@param:Autowired private val migrationService: General
     @PathVariable prisonNumber: String,
     @RequestBody @Valid request: PrisonerBalancesSyncRequest,
   ): ResponseEntity<Void> {
+    migrationPayloadCaptureService.capturePrisonerMigrationRequest(prisonNumber, request)
+
     migrationService.migratePrisonerBalances(prisonNumber, request)
     return ResponseEntity.ok().build()
   }

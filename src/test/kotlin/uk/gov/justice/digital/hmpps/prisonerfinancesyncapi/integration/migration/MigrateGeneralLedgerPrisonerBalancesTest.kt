@@ -25,6 +25,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AccountRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.MigratedGeneralLedgerBalancePayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.MigratedPrisonerBalancePayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionEntryRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.TransactionRepository
@@ -40,6 +42,7 @@ import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 const val PRISONER_DISPLAY_ID = "A1234AA"
@@ -62,6 +65,10 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
   @Autowired lateinit var accountRepository: AccountRepository
 
   @Autowired lateinit var timeConversionService: TimeConversionService
+
+  @Autowired lateinit var generalLedgerbalancePayloadRepository: MigratedGeneralLedgerBalancePayloadRepository
+
+  @Autowired lateinit var prisonerBalancePayloadRepository: MigratedPrisonerBalancePayloadRepository
 
   private lateinit var listAppender: ListAppender<ILoggingEvent>
   private val rootLogger = LoggerFactory.getLogger("uk.gov.justice.digital.hmpps.prisonerfinancesyncapi") as Logger
@@ -307,6 +314,60 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
         .exchange()
         .expectStatus().isBadRequest
     }
+
+    @Test
+    fun `Should capture payload when migrating a prisoner balance`() {
+      prisonerBalancePayloadRepository.deleteAll()
+
+      val amount = BigDecimal("10.00")
+      val timestamp = LocalDateTime.now()
+      val accountCode = 2101
+      val req = PrisonerBalancesSyncRequest(
+        accountBalances = listOf(
+          PrisonerAccountPointInTimeBalance(
+            prisonId = "TEST",
+            accountCode = accountCode,
+            balance = amount,
+            holdBalance = BigDecimal.ZERO,
+            asOfTimestamp = timestamp,
+            transactionId = 1234L,
+          ),
+        ),
+      )
+
+      val parentAccountId = UUID.randomUUID()
+      val subAccount = SubAccountResponse(
+        id = UUID.randomUUID(),
+        reference = "CASH",
+        parentAccountId = parentAccountId,
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+      )
+
+      generalLedgerApi.stubGetAccount(PRISONER_DISPLAY_ID, parentAccountId, listOf(subAccount))
+
+      generalLedgerApi.stubPostSubAccountBalance(
+        subAccountID = subAccount.id,
+        amount = amount.toPence(),
+        balanceDateTime = timeConversionService.toUtcInstant(timestamp),
+      )
+
+      webTestClient
+        .post()
+        .uri("/migrate/prisoner-balances/{prisonNumber}", PRISONER_DISPLAY_ID)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(req))
+        .exchange()
+        .expectStatus().isOk
+
+      val payloads = prisonerBalancePayloadRepository.findAll()
+
+      assertThat(payloads).hasSize(1)
+      assertThat(payloads[0].prisonNumber).isEqualTo(PRISONER_DISPLAY_ID)
+      assertThat(payloads[0].body).contains("\"balance\": $amount")
+      assertThat(payloads[0].body).contains(timestamp.truncatedTo(ChronoUnit.MILLIS).toString())
+    }
   }
 
   @Nested
@@ -368,6 +429,43 @@ class MigrateGeneralLedgerPrisonerBalances : IntegrationTestBase() {
         .bodyValue(objectMapper.writeValueAsString(requestBody))
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+    }
+
+    @Test
+    fun `Should capture payload when migrating a prison balances`() {
+      generalLedgerbalancePayloadRepository.deleteAll()
+
+      val prisonId = UUID.randomUUID().toString().substring(0, 3).uppercase()
+      val accountCode1 = 1501 // Receivable For Earnings (Asset)
+      val amount = BigDecimal("10000.50")
+
+      val timestamp = LocalDateTime.now().minusDays(1)
+
+      val requestBody = GeneralLedgerBalancesSyncRequest(
+        accountBalances = listOf(
+          GeneralLedgerPointInTimeBalance(
+            accountCode = accountCode1,
+            balance = amount,
+            asOfTimestamp = timestamp,
+          ),
+        ),
+      )
+
+      webTestClient
+        .post()
+        .uri("/migrate/general-ledger-balances/{prisonId}", prisonId)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(requestBody))
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+
+      val payloads = generalLedgerbalancePayloadRepository.findAll()
+
+      assertThat(payloads).hasSize(1)
+      assertThat(payloads[0].prisonId).contains(prisonId)
+      assertThat(payloads[0].body).contains("\"balance\": $amount")
+      assertThat(payloads[0].body).contains(timestamp.truncatedTo(ChronoUnit.MILLIS).toString())
     }
   }
 }
