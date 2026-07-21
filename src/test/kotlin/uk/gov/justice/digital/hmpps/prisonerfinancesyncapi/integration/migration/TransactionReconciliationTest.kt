@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
@@ -30,12 +29,6 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
-@TestPropertySource(
-  properties = [
-    "feature.general-ledger-api.enabled=true",
-    "feature.general-ledger-api.test-prisoner-ids=A9971EC",
-  ],
-)
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
 class TransactionReconciliationTest(
   @param:Autowired val transactionMappingRepository: GeneralLedgerTransactionMappingRepository,
