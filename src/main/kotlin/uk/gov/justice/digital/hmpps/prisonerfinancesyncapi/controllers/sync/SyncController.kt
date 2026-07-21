@@ -130,7 +130,6 @@ class SyncController(
 
   private fun getTransactionReceiptAction(result: SyncOffenderTransactionToGeneralLedgerResponse): SyncTransactionReceipt.Action {
     if (
-      result.previouslyMappedTransactionEntries.count() == 0 &&
       result.unsuccessfullyMappedTransactionEntries.count() == 0 &&
       result.successfullyMappedTransactionEntries.count() > 0
     ) {
