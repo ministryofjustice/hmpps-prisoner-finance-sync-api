@@ -98,6 +98,28 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  fun stubPostSubAccountBalanceReturnsError500(subAccountID: UUID) {
+    stubFor(
+      post(urlPathEqualTo("/sub-accounts/$subAccountID/balance"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(500)
+            .withBody(
+              """
+                      {
+                      "status": 500,
+                      "errorCode": "InternalServerError",
+                      "userMessage": "Internal Server Error",
+                      "developerMessage": "Internal Server Error",
+                      "moreInfo": "more info"
+                    }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   // POST /sub-accounts/{subAccountId}/balance
   fun stubPostSubAccountBalanceNotFound(subAccountID: UUID, amount: Long, balanceDateTime: Instant) {
     stubFor(

@@ -14,6 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.PagedResponseSearchTransactionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.StatementBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.TransactionResponse
@@ -57,8 +58,15 @@ class GeneralLedgerApiClient(
   }
 
   // POST /sub-accounts/{subAccountId}/balance
-  fun migrateSubAccountBalance(subAccountID: UUID, createStatementBalanceRequest: CreateStatementBalanceRequest) = subAccountApi.postStatementBalance(subAccountID, createStatementBalanceRequest)
-    .block() ?: throw IllegalStateException("Received null response when migrating sub-account $subAccountID")
+  fun migrateSubAccountBalance(subAccountID: UUID, createStatementBalanceRequest: CreateStatementBalanceRequest): StatementBalanceResponse {
+    val response = handleExceptions(
+      block = {
+        subAccountApi.postStatementBalance(subAccountID, createStatementBalanceRequest)
+          .block()
+      },
+    )
+    return response ?: throw IllegalStateException("Received null response when migrating sub-account $subAccountID")
+  }
 
   // GET /accounts?reference={reference}
   fun findAccountByReference(reference: String): AccountResponse? = accountApi.getAccounts(reference)

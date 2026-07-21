@@ -6,7 +6,6 @@ import org.springframework.transaction.annotation.Transactional
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.PostingType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import java.util.UUID
 
@@ -16,16 +15,15 @@ open class LedgerSyncService(
   private val accountService: AccountService,
   private val transactionService: TransactionService,
   private val timeConversionService: TimeConversionService,
-  private val legacyTransactionFixService: LegacyTransactionFixService,
   private val telemetryClient: TelemetryClient,
-) : LedgerService {
+) {
 
   private companion object {
     private const val TELEMETRY_PRISONER_PREFIX = "nomis-to-prisoner-finance-sync"
   }
 
   @Transactional
-  override fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
+  fun syncOffenderTransaction(request: SyncOffenderTransactionRequest): List<UUID> {
     if (request.offenderTransactions.isEmpty()) {
       throw IllegalArgumentException("No offender transactions provided in the request.")
     }
@@ -70,7 +68,7 @@ open class LedgerSyncService(
   }
 
   @Transactional
-  override fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID {
+  fun syncGeneralLedgerTransaction(request: SyncGeneralLedgerTransactionRequest): UUID {
     if (request.generalLedgerEntries.isEmpty()) {
       throw IllegalArgumentException("No general ledger entries provided in the request.")
     }

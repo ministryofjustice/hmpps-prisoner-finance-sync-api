@@ -65,12 +65,12 @@ class SyncController(
     value = [
       ApiResponse(
         responseCode = "201",
-        description = "Offender transaction successfully created.",
+        description = "Offender transactions successfully created.",
         content = [Content(schema = Schema(implementation = SyncTransactionReceipt::class))],
       ),
       ApiResponse(
         responseCode = "200",
-        description = "Offender transaction metadata successfully updated or processed with no new creations.",
+        description = "All transactions previously posted successfully were created",
         content = [Content(schema = Schema(implementation = SyncTransactionReceipt::class))],
       ),
       ApiResponse(
@@ -87,6 +87,11 @@ class SyncController(
         responseCode = "403",
         description = "Forbidden - requires an appropriate role",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "422",
+        description = "Partially processed - some transactions were successfully created but some failed.",
+        content = [Content(schema = Schema(implementation = SyncTransactionReceipt::class))],
       ),
       ApiResponse(
         responseCode = "500",

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -20,12 +21,16 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.GeneralLedgerBalancesSyncRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.migration.PrisonerBalancesSyncRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.MigrationService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.GeneralLedgerMigrationService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.MigrationPayloadCaptureService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
 @Tag(name = TAG_NOMIS_SYNC)
 @RestController
-class MigrationController(@param:Autowired private val migrationService: MigrationService) {
+class MigrationController(
+  @param:Autowired private val migrationService: GeneralLedgerMigrationService,
+  @param:Autowired private val migrationPayloadCaptureService: MigrationPayloadCaptureService,
+) {
 
   @Operation(
     summary = "Migrate general ledger balances for a single prison",
@@ -37,10 +42,6 @@ class MigrationController(@param:Autowired private val migrationService: Migrati
   )
   @ApiResponses(
     value = [
-      ApiResponse(
-        responseCode = "200",
-        description = "General ledger balances successfully migrated.",
-      ),
       ApiResponse(
         responseCode = "400",
         description = "Bad request - invalid input data.",
@@ -57,8 +58,8 @@ class MigrationController(@param:Autowired private val migrationService: Migrati
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "500",
-        description = "Internal Server Error - An unexpected error occurred.",
+        responseCode = "501",
+        description = "This endpoint is not yet implemented.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
@@ -69,8 +70,9 @@ class MigrationController(@param:Autowired private val migrationService: Migrati
     @PathVariable prisonId: String,
     @RequestBody @Valid request: GeneralLedgerBalancesSyncRequest,
   ): ResponseEntity<Void> {
-    migrationService.migrateGeneralLedgerBalances(prisonId, request)
-    return ResponseEntity.ok().build()
+    migrationPayloadCaptureService.captureGeneralLedgerMigrationRequest(prisonId, request)
+    // TODO implement this method: migrationService.migrateGeneralLedgerBalances(prisonId, request)
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build()
   }
 
   @Operation(
@@ -107,6 +109,11 @@ class MigrationController(@param:Autowired private val migrationService: Migrati
         description = "Internal Server Error - An unexpected error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
+      ApiResponse(
+        responseCode = "502",
+        description = "The Sync service is working but general ledger is throwing an unexpected 5XX error.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
     ],
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
@@ -115,6 +122,8 @@ class MigrationController(@param:Autowired private val migrationService: Migrati
     @PathVariable prisonNumber: String,
     @RequestBody @Valid request: PrisonerBalancesSyncRequest,
   ): ResponseEntity<Void> {
+    migrationPayloadCaptureService.capturePrisonerMigrationRequest(prisonNumber, request)
+
     migrationService.migratePrisonerBalances(prisonNumber, request)
     return ResponseEntity.ok().build()
   }
