@@ -43,10 +43,6 @@ class MigrationController(
   @ApiResponses(
     value = [
       ApiResponse(
-        responseCode = "200",
-        description = "General ledger balances successfully migrated.",
-      ),
-      ApiResponse(
         responseCode = "400",
         description = "Bad request - invalid input data.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -62,8 +58,8 @@ class MigrationController(
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "500",
-        description = "Internal Server Error - An unexpected error occurred.",
+        responseCode = "501",
+        description = "This endpoint is not yet implemented.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
@@ -111,6 +107,11 @@ class MigrationController(
       ApiResponse(
         responseCode = "500",
         description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "The Sync service is working but general ledger is throwing an unexpected 5XX error.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
