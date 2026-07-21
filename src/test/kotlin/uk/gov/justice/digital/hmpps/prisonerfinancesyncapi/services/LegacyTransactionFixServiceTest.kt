@@ -121,7 +121,7 @@ class LegacyTransactionFixServiceTest {
     assertThat(result.offenderTransactions.size).isEqualTo(1)
     assertThat(result.offenderTransactions[0].generalLedgerEntries.size).isEqualTo(2)
     assertThat(result.offenderTransactions[0].generalLedgerEntries[0].entrySequence).isEqualTo(1)
-    assertThat(result.offenderTransactions[0].generalLedgerEntries[0].code).isEqualTo(9999)
+    assertThat(result.offenderTransactions[0].generalLedgerEntries[0].code).isEqualTo(1101)
     assertThat(result.offenderTransactions[0].generalLedgerEntries[0].postingType).isEqualTo("DR")
     assertThat(result.offenderTransactions[0].generalLedgerEntries[0].amount).isEqualTo(result.offenderTransactions[0].amount)
     assertThat(result.offenderTransactions[0].generalLedgerEntries[1].entrySequence).isEqualTo(2)

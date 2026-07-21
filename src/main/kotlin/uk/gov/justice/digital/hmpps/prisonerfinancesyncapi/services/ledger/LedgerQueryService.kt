@@ -8,7 +8,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLe
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.PrisonerEstablishmentBalanceDetails
 import java.math.BigDecimal
 
-const val MIGRATION_CLEARING_ACCOUNT = 9999
+const val MIGRATION_CLEARING_ACCOUNT = 1101
 
 @Service
 open class LedgerQueryService(

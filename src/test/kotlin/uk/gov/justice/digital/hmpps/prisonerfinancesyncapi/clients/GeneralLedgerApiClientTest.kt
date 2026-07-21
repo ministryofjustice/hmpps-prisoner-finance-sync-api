@@ -20,6 +20,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerA
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.AccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.SubAccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateSubAccountRequest
@@ -172,7 +173,7 @@ class GeneralLedgerApiClientTest {
         )
 
       assertThatThrownBy { apiClient.findSubAccountBalanceByAccountId(accountId) }
-        .isInstanceOf(WebClientResponseException.NotFound::class.java)
+        .isInstanceOf(CustomException::class.java)
     }
   }
 
