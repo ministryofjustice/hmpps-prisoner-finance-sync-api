@@ -39,7 +39,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LedgerQueryService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
@@ -57,9 +56,6 @@ class GeneralLedgerServiceTest {
 
   @Mock
   private lateinit var telemetryClient: TelemetryClient
-
-  @Mock
-  private lateinit var ledgerQueryService: LedgerQueryService
 
   @Mock
   private lateinit var generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository

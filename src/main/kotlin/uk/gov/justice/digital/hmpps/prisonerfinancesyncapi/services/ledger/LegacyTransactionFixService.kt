@@ -17,6 +17,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
  * to ensure the prisoner's sub-account balance matches the legacy system's balance,
  * without affecting the primary TIR General Ledger accounts to help maintain sync with NOMIS.
  */
+
+const val MIGRATION_CLEARING_ACCOUNT = 1101
+
 @Service
 class LegacyTransactionFixService {
 
