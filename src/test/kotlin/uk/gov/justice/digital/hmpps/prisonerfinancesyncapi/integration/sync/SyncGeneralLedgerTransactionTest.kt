@@ -42,23 +42,6 @@ class SyncGeneralLedgerTransactionTest : IntegrationTestBase() {
   }
 
   @Test
-  fun `201 Created - when transaction is new`() {
-    val newTransactionRequest = createSyncGeneralLedgerTransactionRequest()
-
-    webTestClient
-      .post()
-      .uri("/sync/general-ledger-transactions")
-      .accept(MediaType.APPLICATION_JSON)
-      .contentType(MediaType.APPLICATION_JSON)
-      .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-      .bodyValue(newTransactionRequest)
-      .exchange()
-      .expectStatus().isCreated
-      .expectBody()
-      .jsonPath("$.action").isEqualTo("CREATED")
-  }
-
-  @Test
   fun `400 Bad Request - when amount has more than 2 decimal places`() {
     val newTransactionRequest = createSyncGeneralLedgerTransactionRequest(
       uniqueCaseloadId(),

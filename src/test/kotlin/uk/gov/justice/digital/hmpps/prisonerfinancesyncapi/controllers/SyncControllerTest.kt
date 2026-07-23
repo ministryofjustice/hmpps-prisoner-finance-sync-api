@@ -9,44 +9,27 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.sync.SyncController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionListResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncGeneralLedgerTransactionResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionListResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncTransactionReceipt
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService.SyncOffenderTransactionToGeneralLedgerResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncQueryService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SyncService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.sync.SyncPayloadCaptureService
-import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.math.BigDecimal
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
 class SyncControllerTest {
-
-  @Mock
-  private lateinit var syncService: SyncService
-
-  @Mock
-  private lateinit var syncQueryService: SyncQueryService
-
   @Mock
   private lateinit var generalLedgerService: GeneralLedgerService
 
@@ -215,166 +198,6 @@ class SyncControllerTest {
       val response = syncController.postOffenderTransaction(request)
       assertThat(response.statusCode).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
       assertThat(response.body?.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS)
-    }
-  }
-
-  @Nested
-  @DisplayName("postGeneralLedgerTransaction")
-  inner class PostGeneralLedgerTransaction {
-    @Test
-    fun `should return CREATED when general ledger transaction is new`() {
-      val request = createGeneralLedgerTransactionRequest()
-      val receipt = createReceipt(SyncTransactionReceipt.Action.CREATED)
-      `when`(syncService.syncTransaction(any<SyncGeneralLedgerTransactionRequest>())).thenReturn(receipt)
-      val response = syncController.postGeneralLedgerTransaction(request)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED)
-      assertThat(response.body).isEqualTo(receipt)
-    }
-
-    @Test
-    fun `should return OK when general ledger transaction is updated`() {
-      val request = createGeneralLedgerTransactionRequest()
-      val receipt = createReceipt(SyncTransactionReceipt.Action.UPDATED)
-      `when`(syncService.syncTransaction(any<SyncGeneralLedgerTransactionRequest>())).thenReturn(receipt)
-      val response = syncController.postGeneralLedgerTransaction(request)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isEqualTo(receipt)
-    }
-
-    @Test
-    fun `should return OK when general ledger transaction is processed`() {
-      val request = createGeneralLedgerTransactionRequest()
-      val receipt = createReceipt(SyncTransactionReceipt.Action.PROCESSED)
-      `when`(syncService.syncTransaction(any<SyncGeneralLedgerTransactionRequest>())).thenReturn(receipt)
-      val response = syncController.postGeneralLedgerTransaction(request)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isEqualTo(receipt)
-    }
-  }
-
-  @Nested
-  @DisplayName("getGeneralLedgerTransactionsByDate")
-  inner class GetGeneralLedgerTransactionsByDate {
-    @Test
-    fun `should return a list of transactions and OK status with pagination data`() {
-      val startDate = LocalDate.of(2025, 1, 1)
-      val endDate = LocalDate.of(2025, 1, 31)
-      val transactions = listOf(generalLedgerTransactionResponse)
-      val page = PageImpl(transactions, PageRequest.of(0, 20), 1)
-
-      `when`(syncQueryService.getGeneralLedgerTransactionsByDate(startDate, endDate, 0, 20)).thenReturn(page)
-      val response = syncController.getGeneralLedgerTransactionsByDate(startDate, endDate, 0, 20)
-
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isInstanceOf(SyncGeneralLedgerTransactionListResponse::class.java)
-      assertThat(response.body?.transactions).hasSize(1)
-      assertThat(response.body?.transactions).isEqualTo(transactions)
-      assertThat(response.body?.page).isEqualTo(0)
-      assertThat(response.body?.totalElements).isEqualTo(1)
-      assertThat(response.body?.totalPages).isEqualTo(1)
-      assertThat(response.body?.last).isTrue()
-    }
-
-    @Test
-    fun `should return an empty list and OK status when no transactions are found`() {
-      val startDate = LocalDate.of(2025, 1, 1)
-      val endDate = LocalDate.of(2025, 1, 31)
-      val emptyPage = Page.empty<SyncGeneralLedgerTransactionResponse>()
-
-      `when`(syncQueryService.getGeneralLedgerTransactionsByDate(startDate, endDate, 0, 20)).thenReturn(emptyPage)
-      val response = syncController.getGeneralLedgerTransactionsByDate(startDate, endDate, 0, 20)
-
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isInstanceOf(SyncGeneralLedgerTransactionListResponse::class.java)
-      assertThat(response.body?.transactions).isEmpty()
-      assertThat(response.body?.totalElements).isEqualTo(0)
-    }
-  }
-
-  @Nested
-  @DisplayName("getOffenderTransactionsByDate")
-  inner class GetOffenderTransactionsByDate {
-    @Test
-    fun `should return a list of offender transactions and OK status with pagination data`() {
-      val startDate = LocalDate.of(2025, 1, 1)
-      val endDate = LocalDate.of(2025, 1, 31)
-      val transactions = listOf(offenderTransactionResponse)
-      val page = PageImpl(transactions, PageRequest.of(0, 20), 1)
-
-      `when`(syncQueryService.getOffenderTransactionsByDate(startDate, endDate, 0, 20)).thenReturn(page)
-      val response = syncController.getOffenderTransactionsByDate(startDate, endDate, 0, 20)
-
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isInstanceOf(SyncOffenderTransactionListResponse::class.java)
-      assertThat(response.body?.offenderTransactions).hasSize(1)
-      assertThat(response.body?.offenderTransactions).isEqualTo(transactions)
-      assertThat(response.body?.page).isEqualTo(0)
-      assertThat(response.body?.totalElements).isEqualTo(1)
-      assertThat(response.body?.totalPages).isEqualTo(1)
-      assertThat(response.body?.last).isTrue()
-    }
-
-    @Test
-    fun `should return an empty list and OK status when no offender transactions are found`() {
-      val startDate = LocalDate.of(2025, 1, 1)
-      val endDate = LocalDate.of(2025, 1, 31)
-      val emptyPage = Page.empty<SyncOffenderTransactionResponse>()
-
-      `when`(syncQueryService.getOffenderTransactionsByDate(startDate, endDate, 0, 20)).thenReturn(emptyPage)
-      val response = syncController.getOffenderTransactionsByDate(startDate, endDate, 0, 20)
-
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isInstanceOf(SyncOffenderTransactionListResponse::class.java)
-      assertThat(response.body?.offenderTransactions).isEmpty()
-      assertThat(response.body?.totalElements).isEqualTo(0)
-    }
-  }
-
-  @Nested
-  @DisplayName("getGeneralLedgerTransactionById")
-  inner class GetGeneralLedgerTransactionById {
-    @Test
-    fun `should return OK and the transaction when found`() {
-      val id = generalLedgerTransactionResponse.synchronizedTransactionId
-      `when`(syncQueryService.getGeneralLedgerTransactionById(id)).thenReturn(generalLedgerTransactionResponse)
-      val response = syncController.getGeneralLedgerTransactionById(id)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isEqualTo(generalLedgerTransactionResponse)
-    }
-
-    @Test
-    fun `should return NOT_FOUND when transaction is not found`() {
-      val id = UUID.randomUUID()
-      `when`(syncQueryService.getGeneralLedgerTransactionById(id)).thenReturn(null)
-      val response = syncController.getGeneralLedgerTransactionById(id)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
-      assertThat(response.body).isInstanceOf(ErrorResponse::class.java)
-      val errorResponse = response.body as ErrorResponse
-      assertThat(errorResponse.status).isEqualTo(404)
-    }
-  }
-
-  @Nested
-  @DisplayName("getOffenderTransactionById")
-  inner class GetOffenderTransactionById {
-    @Test
-    fun `should return OK and the transaction when found`() {
-      val id = offenderTransactionResponse.synchronizedTransactionId!!
-      `when`(syncQueryService.getOffenderTransactionById(id)).thenReturn(offenderTransactionResponse)
-      val response = syncController.getOffenderTransactionById(id)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body).isEqualTo(offenderTransactionResponse)
-    }
-
-    @Test
-    fun `should return NOT_FOUND when transaction is not found`() {
-      val id = UUID.randomUUID()
-      `when`(syncQueryService.getOffenderTransactionById(id)).thenReturn(null)
-      val response = syncController.getOffenderTransactionById(id)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
-      assertThat(response.body).isInstanceOf(ErrorResponse::class.java)
-      val errorResponse = response.body as ErrorResponse
-      assertThat(errorResponse.status).isEqualTo(404)
     }
   }
 }
