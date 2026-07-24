@@ -78,6 +78,9 @@ management:
       exposure:
         include: 'info, health'
   endpoint:
+    prometheus:
+      # This explicitly overrides the hidden MoJ restriction!
+      access: unrestricted
     health:
       cache:
         time-to-live: 2000ms
