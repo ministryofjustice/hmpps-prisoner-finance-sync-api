@@ -16,6 +16,7 @@ generic-service:
     host: app-hostname.local # override per environment
     tlsSecretName: hmpps-prisoner-finance-sync-api-cert
     modsecurity_enabled: true
+    modsecurity_audit_enabled: true
     modsecurity_github_team: "hmpps-prisoner-finance"
 
   # Environment variables to load into the deployment
