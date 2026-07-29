@@ -784,13 +784,14 @@ class GeneralLedgerTest : IntegrationTestBase() {
       generalLedgerApi.stubGetSubAccountNotFound(prisonId, prisonSubRef)
       generalLedgerApi.stubCreateSubAccount(prisonParentUuid, prisonSubRef, prisonSubUuid)
 
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
       generalLedgerApi.stubPostTransaction(
         creditorSubAccountUuid = prisonerSubUuid,
         debtorSubAccountUuid = prisonSubUuid,
+        legacyTransactionId = transactionId.toString(),
       )
-
-      val transactionId = Random.nextLong(10000, 99999)
-      val timestamp = LocalDateTime.now()
 
       val request = SyncOffenderTransactionRequest(
         transactionId = transactionId,
