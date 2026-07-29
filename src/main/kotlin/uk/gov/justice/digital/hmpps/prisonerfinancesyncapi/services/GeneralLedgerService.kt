@@ -75,6 +75,7 @@ class GeneralLedgerService(
       timestamp = timeConversionService.toUtcInstant(fixedRequest.transactionTimestamp),
       amount = transaction.amount.toPence(),
       postings = postings,
+      legacyTransactionId = fixedRequest.transactionId,
     )
 
     return generalLedgerApiClient.postTransaction(

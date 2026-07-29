@@ -445,6 +445,7 @@ class GeneralLedgerApiMockServer :
     returnUUID: UUID = UUID.randomUUID(),
     postings: List<PostingResponse> = emptyList(),
     amount: Long = 1000,
+    legacyTransactionId: String? = null,
   ): TransactionResponse {
     val response = TransactionResponse(
       id = returnUUID,
@@ -476,7 +477,11 @@ class GeneralLedgerApiMockServer :
         matchingJsonPath("$.postings[?(@.type == 'DR' && @.subAccountId == '$debtorSubAccountUuid')]"),
       )
     }
-
+    if (legacyTransactionId != null) {
+      mapping = mapping.withRequestBody(
+        matchingJsonPath("$[?(@.legacyTransactionId == '$legacyTransactionId')]"),
+      )
+    }
     stubFor(mapping)
 
     return response
