@@ -37,7 +37,7 @@ class AuditHistoryPayloadTest(
 
     webTestClient
       .get()
-      .uri("/audit/history/{requestId}", payload.requestId)
+      .uri("/audit/history/{payloadId}", payload.id)
       .accept(MediaType.APPLICATION_JSON)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
@@ -64,7 +64,7 @@ class AuditHistoryPayloadTest(
   fun `Get history payload should return 400 BAD request when requestId is not the correct type`() {
     webTestClient
       .get()
-      .uri("/audit/history/{requestId}", "breakingwithastring")
+      .uri("/audit/history/{payloadId}", "breakingwithastring")
       .accept(MediaType.APPLICATION_JSON)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
@@ -75,7 +75,7 @@ class AuditHistoryPayloadTest(
   fun `Get history payload should return 404 not found when payload does not exist`() {
     webTestClient
       .get()
-      .uri("/audit/history/{requestId}", UUID.randomUUID())
+      .uri("/audit/history/{payloadId}", 99)
       .accept(MediaType.APPLICATION_JSON)
       .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO)))
       .exchange()
@@ -86,7 +86,7 @@ class AuditHistoryPayloadTest(
   fun `401 unauthorised`() {
     webTestClient
       .get()
-      .uri("/audit/history/{requestId}", UUID.randomUUID())
+      .uri("/audit/history/{payloadId}", 99)
       .exchange()
       .expectStatus().isUnauthorized
   }
@@ -95,7 +95,7 @@ class AuditHistoryPayloadTest(
   fun `403 forbidden - does not have the right role`() {
     webTestClient
       .get()
-      .uri("/audit/history/{requestId}", UUID.randomUUID())
+      .uri("/audit/history/{payloadId}", 99)
       .accept(MediaType.APPLICATION_JSON)
       .headers(setAuthorisation(roles = listOf("SOME_OTHER_ROLE")))
       .exchange()

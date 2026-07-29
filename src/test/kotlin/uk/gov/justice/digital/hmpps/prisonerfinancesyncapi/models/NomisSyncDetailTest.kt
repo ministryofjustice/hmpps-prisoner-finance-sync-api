@@ -20,6 +20,7 @@ class NomisSyncDetailTest {
       transactionTimestamp = Instant.now(),
       transactionType = "TEST",
       body = """{"key":"value"}""",
+      id = 1,
     )
 
     val result = payload.toDetail()
@@ -32,5 +33,6 @@ class NomisSyncDetailTest {
     assertEquals(payload.requestTypeIdentifier, result.requestTypeIdentifier)
     assertEquals(payload.transactionTimestamp, result.transactionTimestamp)
     assertEquals(payload.body, result.body)
+    assertEquals(payload.id, result.id)
   }
 }

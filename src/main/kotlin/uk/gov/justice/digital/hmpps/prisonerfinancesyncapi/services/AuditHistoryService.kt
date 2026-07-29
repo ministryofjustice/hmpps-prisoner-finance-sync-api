@@ -58,6 +58,8 @@ class AuditHistoryService(
 
   fun getPayloadBodyByRequestId(requestId: UUID): NomisSyncPayloadDetail? = nomisSyncPayloadRepository.findByRequestId(requestId)?.toDetail()
 
+  fun getPayloadBodyById(payloadId: Long): NomisSyncPayloadDetail? = nomisSyncPayloadRepository.findByPayloadId(payloadId)?.toDetail()
+
   private fun toCursorPage(items: List<NomisSyncPayloadSummary>, total: Long, size: Int): CursorPage<NomisSyncPayloadSummary> {
     val hasNext = items.size > size
     val content = if (hasNext) items.take(size) else items

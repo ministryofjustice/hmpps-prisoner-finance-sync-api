@@ -29,7 +29,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.audit.NomisSyn
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AuditHistoryService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.time.LocalDate
-import java.util.UUID
 
 @Tag(name = TAG_AUDIT)
 @RestController
@@ -108,17 +107,17 @@ class AuditHistoryController(
     description = "Get the full payload details (including the JSON body) for a specific request ID.",
   )
   @GetMapping(
-    path = ["/audit/history/{requestId}"],
+    path = ["/audit/history/{payloadId}"],
   )
   @ApiResponses(
     value = [
       ApiResponse(
         responseCode = "200",
-        description = "Returns the Payload matching the requestId provided.",
+        description = "Returns the Payload matching the payloadId provided.",
       ),
       ApiResponse(
         responseCode = "400",
-        description = "Bad request - invalid input data.",
+        description = "Bad request - invalid payloadId.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
@@ -133,7 +132,7 @@ class AuditHistoryController(
       ),
       ApiResponse(
         responseCode = "404",
-        description = "Not Found - No Payload found with requestId provided",
+        description = "Not Found - No Payload found with payloadId provided",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
@@ -147,10 +146,10 @@ class AuditHistoryController(
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC__AUDIT__RO}')")
   fun getPayloadByRequestId(
     @PathVariable
-    requestId: UUID,
+    payloadId: Long,
   ): ResponseEntity<NomisSyncPayloadDetail> {
     val payload =
-      auditHistoryService.getPayloadBodyByRequestId(requestId) ?: return ResponseEntity.notFound().build()
+      auditHistoryService.getPayloadBodyById(payloadId) ?: return ResponseEntity.notFound().build()
 
     return ResponseEntity.ok(payload)
   }

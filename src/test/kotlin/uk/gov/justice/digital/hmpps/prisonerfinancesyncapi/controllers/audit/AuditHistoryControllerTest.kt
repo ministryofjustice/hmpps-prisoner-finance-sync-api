@@ -96,27 +96,28 @@ class AuditHistoryControllerTest {
         transactionType = "TEST",
         body = """{"transactionId":1001,"caseloadId":"MDI","offenderId":123,"eventType":"SyncOffenderTransaction"}""",
         transactionTimestamp = Instant.now(),
+        id = 1,
       )
-      Mockito.`when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
+      Mockito.`when`(auditHistoryService.getPayloadBodyById(payload.id!!))
         .thenReturn(payload)
 
-      val response = auditHistoryController.getPayloadByRequestId(requestId)
+      val response = auditHistoryController.getPayloadByRequestId(payloadId = payload.id)
 
       Assertions.assertThat(response.body).isEqualTo(payload)
-      verify(auditHistoryService).getPayloadBodyByRequestId(requestId)
+      verify(auditHistoryService).getPayloadBodyById(payloadId = payload.id)
       Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
     }
 
     @Test
     fun `should return 404 when no payload is found`() {
       val requestId = UUID.randomUUID()
-      Mockito.`when`(auditHistoryService.getPayloadBodyByRequestId(requestId))
+      Mockito.`when`(auditHistoryService.getPayloadBodyById(payloadId = 99))
         .thenReturn(null)
 
-      val response = auditHistoryController.getPayloadByRequestId(requestId)
+      val response = auditHistoryController.getPayloadByRequestId(payloadId = 99)
 
       Assertions.assertThat(response.body).isNull()
-      verify(auditHistoryService).getPayloadBodyByRequestId(requestId)
+      verify(auditHistoryService).getPayloadBodyById(payloadId = 99)
       Assertions.assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }

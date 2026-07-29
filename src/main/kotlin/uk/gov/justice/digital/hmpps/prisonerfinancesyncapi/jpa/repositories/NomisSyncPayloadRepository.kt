@@ -17,6 +17,16 @@ interface NomisSyncPayloadRepository :
   JpaRepository<NomisSyncPayload, Long>,
   JpaSpecificationExecutor<NomisSyncPayload> {
 
+  @Query(
+    """
+      SELECT p
+      FROM NomisSyncPayload p WHERE p.id = :id
+    """,
+  )
+  fun findByPayloadId(
+    @Param("id") payloadId: Long,
+  ): NomisSyncPayload?
+
   fun findByRequestId(requestId: UUID): NomisSyncPayload?
 
   fun findFirstByLegacyTransactionIdOrderByTimestampDesc(transactionId: Long): NomisSyncPayload?
