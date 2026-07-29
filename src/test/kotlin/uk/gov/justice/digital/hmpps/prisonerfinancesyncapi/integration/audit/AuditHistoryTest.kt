@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.audit
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -50,6 +51,11 @@ class AuditHistoryTest(
     transactionType = "TEST",
     transactionTimestamp = transactionTimestamp,
   )
+
+  @BeforeEach
+  fun setup() {
+    nomisSyncPayloadRepository.deleteAll()
+  }
 
   @Test
   fun `Get History should return an empty list when there aren't any payloads`() {
@@ -320,7 +326,8 @@ class AuditHistoryTest(
   @Test
   fun `Get History without any parameter returns any PrisonId, LegacyTransactionId, and date`() {
     nomisSyncPayloadRepository.deleteAll()
-    val payloads = (1..3).map {
+    val payloads = (1L..3L).map {
+      print(it)
       nomisSyncPayloadRepository.save(makeNomisSyncPayload(uniqueCaseloadId(), legacyTransactionId = Random.nextLong(1000, 9999)))
     }.sortedByDescending { it.timestamp }
 

@@ -251,13 +251,13 @@ class AuditHistoryServiceTest {
 
     @Test
     fun `returns null when payload does not exist`() {
-      val requestId = UUID.randomUUID()
+      val payloadId = 1L
 
       doReturn(null)
         .whenever(nomisSyncPayloadRepository)
-        .findByRequestId(requestId)
+        .findByPayloadId(payloadId)
 
-      val result = auditHistoryService.getPayloadBodyByRequestId(requestId)
+      val result = auditHistoryService.getPayloadBodyById(payloadId)
 
       assertThat(result).isNull()
     }

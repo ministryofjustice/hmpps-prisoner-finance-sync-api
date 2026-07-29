@@ -118,6 +118,7 @@ class ResponseMapperServiceTest {
         body = "",
         transactionType = "TEST",
         transactionTimestamp = Instant.now(),
+        id = 1,
       )
       val ex = assertThrows(MismatchedInputException::class.java) {
         responseMapperService.mapToGeneralLedgerTransactionResponse(nomisPayload)
@@ -139,6 +140,7 @@ class ResponseMapperServiceTest {
         body = bodySyncGeneralLedgerTransaction,
         transactionType = "TEST",
         transactionTimestamp = Instant.now(),
+        id = 1,
       )
 
       val mapperResponse = responseMapperService.mapToGeneralLedgerTransactionResponse(nomisPayload)
@@ -191,6 +193,7 @@ class ResponseMapperServiceTest {
         body = bodySyncGeneralLedgerTransaction,
         transactionType = "TEST",
         transactionTimestamp = Instant.now(),
+        id = 1,
       )
 
       val mapperResponse = responseMapperService.mapToGeneralLedgerTransactionResponse(nomisPayload)
@@ -216,6 +219,7 @@ class ResponseMapperServiceTest {
         body = "",
         transactionType = "TEST",
         transactionTimestamp = Instant.now(),
+        id = 1,
       )
       val ex = assertThrows(MismatchedInputException::class.java) {
         responseMapperService.mapToOffenderTransactionResponse(nomisPayload)
@@ -237,6 +241,7 @@ class ResponseMapperServiceTest {
         body = bodySyncOffenderTransactionRequest,
         transactionType = "TEST",
         transactionTimestamp = Instant.now(),
+        id = 1,
       )
 
       val mapperResponse = responseMapperService.mapToOffenderTransactionResponse(nomisPayload)
@@ -273,6 +278,7 @@ class ResponseMapperServiceTest {
         body = bodySyncOffenderTransactionRequest,
         transactionType = "TEST",
         transactionTimestamp = Instant.now(),
+        id = 1,
       )
 
       val mapperResponse = responseMapperService.mapToOffenderTransactionResponse(nomisPayload)
