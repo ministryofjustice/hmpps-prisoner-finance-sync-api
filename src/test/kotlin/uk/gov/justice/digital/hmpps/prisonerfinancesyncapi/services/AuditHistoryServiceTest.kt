@@ -251,6 +251,43 @@ class AuditHistoryServiceTest {
 
     @Test
     fun `returns null when payload does not exist`() {
+      val requestId = UUID.randomUUID()
+
+      doReturn(null)
+        .whenever(nomisSyncPayloadRepository)
+        .findByRequestId(requestId)
+
+      val result = auditHistoryService.getPayloadBodyByRequestId(requestId)
+
+      assertThat(result).isNull()
+    }
+  }
+
+  @Nested
+  inner class GetPayloadById {
+
+    @Test
+    fun `returns payload body when payload exists`() {
+      val requestId = UUID.randomUUID()
+      val payload = NomisSyncPayload(
+        timestamp = Instant.now(),
+        legacyTransactionId = 1003L,
+        requestId = requestId,
+        caseloadId = uniqueCaseloadId(),
+        requestTypeIdentifier = "NewSyncType",
+        synchronizedTransactionId = UUID.randomUUID(),
+        body = """{"test": "data"}""",
+        transactionType = "TEST",
+        transactionTimestamp = Instant.now(),
+        id = 1,
+      )
+      whenever(nomisSyncPayloadRepository.findByPayloadId(payload.id!!)).thenReturn(payload)
+      val result = auditHistoryService.getPayloadBodyById(payload.id!!)
+      assertThat(result).isEqualTo(payload.toDetail())
+    }
+
+    @Test
+    fun `returns null when payload does not exist`() {
       val payloadId = 1L
 
       doReturn(null)

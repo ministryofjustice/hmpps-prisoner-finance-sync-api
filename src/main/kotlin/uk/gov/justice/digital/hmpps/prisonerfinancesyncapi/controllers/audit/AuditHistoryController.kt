@@ -153,6 +153,4 @@ class AuditHistoryController(
 
     return ResponseEntity.ok(payload)
   }
-
-  // We need to check if getPayloadByRequestId is being used by anything else other then the test?
 }

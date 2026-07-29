@@ -327,7 +327,6 @@ class AuditHistoryTest(
   fun `Get History without any parameter returns any PrisonId, LegacyTransactionId, and date`() {
     nomisSyncPayloadRepository.deleteAll()
     val payloads = (1L..3L).map {
-      print(it)
       nomisSyncPayloadRepository.save(makeNomisSyncPayload(uniqueCaseloadId(), legacyTransactionId = Random.nextLong(1000, 9999)))
     }.sortedByDescending { it.timestamp }
 
