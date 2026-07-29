@@ -545,6 +545,7 @@ class GeneralLedgerServiceTest {
         timestamp = timeConversionService.toUtcInstant(request.transactionTimestamp),
         amount = amount.toPence(),
         entrySequence = 1,
+        legacyTransactionId = transactionId,
         postings = listOf(
           CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-1"), type = CreatePostingRequest.Type.CR, entrySequence = 1, amount = amount.toPence()),
           CreatePostingRequest(subAccountId = mapOfUUIDs.getValue("0-2"), type = CreatePostingRequest.Type.DR, entrySequence = 2, amount = amount.toPence()),
@@ -632,6 +633,7 @@ class GeneralLedgerServiceTest {
           CreatePostingRequest(subAccountId = mapUUID.getValue("0-1"), type = CreatePostingRequest.Type.CR, entrySequence = 1, amount = amount.toPence()),
           CreatePostingRequest(subAccountId = mapUUID.getValue("0-2"), type = CreatePostingRequest.Type.DR, entrySequence = 2, amount = amount.toPence()),
         ),
+        legacyTransactionId = transactionId,
       )
 
       val glTransactionRequestPrisoner2 = CreateTransactionRequest(
@@ -644,6 +646,7 @@ class GeneralLedgerServiceTest {
           CreatePostingRequest(subAccountId = mapUUID.getValue("1-3"), type = CreatePostingRequest.Type.CR, entrySequence = 3, amount = amount.toPence()),
           CreatePostingRequest(subAccountId = mapUUID.getValue("1-4"), type = CreatePostingRequest.Type.DR, entrySequence = 4, amount = amount.toPence()),
         ),
+        legacyTransactionId = transactionId,
       )
       whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner1), any(), eq(transactionId))).thenReturn(UUID.randomUUID())
       whenever(generalLedgerApiClient.postTransaction(eq(glTransactionRequestPrisoner2), any(), eq(transactionId))).thenReturn(UUID.randomUUID())

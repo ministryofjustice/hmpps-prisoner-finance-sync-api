@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-06-17.525.2392af9"
+    "version" : "2026-07-29.654.a649124"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1610,6 +1610,11 @@
             },
             "maxItems" : 2147483647,
             "minItems" : 2
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS"
           }
         },
         "required" : [ "amount", "description", "entrySequence", "postings", "reference", "timestamp" ]
@@ -1692,6 +1697,11 @@
             "items" : {
               "$ref" : "#/components/schemas/PostingResponse"
             }
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS"
           }
         },
         "required" : [ "amount", "createdAt", "createdBy", "description", "id", "postings", "reference", "timestamp" ]
@@ -1855,6 +1865,11 @@
             "items" : {
               "$ref" : "#/components/schemas/SearchPostingResponse"
             }
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS"
           }
         },
         "required" : [ "amount", "createdAt", "createdBy", "description", "entrySequence", "id", "postings", "reference", "timestamp" ]
@@ -2118,6 +2133,11 @@
             "items" : {
               "$ref" : "#/components/schemas/PrisonerPostingListResponse"
             }
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS"
           }
         },
         "required" : [ "description", "id", "postings", "timestamp" ]
@@ -2291,6 +2311,11 @@
             "type" : [ "integer", "null" ],
             "format" : "int64",
             "description" : "The overall account balance at the time the posting was made"
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS"
           }
         },
         "required" : [ "amount", "description", "oppositePostings", "postingCreatedAt", "postingType", "subAccount", "transactionId", "transactionTimestamp" ]
