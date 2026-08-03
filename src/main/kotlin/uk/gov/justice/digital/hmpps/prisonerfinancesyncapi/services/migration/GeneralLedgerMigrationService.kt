@@ -13,19 +13,19 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.InMemoryAcco
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 
-@Service("generalLedgerMigrationService")
+@Service
 class GeneralLedgerMigrationService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val timeConversionService: TimeConversionService,
   private val telemetryClient: TelemetryClient,
   private val accountResolver: GeneralLedgerAccountResolver,
-) : MigrationService {
+) {
 
   private companion object {
     private val log = LoggerFactory.getLogger(this::class.java)
   }
 
-  override fun migrateGeneralLedgerBalances(
+  fun migrateGeneralLedgerBalances(
     prisonId: String,
     request: GeneralLedgerBalancesSyncRequest,
   ) {
@@ -34,7 +34,7 @@ class GeneralLedgerMigrationService(
 
   val telemetryMigrationEvent = "prisoner-finance-sync-migration"
 
-  override fun migratePrisonerBalances(
+  fun migratePrisonerBalances(
     prisonNumber: String,
     request: PrisonerBalancesSyncRequest,
   ) {

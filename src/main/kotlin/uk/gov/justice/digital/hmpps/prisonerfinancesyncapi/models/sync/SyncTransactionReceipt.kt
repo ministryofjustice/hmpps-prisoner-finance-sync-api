@@ -31,9 +31,6 @@ data class SyncTransactionReceipt(
     @Schema(description = "A new transaction was successfully created in the finance system.")
     CREATED,
 
-    @Schema(description = "An existing transaction's metadata was successfully updated in the finance system.")
-    UPDATED,
-
     @Schema(description = "The request was already processed, and a new transaction was not created.")
     PROCESSED,
 
