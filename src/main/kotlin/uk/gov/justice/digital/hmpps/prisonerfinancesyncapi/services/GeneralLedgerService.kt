@@ -133,10 +133,10 @@ class GeneralLedgerService(
         generalLedgerTransactionMappingRepository.save(transactionMapping)
 
         successfullyMappedTransactionEntries.add(transactionMapping)
-      }.recoverCatching { e: Throwable ->
-        if (e is DataIntegrityViolationException &&
-          e.message?.contains("duplicate key value violates unique constraint") == true &&
-          e.message?.contains("uq_gl_transaction_mapping_legacy_item") == true
+      }.recoverCatching { t: Throwable ->
+        if (t is DataIntegrityViolationException &&
+          t.message?.contains("duplicate key value violates unique constraint") == true &&
+          t.message?.contains("uq_gl_transaction_mapping_legacy_item") == true
         ) {
           val transactionMapping = generalLedgerTransactionMappingRepository
             .findGeneralLedgerTransactionMappingByLegacyTransactionIdAndEntrySequence(
@@ -148,9 +148,9 @@ class GeneralLedgerService(
           }
           previouslyMappedTransactionEntries[transaction.entrySequence] = transactionMapping
         } else {
-          throw e
+          throw t
         }
-      }.onFailure { e: Throwable ->
+      }.onFailure { t: Throwable ->
         unsuccessfullyMappedTransactionEntries.add(
           transaction,
         )
@@ -160,14 +160,15 @@ class GeneralLedgerService(
           "transactionId" to fixedRequest.transactionId.toString(),
           "transactionType" to transaction.type,
           "entrySequence" to transaction.entrySequence.toString(),
-          "exceptionMessage" to if (e is WebClientResponseException) {
-            "${e.responseBodyAsString}\n${e.message}"
+          "exceptionMessage" to if (t is WebClientResponseException) {
+            "${t.responseBodyAsString}\n${t.message}"
           } else {
-            e.message.toString()
+            t.message.toString()
           },
+          "exceptionCause" to t.cause?.message.toString(),
         )
 
-        logRequestAsError(properties, e)
+        logRequestAsError(properties, t)
       }
     }
 
@@ -178,11 +179,11 @@ class GeneralLedgerService(
     )
   }
 
-  private fun logRequestAsError(properties: Map<String, String>, exception: Throwable) {
-    log.error("Failed to forward transaction to General Ledger $properties", exception)
+  private fun logRequestAsError(properties: Map<String, String>, throwable: Throwable) {
+    log.error("Failed to forward transaction to General Ledger $properties", throwable)
 
-    if (exception is Exception) {
-      telemetryClient.trackException(exception, properties, null)
+    if (throwable is Exception) {
+      telemetryClient.trackException(throwable, properties, null)
     } else {
       // generic event for Throwable
       telemetryClient.trackEvent("Sync Error", properties, null)
