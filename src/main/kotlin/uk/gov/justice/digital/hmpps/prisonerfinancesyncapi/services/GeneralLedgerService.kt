@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -99,7 +100,8 @@ class GeneralLedgerService(
     val requestCache = InMemoryAccountCache()
 
     val previouslyMappedTransactionEntries = generalLedgerTransactionMappingRepository
-      .findGeneralLedgerTransactionMappingByLegacyTransactionId(fixedRequest.transactionId).associateBy { it.entrySequence }
+      .findGeneralLedgerTransactionMappingByLegacyTransactionId(fixedRequest.transactionId)
+      .associateBy { it.entrySequence }.toMutableMap()
 
     val unsuccessfullyMappedTransactionEntries = mutableListOf<OffenderTransaction>()
     val successfullyMappedTransactionEntries = mutableListOf<GeneralLedgerTransactionMapping>()
@@ -112,7 +114,7 @@ class GeneralLedgerService(
         )
         continue
       }
-      try {
+      runCatching {
         val transactionGLUUID = sendTransactionToGl(
           transaction,
           fixedRequest,
@@ -131,7 +133,24 @@ class GeneralLedgerService(
         generalLedgerTransactionMappingRepository.save(transactionMapping)
 
         successfullyMappedTransactionEntries.add(transactionMapping)
-      } catch (e: Exception) {
+      }.recoverCatching { t: Throwable ->
+        if (t is DataIntegrityViolationException &&
+          t.message?.contains("duplicate key value violates unique constraint") == true &&
+          t.message?.contains("uq_gl_transaction_mapping_legacy_item") == true
+        ) {
+          val transactionMapping = generalLedgerTransactionMappingRepository
+            .findGeneralLedgerTransactionMappingByLegacyTransactionIdAndEntrySequence(
+              legacyTransactionId = fixedRequest.transactionId,
+              entrySequence = transaction.entrySequence,
+            )
+          if (transactionMapping == null) {
+            throw IllegalStateException("Could not find transaction mapping for ${fixedRequest.transactionId} and ${transaction.entrySequence} after unique constraint violation")
+          }
+          previouslyMappedTransactionEntries[transaction.entrySequence] = transactionMapping
+        } else {
+          throw t
+        }
+      }.onFailure { t: Throwable ->
         unsuccessfullyMappedTransactionEntries.add(
           transaction,
         )
@@ -141,14 +160,15 @@ class GeneralLedgerService(
           "transactionId" to fixedRequest.transactionId.toString(),
           "transactionType" to transaction.type,
           "entrySequence" to transaction.entrySequence.toString(),
-          "exceptionMessage" to if (e is WebClientResponseException) {
-            "${e.responseBodyAsString}\n${e.message}"
+          "exceptionMessage" to if (t is WebClientResponseException) {
+            "${t.responseBodyAsString}\n${t.message}"
           } else {
-            e.message.toString()
+            t.message.toString()
           },
+          "exceptionCause" to t.cause?.message.toString(),
         )
 
-        logRequestAsError(properties, e)
+        logRequestAsError(properties, t)
       }
     }
 
@@ -159,10 +179,15 @@ class GeneralLedgerService(
     )
   }
 
-  private fun logRequestAsError(properties: Map<String, String>, exception: Exception) {
-    log.error("Failed to forward transaction to General Ledger $properties", exception)
+  private fun logRequestAsError(properties: Map<String, String>, throwable: Throwable) {
+    log.error("Failed to forward transaction to General Ledger $properties", throwable)
 
-    telemetryClient.trackException(exception, properties, null)
+    if (throwable is Exception) {
+      telemetryClient.trackException(throwable, properties, null)
+    } else {
+      // generic event for Throwable
+      telemetryClient.trackEvent("Sync Error", properties, null)
+    }
   }
 
   fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> {
