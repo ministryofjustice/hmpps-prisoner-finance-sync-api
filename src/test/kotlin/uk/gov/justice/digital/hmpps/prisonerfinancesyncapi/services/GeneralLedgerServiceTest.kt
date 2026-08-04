@@ -24,6 +24,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
@@ -251,7 +252,7 @@ class GeneralLedgerServiceTest {
   @DisplayName("syncOffenderTransaction")
   inner class SyncOffenderTransaction {
     @Test
-    fun `should return any offender transactions that were unsuccessfully sent to GL`() {
+    fun `Should return any offender transactions that were unsuccessfully sent to GL`() {
       val glEntry = GeneralLedgerEntry(
         entrySequence = 1,
         code = 1,
@@ -306,7 +307,7 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
-    fun `should return list of successfully created transactions when multiple transactions are processed`() {
+    fun `Should return list of successfully created transactions when multiple transactions are processed`() {
       val tx1 = OffenderTransaction(
         entrySequence = 1,
         offenderId = 1L,
@@ -366,7 +367,7 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
-    fun `should return list of previously created transactions when transactions have already been processed`() {
+    fun `Should return list of previously created transactions when transactions have already been processed`() {
       val tx1 = OffenderTransaction(
         entrySequence = 1,
         offenderId = 1L,
@@ -440,7 +441,7 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
-    fun `should save mapping with correct NOMIS transaction ID`() {
+    fun `Should save mapping with correct NOMIS transaction ID`() {
       val request = SyncOffenderTransactionRequest(
         transactionId = 12345L,
         caseloadId = "TEST",
@@ -484,14 +485,9 @@ class GeneralLedgerServiceTest {
         },
       )
     }
-  }
-
-  @Nested
-  @DisplayName("syncGeneralLedgerTransaction")
-  inner class SyncGeneralLedgerTransaction {
 
     @Test
-    fun `should call POST transaction`() {
+    fun `Should call POST transaction`() {
       val transactionId = Random.nextLong(10000, 99999)
       val timestamp = LocalDateTime.now()
       val prisonId = "LEI"
@@ -556,7 +552,7 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
-    fun `should post multiple transactions where there are multiple prisoners`() {
+    fun `Should post multiple transactions where there are multiple prisoners`() {
       val transactionId = Random.nextLong(10000, 99999)
       val timestamp = LocalDateTime.now()
       val prisonId = "LEI"
@@ -652,6 +648,89 @@ class GeneralLedgerServiceTest {
       verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner1), any(), eq(transactionId))
       verify(generalLedgerApiClient).postTransaction(eq(glTransactionRequestPrisoner2), any(), eq(transactionId))
       verify(generalLedgerTransactionMappingRepository, times(2)).save(any())
+    }
+
+    @Test
+    fun `Should respond with mapping if the mapping was created twice by the race condition`() {
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 12345L,
+        caseloadId = "TEST",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction for Balance Check",
+            amount = BigDecimal("10.00"),
+            reference = "REF-54322L",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+        ),
+      )
+
+      makeMockSubAccountResolver(request)
+
+      val mappingUUID = UUID.randomUUID()
+
+      val mappingTransaction = GeneralLedgerTransactionMapping(
+        legacyTransactionId = request.transactionId,
+        entrySequence = request.offenderTransactions[0].generalLedgerEntries[0].entrySequence,
+        glTransactionUuid = mappingUUID,
+      )
+
+      whenever(
+        generalLedgerTransactionMappingRepository
+          .findGeneralLedgerTransactionMappingByLegacyTransactionId(request.transactionId),
+      ).thenReturn(
+        listOf(),
+      )
+
+      whenever(generalLedgerTransactionMappingRepository.save(any<GeneralLedgerTransactionMapping>()))
+        .thenThrow(
+          DataIntegrityViolationException(
+            "ERROR: duplicate key value violates unique constraint \"uq_gl_transaction_mapping_legacy_item\"",
+          ),
+        )
+
+      whenever(
+        generalLedgerTransactionMappingRepository
+          .findGeneralLedgerTransactionMappingByLegacyTransactionIdAndEntrySequence(
+            legacyTransactionId = request.transactionId,
+            entrySequence = request.offenderTransactions[0].entrySequence,
+          ),
+      )
+        .thenReturn(
+          mappingTransaction,
+        )
+
+      whenever(
+        generalLedgerApiClient.postTransaction(
+          any(),
+          any(),
+          eq(request.transactionId),
+        ),
+      ).thenReturn(mappingUUID)
+
+      val response = generalLedgerService.syncOffenderTransaction(request)
+
+      assertThat(response.successfullyMappedTransactionEntries).hasSize(0)
+      assertThat(response.unsuccessfullyMappedTransactionEntries).hasSize(0)
+      assertThat(response.previouslyMappedTransactionEntries).hasSize(1)
     }
   }
 

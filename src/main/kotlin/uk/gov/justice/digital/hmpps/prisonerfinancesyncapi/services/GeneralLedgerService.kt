@@ -2,6 +2,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
 import org.slf4j.LoggerFactory
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -99,7 +100,8 @@ class GeneralLedgerService(
     val requestCache = InMemoryAccountCache()
 
     val previouslyMappedTransactionEntries = generalLedgerTransactionMappingRepository
-      .findGeneralLedgerTransactionMappingByLegacyTransactionId(fixedRequest.transactionId).associateBy { it.entrySequence }
+      .findGeneralLedgerTransactionMappingByLegacyTransactionId(fixedRequest.transactionId)
+      .associateBy { it.entrySequence }.toMutableMap()
 
     val unsuccessfullyMappedTransactionEntries = mutableListOf<OffenderTransaction>()
     val successfullyMappedTransactionEntries = mutableListOf<GeneralLedgerTransactionMapping>()
@@ -112,7 +114,7 @@ class GeneralLedgerService(
         )
         continue
       }
-      try {
+      runCatching {
         val transactionGLUUID = sendTransactionToGl(
           transaction,
           fixedRequest,
@@ -131,7 +133,24 @@ class GeneralLedgerService(
         generalLedgerTransactionMappingRepository.save(transactionMapping)
 
         successfullyMappedTransactionEntries.add(transactionMapping)
-      } catch (e: Exception) {
+      }.recoverCatching { e: Throwable ->
+        if (e is DataIntegrityViolationException &&
+          e.message?.contains("duplicate key value violates unique constraint") == true &&
+          e.message?.contains("uq_gl_transaction_mapping_legacy_item") == true
+        ) {
+          val transactionMapping = generalLedgerTransactionMappingRepository
+            .findGeneralLedgerTransactionMappingByLegacyTransactionIdAndEntrySequence(
+              legacyTransactionId = fixedRequest.transactionId,
+              entrySequence = transaction.entrySequence,
+            )
+          if (transactionMapping == null) {
+            throw IllegalStateException("Could not find transaction mapping for ${fixedRequest.transactionId} and ${transaction.entrySequence} after unique constraint violation")
+          }
+          previouslyMappedTransactionEntries[transaction.entrySequence] = transactionMapping
+        } else {
+          throw e
+        }
+      }.onFailure { e: Throwable ->
         unsuccessfullyMappedTransactionEntries.add(
           transaction,
         )
@@ -159,10 +178,15 @@ class GeneralLedgerService(
     )
   }
 
-  private fun logRequestAsError(properties: Map<String, String>, exception: Exception) {
+  private fun logRequestAsError(properties: Map<String, String>, exception: Throwable) {
     log.error("Failed to forward transaction to General Ledger $properties", exception)
 
-    telemetryClient.trackException(exception, properties, null)
+    if (exception is Exception) {
+      telemetryClient.trackException(exception, properties, null)
+    } else {
+      // generic event for Throwable
+      telemetryClient.trackEvent("Sync Error", properties, null)
+    }
   }
 
   fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> {

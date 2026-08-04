@@ -16,4 +16,5 @@ interface GeneralLedgerTransactionMappingRepository : JpaRepository<GeneralLedge
   )
   fun findAllOnDate(dateStart: Instant, dateEnd: Instant): List<GeneralLedgerTransactionMapping>
   fun findGeneralLedgerTransactionMappingByLegacyTransactionId(legacyTransactionId: Long): List<GeneralLedgerTransactionMapping>
+  fun findGeneralLedgerTransactionMappingByLegacyTransactionIdAndEntrySequence(legacyTransactionId: Long, entrySequence: Int): GeneralLedgerTransactionMapping?
 }
