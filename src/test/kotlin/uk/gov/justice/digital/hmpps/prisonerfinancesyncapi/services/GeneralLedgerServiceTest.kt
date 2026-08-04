@@ -732,6 +732,173 @@ class GeneralLedgerServiceTest {
       assertThat(response.unsuccessfullyMappedTransactionEntries).hasSize(0)
       assertThat(response.previouslyMappedTransactionEntries).hasSize(1)
     }
+
+    @Test
+    fun `Should handle exception gracefully if the mapping is not found after a race condition`() {
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 12345L,
+        caseloadId = "TEST",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction for Balance Check",
+            amount = BigDecimal("10.00"),
+            reference = "REF-54322L",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+        ),
+      )
+
+      makeMockSubAccountResolver(request)
+
+      val mappingUUID = UUID.randomUUID()
+
+      val mappingTransaction = GeneralLedgerTransactionMapping(
+        legacyTransactionId = request.transactionId,
+        entrySequence = request.offenderTransactions[0].generalLedgerEntries[0].entrySequence,
+        glTransactionUuid = mappingUUID,
+      )
+
+      whenever(
+        generalLedgerTransactionMappingRepository
+          .findGeneralLedgerTransactionMappingByLegacyTransactionId(request.transactionId),
+      ).thenReturn(
+        listOf(),
+      )
+
+      whenever(generalLedgerTransactionMappingRepository.save(any<GeneralLedgerTransactionMapping>()))
+        .thenThrow(
+          DataIntegrityViolationException(
+            "ERROR: duplicate key value violates unique constraint \"uq_gl_transaction_mapping_legacy_item\"",
+          ),
+        )
+
+      whenever(
+        generalLedgerTransactionMappingRepository
+          .findGeneralLedgerTransactionMappingByLegacyTransactionIdAndEntrySequence(
+            legacyTransactionId = request.transactionId,
+            entrySequence = request.offenderTransactions[0].entrySequence,
+          ),
+      )
+        .thenReturn(
+          null,
+        )
+
+      whenever(
+        generalLedgerApiClient.postTransaction(
+          any(),
+          any(),
+          eq(request.transactionId),
+        ),
+      ).thenReturn(mappingUUID)
+
+      val response = generalLedgerService.syncOffenderTransaction(request)
+
+      assertThat(response.successfullyMappedTransactionEntries).hasSize(0)
+      assertThat(response.unsuccessfullyMappedTransactionEntries).hasSize(1)
+      assertThat(response.previouslyMappedTransactionEntries).hasSize(0)
+
+      verify(telemetryClient).trackException(
+        any<IllegalStateException>(),
+        any<Map<String, String>>(),
+        eq(null),
+      )
+    }
+
+    @Test
+    fun `Should handle exception gracefully when an unexcepted DataIntegrityException is thrown`() {
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 12345L,
+        caseloadId = "TEST",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = offenderDisplayId,
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction for Balance Check",
+            amount = BigDecimal("10.00"),
+            reference = "REF-54322L",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("10.00")),
+              GeneralLedgerEntry(2, 2101, "DR", BigDecimal("10.00")),
+            ),
+          ),
+        ),
+      )
+
+      makeMockSubAccountResolver(request)
+
+      val mappingUUID = UUID.randomUUID()
+
+      val mappingTransaction = GeneralLedgerTransactionMapping(
+        legacyTransactionId = request.transactionId,
+        entrySequence = request.offenderTransactions[0].generalLedgerEntries[0].entrySequence,
+        glTransactionUuid = mappingUUID,
+      )
+
+      whenever(
+        generalLedgerTransactionMappingRepository
+          .findGeneralLedgerTransactionMappingByLegacyTransactionId(request.transactionId),
+      ).thenReturn(
+        listOf(),
+      )
+
+      whenever(generalLedgerTransactionMappingRepository.save(any<GeneralLedgerTransactionMapping>()))
+        .thenThrow(
+          DataIntegrityViolationException(
+            "ERROR: duplicate key value violates unique constraint \"unexpected_constraint_error\"",
+          ),
+        )
+
+      whenever(
+        generalLedgerApiClient.postTransaction(
+          any(),
+          any(),
+          eq(request.transactionId),
+        ),
+      ).thenReturn(mappingUUID)
+
+      val response = generalLedgerService.syncOffenderTransaction(request)
+
+      assertThat(response.successfullyMappedTransactionEntries).hasSize(0)
+      assertThat(response.unsuccessfullyMappedTransactionEntries).hasSize(1)
+      assertThat(response.previouslyMappedTransactionEntries).hasSize(0)
+
+      verify(telemetryClient).trackException(
+        any<DataIntegrityViolationException>(),
+        any<Map<String, String>>(),
+        eq(null),
+      )
+    }
   }
 
   @Nested
