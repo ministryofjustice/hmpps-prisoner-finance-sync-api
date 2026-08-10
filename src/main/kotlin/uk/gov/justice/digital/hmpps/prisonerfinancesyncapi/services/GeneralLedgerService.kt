@@ -160,14 +160,14 @@ class GeneralLedgerService(
           "transactionId" to fixedRequest.transactionId.toString(),
           "transactionType" to transaction.type,
           "entrySequence" to transaction.entrySequence.toString(),
+          "exceptionClass" to t.javaClass.simpleName,
           "exceptionMessage" to if (t is WebClientResponseException) {
-            "${t.responseBodyAsString}\n${t.message}"
+            "HTTP ${t.statusCode}: ${t.responseBodyAsString}\n${t.message}"
           } else {
-            t.message.toString()
+            t.message ?: "No message provided by ${t.javaClass.simpleName}"
           },
-          "exceptionCause" to t.cause?.message.toString(),
+          "exceptionCause" to (t.cause?.message ?: t.cause?.javaClass?.simpleName ?: "No underlying cause"),
         )
-
         logRequestAsError(properties, t)
       }
     }

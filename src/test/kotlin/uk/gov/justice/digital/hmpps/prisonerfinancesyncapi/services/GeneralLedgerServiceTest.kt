@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Logger
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.read.ListAppender
 import com.microsoft.applicationinsights.TelemetryClient
+import io.netty.handler.timeout.ReadTimeoutException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
@@ -17,8 +18,10 @@ import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.check
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoMoreInteractions
@@ -898,6 +901,80 @@ class GeneralLedgerServiceTest {
         any<Map<String, String>>(),
         eq(null),
       )
+    }
+
+    @Test
+    fun `Should handle and log Netty ReadTimeoutException with null message correctly`() {
+      val request = SyncOffenderTransactionRequest(
+        transactionId = 998877L,
+        caseloadId = "MDI",
+        transactionTimestamp = LocalDateTime.now(),
+        createdAt = LocalDateTime.now().plusSeconds(5),
+        createdBy = "OMS_OWNER",
+        requestId = UUID.randomUUID(),
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 5306470,
+            offenderDisplayId = "A1234BC",
+            offenderBookingId = 2970777,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "CANT",
+            description = "Test Transaction for Timeout",
+            amount = BigDecimal("15.00"),
+            reference = "REF-TIMEOUT",
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 1501, "CR", BigDecimal("15.00")),
+            ),
+          ),
+        ),
+      )
+
+      makeMockSubAccountResolver(request)
+
+      whenever(
+        generalLedgerTransactionMappingRepository
+          .findGeneralLedgerTransactionMappingByLegacyTransactionId(request.transactionId),
+      ).thenReturn(emptyList())
+
+      val timeoutException = ReadTimeoutException.INSTANCE
+
+      whenever(
+        generalLedgerApiClient.postTransaction(
+          any(),
+          any(),
+          eq(request.transactionId),
+        ),
+      ).thenThrow(timeoutException)
+
+      val response = generalLedgerService.syncOffenderTransaction(request)
+
+      assertThat(response.successfullyMappedTransactionEntries).isEmpty()
+      assertThat(response.unsuccessfullyMappedTransactionEntries).hasSize(1)
+      assertThat(response.previouslyMappedTransactionEntries).isEmpty()
+
+      val propertiesCaptor = argumentCaptor<Map<String, String>>()
+
+      verify(telemetryClient).trackException(
+        eq(timeoutException),
+        propertiesCaptor.capture(),
+        isNull(),
+      )
+
+      val capturedProperties = propertiesCaptor.firstValue
+
+      assertThat(capturedProperties).containsEntry("requestId", request.requestId.toString())
+      assertThat(capturedProperties).containsEntry("transactionId", "998877")
+      assertThat(capturedProperties).containsEntry("transactionType", "CANT")
+      assertThat(capturedProperties).containsEntry("entrySequence", "1")
+      assertThat(capturedProperties).containsEntry("exceptionClass", "ReadTimeoutException")
+      assertThat(capturedProperties).containsEntry("exceptionMessage", "No message provided by ReadTimeoutException")
+      assertThat(capturedProperties).containsEntry("exceptionCause", "No underlying cause")
     }
   }
 
