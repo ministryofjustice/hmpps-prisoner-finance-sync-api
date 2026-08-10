@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-07-29.654.a649124"
+    "version" : "2026-08-07.684.1e5da71"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1052,6 +1052,86 @@
         } ]
       }
     },
+    "/sub-accounts/{subAccountId}/statementBalances" : {
+      "get" : {
+        "tags" : [ "Sub Account Controller" ],
+        "operationId" : "getSubAccountStatementBalances",
+        "parameters" : [ {
+          "name" : "subAccountId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Returns statement balances from a sub-account id",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatementBalanceResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Resource not found - Sub account not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RO", "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
+        } ]
+      }
+    },
     "/queue-admin/get-dlq-messages/{dlqName}" : {
       "get" : {
         "tags" : [ "hmpps-queue-resource" ],
@@ -1565,12 +1645,14 @@
           "amount" : {
             "type" : "integer",
             "format" : "int64",
-            "description" : "The non-negative posting amount"
+            "description" : "The non-negative posting amount",
+            "minimum" : 0
           },
           "entrySequence" : {
             "type" : "integer",
             "format" : "int64",
-            "description" : "The entry sequence number of the posting, this is used to ensure that the posting is created in the correct order, if not provided defaulted to zero"
+            "description" : "The entry sequence number of the posting, this is used to ensure that the posting is created in the correct order, if not provided defaulted to zero",
+            "minimum" : 0
           }
         },
         "required" : [ "amount", "entrySequence", "subAccountId", "type" ]
@@ -1595,12 +1677,14 @@
           "amount" : {
             "type" : "integer",
             "format" : "int64",
-            "description" : "The non-negative amount in pence of the transaction, this is the total of all money moved with postings in this transaction"
+            "description" : "The non-negative amount in pence of the transaction, this is the total of all money moved with postings in this transaction",
+            "minimum" : 0
           },
           "entrySequence" : {
             "type" : "integer",
             "format" : "int64",
-            "description" : "The entry sequence number of the transaction, this is used to ensure that the transaction is ordered correctly, if not provided defaulted to zero"
+            "description" : "The entry sequence number of the transaction, this is used to ensure that the transaction is ordered correctly, if not provided defaulted to zero",
+            "minimum" : 0
           },
           "postings" : {
             "type" : "array",
