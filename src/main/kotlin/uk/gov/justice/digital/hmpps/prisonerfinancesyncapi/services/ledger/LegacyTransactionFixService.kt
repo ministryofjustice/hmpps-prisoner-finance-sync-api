@@ -1,6 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger
 
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -25,26 +27,43 @@ class LegacyTransactionFixService {
 
   private companion object {
     private const val TRANSACTION_TYPE_TIR = "TIR"
-    private val TRANSACTION_TYPES_SKIPPED_IF_NO_GL_ENTRIES = setOf("OT", "ATOF")
   }
 
   fun fixLegacyTransactions(request: SyncOffenderTransactionRequest): SyncOffenderTransactionRequest {
-    val fixedOffenderTransactions = request.offenderTransactions.mapNotNull { offenderTransaction ->
+    val fixedOffenderTransactions = request.offenderTransactions.withIndex().mapNotNull { (index, offenderTransaction) ->
 
-      if (offenderTransaction.generalLedgerEntries.isEmpty() &&
-        TRANSACTION_TYPES_SKIPPED_IF_NO_GL_ENTRIES.contains(offenderTransaction.type)
-      ) {
-        null // Skip this transaction as no GL entries
-      } else if (offenderTransaction.type == TRANSACTION_TYPE_TIR && offenderTransaction.generalLedgerEntries.isEmpty()) {
-        offenderTransaction.copy(
+      when {
+        offenderTransaction.type == TRANSACTION_TYPE_TIR && offenderTransaction.generalLedgerEntries.isEmpty() -> return@mapNotNull offenderTransaction.copy(
           generalLedgerEntries = generateGeneralLedgerEntries(offenderTransaction),
         )
-      } else {
-        offenderTransaction
+        offenderTransaction.generalLedgerEntries.isEmpty() -> return@mapNotNull null
+        isPrisonerSubaccountTransaction(offenderTransaction.generalLedgerEntries) -> return@mapNotNull fixPrisonerToPrisonerTransfer(request, index)
+        else -> return@mapNotNull offenderTransaction
       }
     }
 
     return request.copy(offenderTransactions = fixedOffenderTransactions)
+  }
+
+  private fun fixPrisonerToPrisonerTransfer(request: SyncOffenderTransactionRequest, index: Int): OffenderTransaction {
+    val offenderTransaction = request.offenderTransactions[index]
+
+    val nextTransaction = request.offenderTransactions.getOrNull(index + 1)
+      ?: throw CustomException("No next transaction found for prisoner to prisoner transfer", status = HttpStatus.BAD_REQUEST)
+
+    if (offenderTransaction.type != nextTransaction.type) throw CustomException("Mismatched transaction types for prisoner to prisoner transfer: ${offenderTransaction.type} != ${nextTransaction.type}. Entry sequence ${offenderTransaction.entrySequence}", status = HttpStatus.BAD_REQUEST)
+
+    val glEntryForCurrent = offenderTransaction.generalLedgerEntries.find { it.postingType == offenderTransaction.postingType }
+      ?.copy(offenderDisplayId = offenderTransaction.offenderDisplayId)
+      ?: throw CustomException("No matching posting type for current transaction for entry sequence ${offenderTransaction.entrySequence}", status = HttpStatus.BAD_REQUEST)
+
+    val glEntryForNext = offenderTransaction.generalLedgerEntries.find { it.postingType == nextTransaction.postingType }
+      ?.copy(offenderDisplayId = nextTransaction.offenderDisplayId)
+      ?: throw CustomException("No matching posting type for next transaction for entry sequence ${nextTransaction.entrySequence}", status = HttpStatus.BAD_REQUEST)
+
+    return offenderTransaction.copy(
+      generalLedgerEntries = listOf(glEntryForCurrent, glEntryForNext),
+    )
   }
 
   private fun generateGeneralLedgerEntries(offenderTransaction: OffenderTransaction): List<GeneralLedgerEntry> {
@@ -71,4 +90,6 @@ class LegacyTransactionFixService {
     "SPND" -> 2102
     else -> throw IllegalArgumentException("Unsupported subAccountType : $subAccountType")
   }
+
+  private fun isPrisonerSubaccountTransaction(glEntries: List<GeneralLedgerEntry>) = glEntries.all { listOf(2101, 2102, 2103).contains(it.code) } && glEntries.isNotEmpty()
 }

@@ -72,6 +72,19 @@ class TestBuilders {
           reference = null,
           generalLedgerEntries = generalLedgerEntries,
         ),
+        OffenderTransaction(
+          entrySequence = 2,
+          offenderId = 1015388L,
+          offenderDisplayId = prisonNumber,
+          offenderBookingId = 455987L,
+          subAccountType = "REG",
+          postingType = "CR",
+          type = transactionType,
+          description = "Sub-Account Transfer",
+          amount = amount,
+          reference = null,
+          generalLedgerEntries = emptyList(),
+        ),
       ),
     )
   }

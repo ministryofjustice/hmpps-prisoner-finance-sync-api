@@ -25,6 +25,10 @@ data class GeneralLedgerEntry(
   )
   @field:Digits(integer = 19, fraction = 2)
   val amount: BigDecimal,
+
+  @field:Schema(description = "The offender display ID relating to the GL Entry (posting)", required = false)
+  val offenderDisplayId: String? = null,
+
 ) {
   companion object {
 
