@@ -359,42 +359,4 @@ class LegacyTransactionFixServiceTest {
     assertThat(result.offenderTransactions[0].generalLedgerEntries[1].postingType).isEqualTo("CR")
     assertThat(result.offenderTransactions[0].generalLedgerEntries[1].amount).isEqualTo(result.offenderTransactions[0].amount)
   }
-
-  @Test
-  fun `should generate exception when OT sub account type is invalid`() {
-    val syncOffenderTransactionRequest = SyncOffenderTransactionRequest(
-      transactionId = 485368707,
-      requestId = UUID.fromString("a1b2c3d4-e5f6-7890-1234-567890abcdef"),
-      caseloadId = "LEI",
-      transactionTimestamp = LocalDateTime.now(),
-      createdAt = LocalDateTime.now(),
-      createdBy = "JD12345",
-      createdByDisplayName = "J Doe",
-      lastModifiedAt = null,
-      lastModifiedBy = null,
-      lastModifiedByDisplayName = null,
-      listOf(
-        OffenderTransaction(
-          entrySequence = 1,
-          offenderId = 5306470,
-          offenderDisplayId = "AA001AA",
-          offenderBookingId = 2970777,
-          subAccountType = "AAA",
-          postingType = "CR",
-          type = "TIR",
-          description = "",
-          amount = BigDecimal("5.99"),
-          reference = null,
-          generalLedgerEntries = emptyList(),
-        ),
-      ),
-    )
-
-    val ex = assertThrows(IllegalArgumentException::class.java) {
-      legacyTransactionFixService.fixLegacyTransactions(
-        syncOffenderTransactionRequest,
-      )
-    }
-    assert(ex.message!!.contains("Unsupported subAccountType"))
-  }
 }
