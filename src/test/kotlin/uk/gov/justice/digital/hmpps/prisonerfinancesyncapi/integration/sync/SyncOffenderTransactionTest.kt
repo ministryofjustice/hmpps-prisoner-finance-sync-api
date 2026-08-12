@@ -302,7 +302,7 @@ class SyncOffenderTransactionTest : IntegrationTestBase() {
       .expectStatus().isBadRequest
       .expectBody()
       .jsonPath("$.developerMessage").value<String> { message ->
-        assertThat(message).contains("Validation failed: offenderTransactions[0].offenderDisplayId: prisonerId must be 7 alphanumeric characters")
+        assertThat(message).contains("offenderTransactions[0].offenderDisplayId: prisonerId must be 7 alphanumeric characters")
       }
   }
 
