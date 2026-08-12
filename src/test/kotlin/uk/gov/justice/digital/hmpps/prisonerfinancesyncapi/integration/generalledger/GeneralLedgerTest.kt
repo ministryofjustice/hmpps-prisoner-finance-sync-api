@@ -42,6 +42,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 import kotlin.random.Random
+import kotlin.random.nextLong
 
 @ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
 class GeneralLedgerTest : IntegrationTestBase() {
@@ -725,6 +726,19 @@ class GeneralLedgerTest : IntegrationTestBase() {
             GeneralLedgerEntry(2, 2101, "CR", BigDecimal("10.00")),
           ),
         ),
+        OffenderTransaction(
+          entrySequence = 2,
+          offenderId = 1L,
+          offenderDisplayId = offenderId,
+          offenderBookingId = 100L,
+          subAccountType = "SPND",
+          postingType = "CR",
+          type = "CANT",
+          description = "Test Transaction",
+          amount = BigDecimal("10.00"),
+          reference = "REF",
+          generalLedgerEntries = emptyList(),
+        ),
       ),
     ): SyncOffenderTransactionRequest {
       val randomTxId = Random.nextLong(100000, 999999)
@@ -1146,6 +1160,19 @@ class GeneralLedgerTest : IntegrationTestBase() {
               GeneralLedgerEntry(2, 2101, "CR", amount),
             ),
           ),
+          OffenderTransaction(
+            entrySequence = 2,
+            offenderId = 2607103,
+            offenderDisplayId = testPrisonNumber,
+            offenderBookingId = 1227181,
+            subAccountType = "SPND",
+            postingType = "CR",
+            type = "OT",
+            description = "Sub-Account Transfer",
+            amount = amount,
+            reference = null,
+            generalLedgerEntries = emptyList(),
+          ),
         ),
       )
 
@@ -1364,6 +1391,201 @@ class GeneralLedgerTest : IntegrationTestBase() {
 
       assertThat(createTransactionRequest.postings).hasSize(2)
       assertThat(createTransactionRequest.entrySequence).isEqualTo(1)
+    }
+
+    @Test
+    fun `should record 'Adjustments' transfers between prisoners cash sub-accounts transactions to general ledger`() {
+      val prisonId = "LEI"
+      val amount = BigDecimal("12.00")
+
+      val prisonerOneAccountUuid = UUID.randomUUID()
+      val prisonerOneCashSubAccountUUID = UUID.randomUUID()
+      val prisonerTwoAccountUuid = UUID.randomUUID()
+      val prisonerTwoCashSubAccountUUID = UUID.randomUUID()
+
+      val testPrisonerNumberOneRef = "A1234AA"
+      val testPrisonerNumberTwoRef = "Z9876ZZ"
+
+      val cashSubRef = "CASH"
+
+//      Prisoner one set up
+      generalLedgerApi.stubGetAccountNotFound(testPrisonerNumberOneRef)
+      generalLedgerApi.stubCreateAccount(testPrisonerNumberOneRef, prisonerOneAccountUuid)
+
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerNumberOneRef, cashSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonerOneAccountUuid, cashSubRef, prisonerOneCashSubAccountUUID.toString())
+
+//      Prisoner two set up
+      generalLedgerApi.stubGetAccountNotFound(testPrisonerNumberTwoRef)
+      generalLedgerApi.stubCreateAccount(testPrisonerNumberTwoRef, prisonerTwoAccountUuid)
+
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerNumberTwoRef, cashSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonerTwoAccountUuid, cashSubRef, prisonerTwoCashSubAccountUUID.toString())
+
+      generalLedgerApi.stubPostTransaction(
+        debtorSubAccountUuid = prisonerOneCashSubAccountUUID.toString(), // DR Cash
+        creditorSubAccountUuid = prisonerTwoCashSubAccountUUID.toString(), // CR Cash
+      )
+
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        requestId = UUID.fromString("82f6a7bf-bae2-44ed-8573-46c84c41dc3e"),
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp,
+        createdBy = "OMS_OWNER",
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = Random.nextLong(0L..999999L),
+            offenderDisplayId = testPrisonerNumberOneRef,
+            offenderBookingId = Random.nextLong(0L..999999L),
+            subAccountType = "REG",
+            postingType = "DR",
+            type = "AJ",
+            description = "ADJUST ACCOUNT",
+            amount = amount,
+            reference = null,
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 2101, "DR", amount),
+              GeneralLedgerEntry(2, 2101, "CR", amount),
+            ),
+          ),
+          OffenderTransaction(
+            entrySequence = 2,
+            offenderId = Random.nextLong(0L..999999L),
+            offenderDisplayId = testPrisonerNumberTwoRef,
+            offenderBookingId = Random.nextLong(0L..999999L),
+            subAccountType = "REG",
+            postingType = "CR",
+            type = "AJ",
+            description = "ADJUST ACCOUNT",
+            amount = amount,
+            reference = null,
+            generalLedgerEntries = emptyList(),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isCreated
+
+      generalLedgerApi.verifyCreateAccount(testPrisonerNumberOneRef)
+      generalLedgerApi.verifyCreateAccount(testPrisonerNumberTwoRef)
+      generalLedgerApi.verifyCreateSubAccount(prisonerOneAccountUuid.toString(), cashSubRef)
+      generalLedgerApi.verifyCreateSubAccount(prisonerTwoAccountUuid.toString(), cashSubRef)
+
+      generalLedgerApi.verifyTransactionPosted()
+    }
+
+    @Test
+    fun `should record 'Adjustments' transfers between prisoners different sub-accounts transactions to general ledger`() {
+      val prisonId = "LEI"
+      val amount = BigDecimal("12.00")
+
+      val prisonerOneAccountUuid = UUID.randomUUID()
+      val prisonerOneCashSubAccountUUID = UUID.randomUUID()
+      val prisonerTwoAccountUuid = UUID.randomUUID()
+      val prisonerTwoSpendsSubAccountUUID = UUID.randomUUID()
+
+      val testPrisonerNumberOneRef = "A1234AA"
+      val testPrisonerNumberTwoRef = "Z9876ZZ"
+
+      val cashSubRef = "CASH"
+      val spendsSubRef = "SPENDS"
+
+//      Prisoner one set up
+      generalLedgerApi.stubGetAccountNotFound(testPrisonerNumberOneRef)
+      generalLedgerApi.stubCreateAccount(testPrisonerNumberOneRef, prisonerOneAccountUuid)
+
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerNumberOneRef, cashSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonerOneAccountUuid, cashSubRef, prisonerOneCashSubAccountUUID.toString())
+
+//      Prisoner two set up
+      generalLedgerApi.stubGetAccountNotFound(testPrisonerNumberTwoRef)
+      generalLedgerApi.stubCreateAccount(testPrisonerNumberTwoRef, prisonerTwoAccountUuid)
+
+      generalLedgerApi.stubGetSubAccountNotFound(testPrisonerNumberTwoRef, spendsSubRef)
+      generalLedgerApi.stubCreateSubAccount(prisonerTwoAccountUuid, spendsSubRef, prisonerTwoSpendsSubAccountUUID.toString())
+
+      generalLedgerApi.stubPostTransaction(
+        debtorSubAccountUuid = prisonerOneCashSubAccountUUID.toString(), // DR Cash
+        creditorSubAccountUuid = prisonerTwoSpendsSubAccountUUID.toString(), // CR Cash
+      )
+
+      val transactionId = Random.nextLong(10000, 99999)
+      val timestamp = LocalDateTime.now()
+
+      val request = SyncOffenderTransactionRequest(
+        transactionId = transactionId,
+        requestId = UUID.fromString("82f6a7bf-bae2-44ed-8573-46c84c41dc3e"),
+        caseloadId = prisonId,
+        transactionTimestamp = timestamp,
+        createdAt = timestamp,
+        createdBy = "OMS_OWNER",
+        createdByDisplayName = "OMS_OWNER",
+        lastModifiedAt = null,
+        lastModifiedBy = null,
+        lastModifiedByDisplayName = null,
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = Random.nextLong(0L..999999L),
+            offenderDisplayId = testPrisonerNumberOneRef,
+            offenderBookingId = Random.nextLong(0L..999999L),
+            subAccountType = "REG",
+            postingType = "DR",
+            type = "AJ",
+            description = "ADJUST ACCOUNT",
+            amount = amount,
+            reference = null,
+            generalLedgerEntries = listOf(
+              GeneralLedgerEntry(1, 2101, "DR", amount),
+              GeneralLedgerEntry(2, 2102, "CR", amount),
+            ),
+          ),
+          OffenderTransaction(
+            entrySequence = 2,
+            offenderId = Random.nextLong(0L..999999L),
+            offenderDisplayId = testPrisonerNumberTwoRef,
+            offenderBookingId = Random.nextLong(0L..999999L),
+            subAccountType = "SPNDS",
+            postingType = "CR",
+            type = "AJ",
+            description = "ADJUST ACCOUNT",
+            amount = amount,
+            reference = null,
+            generalLedgerEntries = emptyList(),
+          ),
+        ),
+      )
+
+      webTestClient.post()
+        .uri("/sync/offender-transactions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(objectMapper.writeValueAsString(request))
+        .exchange()
+        .expectStatus().isCreated
+
+      generalLedgerApi.verifyCreateAccount(testPrisonerNumberOneRef)
+      generalLedgerApi.verifyCreateAccount(testPrisonerNumberTwoRef)
+      generalLedgerApi.verifyCreateSubAccount(prisonerOneAccountUuid.toString(), cashSubRef)
+      generalLedgerApi.verifyCreateSubAccount(prisonerTwoAccountUuid.toString(), spendsSubRef)
+
+      generalLedgerApi.verifyTransactionPosted()
     }
   }
 

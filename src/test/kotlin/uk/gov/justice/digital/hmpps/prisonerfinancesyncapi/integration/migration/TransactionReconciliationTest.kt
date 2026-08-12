@@ -21,6 +21,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
@@ -506,7 +507,7 @@ class TransactionReconciliationTest(
 
       val returnGeneralLedgerUUID = UUID.randomUUID()
 
-      val transactionResponse = generalLedgerApi.stubPostTransaction(
+      generalLedgerApi.stubPostTransaction(
         creditorSubAccountUuid = creditSubAccountUUID.toString(),
         debtorSubAccountUuid = debtorSubAccountUUID.toString(),
         reference = "REF",
@@ -530,23 +531,40 @@ class TransactionReconciliationTest(
         ),
       )
 
-      val offenderTransaction = integrationTestHelpers.createOffenderTransaction(
-        entrySequence = 1,
-        offenderId = 1,
-        offenderDisplayId = prisonNumber,
-        offenderBookingId = 1,
-        subAccountType = "",
-        amount = BigDecimal.valueOf(5.00),
-        generalLedgerEntries = generalLedgerEntries,
-        reference = "ANY_REF",
-      )
-
       integrationTestHelpers.syncOffenderTransactions(
         transactionId = legacyTransactionId,
         caseloadId = "LEI",
         transactionTimestamp = LocalDateTime.now(),
         createdAt = LocalDateTime.now(),
-        offenderTransactions = listOf(offenderTransaction),
+        offenderTransactions = listOf(
+          OffenderTransaction(
+            entrySequence = 1,
+            offenderId = 1,
+            offenderDisplayId = prisonNumber,
+            offenderBookingId = 1,
+            subAccountType = "REG",
+            postingType = "DR",
+            type = "ATOF",
+            description = "some transaction",
+            amount = BigDecimal.valueOf(5.00),
+            reference = null,
+            generalLedgerEntries = generalLedgerEntries,
+          ),
+          OffenderTransaction(
+            entrySequence = 2,
+            offenderId = 1,
+            offenderDisplayId = prisonNumber,
+            offenderBookingId = 1,
+            subAccountType = "SAV",
+            postingType = "CR",
+            type = "ATOF",
+            description = "some transaction",
+            amount = BigDecimal.valueOf(5.00),
+            reference = null,
+            generalLedgerEntries = emptyList(),
+          ),
+        ),
+
       )
 
       generalLedgerApi.stubSearchTransactionsByUUIDs(

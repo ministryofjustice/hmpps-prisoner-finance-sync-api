@@ -50,12 +50,13 @@ class GeneralLedgerService(
     fixedRequest: SyncOffenderTransactionRequest,
     requestCache: InMemoryAccountCache,
   ): UUID {
-    val offenderId = transaction.offenderDisplayId
+    val transactionOffenderDisplayId = transaction.offenderDisplayId
     val postings = transaction.generalLedgerEntries.map { entry ->
 
       val subAccountUuid = generalLedgerAccountResolver.resolveSubAccount(
         prisonId = fixedRequest.caseloadId,
-        offenderId = offenderId,
+//        This is to accommodate for prisoner-to-prisoner transactions fixes
+        offenderId = entry.offenderDisplayId ?: transactionOffenderDisplayId,
         accountCode = entry.code,
         transactionType = transaction.type,
         parentCache = requestCache,
