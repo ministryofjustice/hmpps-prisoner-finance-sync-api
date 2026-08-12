@@ -36,8 +36,11 @@ class LegacyTransactionFixService {
         offenderTransaction.type == TRANSACTION_TYPE_TIR && offenderTransaction.generalLedgerEntries.isEmpty() -> return@mapNotNull offenderTransaction.copy(
           generalLedgerEntries = generateGeneralLedgerEntries(offenderTransaction),
         )
+
         offenderTransaction.generalLedgerEntries.isEmpty() -> return@mapNotNull null
+
         isPrisonerSubaccountTransaction(offenderTransaction.generalLedgerEntries) -> return@mapNotNull fixPrisonerToPrisonerTransfer(request, index)
+
         else -> return@mapNotNull offenderTransaction
       }
     }
