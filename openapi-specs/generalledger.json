@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-08-07.684.1e5da71"
+    "version" : "2026-08-24.697.f840298"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -402,7 +402,7 @@
             }
           },
           "400" : {
-            "description" : "Bad Request",
+            "description" : "Bad Request - Malformed Body / Only available for Prisoner Accounts",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -447,29 +447,6 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__GENERAL_LEDGER__RW" ]
-        } ]
-      }
-    },
-    "/migrate/subAccountBalances" : {
-      "post" : {
-        "tags" : [ "Migration Controller" ],
-        "summary" : "Migrate historical subAccount balances",
-        "description" : "Migrates historical subAccount balances",
-        "operationId" : "migrateSubAccountBalances",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ResponseStatus"
                 }
               }
             }
@@ -1997,7 +1974,6 @@
         },
         "required" : [ "amount", "balanceDateTime", "subAccountId" ]
       },
-      "ResponseStatus" : { },
       "CreateAccountRequest" : {
         "type" : "object",
         "description" : "A request to create an account",
