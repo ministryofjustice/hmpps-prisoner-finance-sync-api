@@ -1,0 +1,316 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "HMPPS Prisoner Finance Holds Api",
+    "contact" : {
+      "name" : "HMPPS Digital Studio",
+      "email" : "feedback@digital.justice.gov.uk"
+    },
+    "version" : "2026-08-26.61.5899d2b"
+  },
+  "servers" : [ {
+    "url" : "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
+    "description" : "Development"
+  }, {
+    "url" : "https://prisoner-finance-holds-api-preprod.hmpps.service.justice.gov.uk",
+    "description" : "Pre-Production"
+  }, {
+    "url" : "https://prisoner-finance-holds-api.hmpps.service.justice.gov.uk",
+    "description" : "Production"
+  }, {
+    "url" : "http://localhost:8080",
+    "description" : "Local"
+  } ],
+  "security" : [ {
+    "bearer-jwt" : [ "read", "write" ]
+  } ],
+  "tags" : [ {
+    "name" : "HOLDS",
+    "description" : "Endpoints for hold management and viewing in prisoner finance."
+  } ],
+  "paths" : {
+    "/holds" : {
+      "post" : {
+        "tags" : [ "HOLDS" ],
+        "summary" : "Create a new hold",
+        "description" : "Creates a new hold for a prisoner's sub-account.",
+        "operationId" : "postHold",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateHoldRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Hold Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HoldResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
+      }
+    },
+    "/hello" : {
+      "get" : {
+        "tags" : [ "Hello World Controller" ],
+        "summary" : "Hello World Endpoint",
+        "operationId" : "hello",
+        "responses" : {
+          "200" : {
+            "description" : "Hello World!",
+            "content" : {
+              "text/plain" : { }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "CreateHoldRequest" : {
+        "type" : "object",
+        "properties" : {
+          "prisonNumber" : {
+            "type" : "string",
+            "description" : "The prison number as seen in services like DPS",
+            "example" : "A1999EC"
+          },
+          "legacyHoldNumber" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The hold number as seen in NOMIS",
+            "example" : 12345789
+          },
+          "subAccountRef" : {
+            "type" : "string",
+            "description" : "The sub account reference as seen in Prisoner Finance",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ],
+            "example" : "CASH"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The time the Hold was created",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The person who created the Hold",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "holdFromDate" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date that the hold is active from",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "holdUntilDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "The date that the hold is expected to be removed",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "isReleased" : {
+            "type" : "boolean",
+            "description" : "A boolean indicating whether the hold has been released",
+            "example" : false
+          },
+          "description" : {
+            "type" : [ "string", "null" ],
+            "description" : "A description of the reason for the hold",
+            "example" : "Damages to cell"
+          },
+          "holdType" : {
+            "type" : "string",
+            "description" : "The type of transaction that initiated the hold",
+            "enum" : [ "HOA", "WHF" ],
+            "example" : "WHF"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount to hold from the sub account in pence",
+            "example" : 1023
+          },
+          "holdLocation" : {
+            "type" : "string",
+            "description" : "The location of the hold as a prison code",
+            "example" : "LEI"
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "holdFromDate", "holdLocation", "holdType", "isReleased", "legacyHoldNumber", "prisonNumber", "subAccountRef" ]
+      },
+      "HoldResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "prisonNumber" : {
+            "type" : "string"
+          },
+          "legacyHoldNumber" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "subAccountRef" : {
+            "type" : "string",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ]
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "holdFromDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "holdUntilDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "isReleased" : {
+            "type" : "boolean"
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "holdType" : {
+            "type" : "string",
+            "enum" : [ "HOA", "WHF" ]
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "holdLocation" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "holdFromDate", "holdLocation", "holdType", "id", "isReleased", "legacyHoldNumber", "prisonNumber", "subAccountRef" ]
+      },
+      "ErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errorCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "userMessage" : {
+            "type" : [ "string", "null" ]
+          },
+          "developerMessage" : {
+            "type" : [ "string", "null" ]
+          },
+          "moreInfo" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "status" ]
+      }
+    },
+    "securitySchemes" : {
+      "bearer-jwt" : {
+        "type" : "http",
+        "description" : "A HMPPS Auth access token with either role: `[ROLE_PRISONER_FINANCE__HOLDS__RO, ROLE_PRISONER_FINANCE__HOLDS__RW]`",
+        "name" : "Authorization",
+        "in" : "header",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  }
+}

@@ -65,34 +65,47 @@ kotlin {
 
 val apiSpecs = mapOf(
   "generalledger" to "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk/v3/api-docs",
+  "holds" to "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk/v3/api-docs",
 )
 
-apiSpecs.forEach { (name, url) ->
+val cleanOpenApi = tasks.register("cleanOpenApi") {
+  group = "openapi tools"
+  description = "Cleans up previously downloaded specs and generated API clients"
 
-  tasks.register("write${name.replaceFirstChar { it.titlecase() }}Json") {
-    group = "openapi tools"
-    description = "Downloads the $name API specification"
+  doLast {
+    file("$rootDir/openapi-specs").deleteRecursively()
+    file(layout.buildDirectory.dir("generated/openapi").get().asFile).deleteRecursively()
+  }
+}
 
-    doLast {
-      val destDir = file("$rootDir/openapi-specs")
-      if (!destDir.exists()) destDir.mkdirs()
+val downloadAllOpenApiSpecs = tasks.register("downloadAllOpenApiSpecs") {
+  group = "openapi tools"
+  description = "Downloads all API specifications"
+  dependsOn(cleanOpenApi)
+
+  doLast {
+    val destDir = file("$rootDir/openapi-specs")
+    if (!destDir.exists()) destDir.mkdirs()
+    val mapper = ObjectMapper()
+
+    apiSpecs.forEach { (name, url) ->
+      println("Downloading $name API spec from $url...")
       val destFile = file("$destDir/$name.json")
 
-      println("Downloading $name API spec from $url...")
-
       val json = URI.create(url).toURL().readText()
-      val formattedJson = ObjectMapper().let { mapper ->
-        mapper.writerWithDefaultPrettyPrinter().writeValueAsString(mapper.readTree(json))
-      }
+      val formattedJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(mapper.readTree(json))
       Files.write(destFile.toPath(), formattedJson.toByteArray())
 
       println("Saved to $destFile")
     }
   }
+}
 
-  val generateTask = tasks.register<GenerateTask>("build${name.replaceFirstChar { it.titlecase() }}ApiClient") {
+val generateTasks = apiSpecs.map { (name, _) ->
+  tasks.register<GenerateTask>("build${name.replaceFirstChar { it.titlecase() }}ApiClient") {
     group = "openapi tools"
     description = "Generates Kotlin client and models for $name"
+    dependsOn(downloadAllOpenApiSpecs)
 
     generatorName.set("kotlin")
     library.set("jvm-spring-webclient")
@@ -137,25 +150,24 @@ apiSpecs.forEach { (name, url) ->
         "apiTests" to "false",
       ),
     )
+  }
+}
 
-    doFirst {
-      val dir = file(outputDir.get())
-      if (dir.exists()) {
-        dir.deleteRecursively()
-      }
-    }
-  }
+tasks.register("buildAllApiClients") {
+  group = "openapi tools"
+  description = "Cleans, downloads all JSON specs, and generates all API clients"
+  dependsOn(generateTasks)
+}
 
-  tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    dependsOn(generateTask)
-  }
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+  dependsOn(generateTasks)
+}
 
-  tasks.withType<KtLintCheckTask> {
-    mustRunAfter(generateTask)
-  }
-  tasks.withType<KtLintFormatTask> {
-    mustRunAfter(generateTask)
-  }
+tasks.withType<KtLintCheckTask> {
+  mustRunAfter(generateTasks)
+}
+tasks.withType<KtLintFormatTask> {
+  mustRunAfter(generateTasks)
 }
 
 sourceSets {
