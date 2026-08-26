@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-08-26.61.5899d2b"
+    "version" : "2026-08-26.63.a5c90ec"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
@@ -25,13 +25,13 @@
     "bearer-jwt" : [ "read", "write" ]
   } ],
   "tags" : [ {
-    "name" : "HOLDS",
+    "name" : "Holds",
     "description" : "Endpoints for hold management and viewing in prisoner finance."
   } ],
   "paths" : {
     "/holds" : {
       "post" : {
-        "tags" : [ "HOLDS" ],
+        "tags" : [ "Holds" ],
         "summary" : "Create a new hold",
         "description" : "Creates a new hold for a prisoner's sub-account.",
         "operationId" : "postHold",
