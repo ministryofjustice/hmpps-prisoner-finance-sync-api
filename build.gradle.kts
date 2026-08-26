@@ -10,7 +10,7 @@ plugins {
   id("uk.gov.justice.hmpps.gradle-spring-boot") version "11.0.6"
   kotlin("plugin.spring") version "2.4.10"
   id("org.jetbrains.kotlin.plugin.noarg") version "2.4.10"
-  id("org.openapi.generator") version "7.24.0"
+  id("org.openapi.generator") version "7.25.0"
   id("jacoco")
 }
 
@@ -23,7 +23,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("org.springframework.boot:spring-boot-starter-webclient")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
-  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.0.0")
+  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.4.0")
 
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
