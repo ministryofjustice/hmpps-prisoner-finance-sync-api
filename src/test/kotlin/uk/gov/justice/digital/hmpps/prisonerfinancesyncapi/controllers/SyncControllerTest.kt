@@ -169,7 +169,7 @@ class SyncControllerTest {
     }
 
     @Test
-    fun `should return OK when transaction contains transactions that were previously processed and new ones`() {
+    fun `should return CREATED when transaction contains transactions that were previously processed and new ones`() {
       val request = createOffenderTransactionRequest()
       whenever { generalLedgerService.syncOffenderTransaction(any()) }.thenReturn(
         SyncOffenderTransactionToGeneralLedgerResponse(
@@ -180,8 +180,8 @@ class SyncControllerTest {
       )
 
       val response = syncController.postOffenderTransaction(request)
-      assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-      assertThat(response.body?.action).isEqualTo(SyncTransactionReceipt.Action.PROCESSED)
+      assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED)
+      assertThat(response.body?.action).isEqualTo(SyncTransactionReceipt.Action.CREATED)
     }
 
     @Test
