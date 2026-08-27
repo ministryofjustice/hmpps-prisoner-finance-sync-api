@@ -2,14 +2,14 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client
 
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClientResponseException
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient.Companion.log
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateSubAccountRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 
+@Component
 class HoldsApiClient(
   private val holdsApi: HoldsApi
 ) {

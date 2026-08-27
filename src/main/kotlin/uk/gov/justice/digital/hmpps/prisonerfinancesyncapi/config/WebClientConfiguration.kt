@@ -9,6 +9,8 @@ import org.springframework.web.reactive.function.client.WebClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.AccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.SubAccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.holds.HoldsController
 import uk.gov.justice.hmpps.kotlin.auth.authorisedWebClient
 import uk.gov.justice.hmpps.kotlin.auth.healthWebClient
 import java.time.Duration
@@ -17,6 +19,7 @@ import java.time.Duration
 class WebClientConfiguration(
   @param:Value("\${hmpps-auth.url}") val hmppsAuthBaseUri: String,
   @Value("\${general-ledger-api.url}") private val generalLedgerApiBaseUri: String,
+  @Value("\${holds-api.url}") private val holdsApiBaseUri: String,
   @param:Value("\${api.health-timeout:2s}") val healthTimeout: Duration,
   @param:Value("\${api.timeout:20s}") val timeout: Duration,
 ) {
@@ -25,6 +28,9 @@ class WebClientConfiguration(
 
   @Bean
   fun generalLedgerHealthWebClient(builder: WebClient.Builder): WebClient = builder.healthWebClient(generalLedgerApiBaseUri, healthTimeout)
+
+  @Bean
+  fun holdsHealthWebClient(builder: WebClient.Builder): WebClient = builder.healthWebClient(holdsApiBaseUri, healthTimeout)
 
   @Bean
   fun generalLedgerApiWebClient(
@@ -45,4 +51,18 @@ class WebClientConfiguration(
 
   @Bean
   fun transactionApi(@Qualifier("generalLedgerApiWebClient") webClient: WebClient): TransactionControllerApi = TransactionControllerApi(webClient)
+
+  @Bean
+  fun holdsApi(@Qualifier("holdsApiWebClient") webClient: WebClient): HoldsApi = HoldsApi(webClient)
+
+  @Bean
+  fun holdsApiWebClient(
+    authorizedClientManager: OAuth2AuthorizedClientManager,
+    builder: WebClient.Builder): WebClient = builder.authorisedWebClient(
+    authorizedClientManager = authorizedClientManager,
+    registrationId = "holds-api",
+    url = holdsApiBaseUri,
+    timeout = timeout,
+  )
+
 }

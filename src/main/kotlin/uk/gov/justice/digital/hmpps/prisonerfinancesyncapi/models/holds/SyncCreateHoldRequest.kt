@@ -22,7 +22,7 @@ data class SyncCreateHoldRequest (
     required = true,
     nullable = false
   )
-  val subAccountCode: Int,
+  val subAccountCode: String,
 
   @field:Schema(
     description = "The hold number",

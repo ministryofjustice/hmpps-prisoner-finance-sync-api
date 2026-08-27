@@ -27,7 +27,7 @@ class HoldsIntegrationTest : IntegrationTestBase() {
 
       val holdRequest = SyncCreateHoldRequest(
         prisonNumber = "AD23451",
-        subAccountCode = 2102,
+        subAccountCode = "2102",
         holdNumber = 123456789,
         createdAt = LocalDateTime.now(),
         createdBy = "USER",
@@ -37,7 +37,7 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         description = "Test Hold",
         holdType = "WHF",
         holdLocation = "LEI",
-        amount = BigDecimal(99.99)
+        amount = BigDecimal("99.99")
       )
 
       webTestClient
