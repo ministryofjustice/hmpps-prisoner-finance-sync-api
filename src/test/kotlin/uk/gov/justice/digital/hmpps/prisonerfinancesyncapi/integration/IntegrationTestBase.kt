@@ -25,10 +25,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
 import java.util.EnumSet
 
-@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
+@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class, HoldsApiExtension::class)
 @SpringBootTest(
   webEnvironment = RANDOM_PORT,
   properties = ["spring.autoconfigure.exclude=uk.gov.justice.hmpps.sqs.HmppsSqsConfiguration"],
@@ -67,6 +69,7 @@ abstract class IntegrationTestBase {
   protected fun stubPingWithResponse(status: Int) {
     hmppsAuth.stubHealthPing(status)
     generalLedgerApi.stubHealthPing(status)
+    holdsApi.stubHealthPing(status)
   }
 
   companion object {

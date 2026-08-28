@@ -78,5 +78,33 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isCreated
     }
+
+    @Test
+    fun `should return a 403 when using the incorrect role`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+      )
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf("ROLE__INCORRECT_ROLE")))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isForbidden
+    }
   }
 }
