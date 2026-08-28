@@ -6,13 +6,13 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @Schema(description = "Create Hold Request")
-data class SyncCreateHoldRequest (
+data class SyncCreateHoldRequest(
 
   @field:Schema(
     description = "The prison number that the hold belongs to",
     example = "19228028",
     required = true,
-    nullable = false
+    nullable = false,
   )
   val prisonNumber: String,
 
@@ -20,15 +20,15 @@ data class SyncCreateHoldRequest (
     description = "The general ledger account code",
     example = "2101",
     required = true,
-    nullable = false
+    nullable = false,
   )
-  val subAccountCode: String,
+  val subAccountCode: Int,
 
   @field:Schema(
     description = "The hold number",
     example = "123456789",
     required = true,
-    nullable = false
+    nullable = false,
   )
   val holdNumber: Long,
 
@@ -36,14 +36,14 @@ data class SyncCreateHoldRequest (
     description = "The date and time the transaction was created.",
     example = "2024-06-18T14:30:00.123456",
     nullable = false,
-    required = true
+    required = true,
   )
   val createdAt: LocalDateTime,
 
   @field:Schema(
     description = "The user id of the person who created the transaction.",
     example = "JD12345",
-    required = true
+    required = true,
   )
   val createdBy: String,
 
@@ -59,21 +59,21 @@ data class SyncCreateHoldRequest (
     description = "The date and time the hold applies until.",
     example = "2024-06-20T14:30:00.123456",
     nullable = true,
-    required = false
+    required = false,
   )
   val holdUntilDate: LocalDateTime? = null,
 
   @field:Schema(
     description = "A flag to indicate if the hold has been released.",
     nullable = false,
-    required = false
+    required = false,
   )
   val isReleased: Boolean,
 
   @field:Schema(
     description = "The description on the hold transaction.",
     nullable = true,
-    required = false
+    required = false,
   )
   val description: String? = null,
 
@@ -81,7 +81,7 @@ data class SyncCreateHoldRequest (
     description = "The hold type of the hold transaction.",
     example = "WHF",
     nullable = false,
-    required = true
+    required = true,
   )
   val holdType: String,
 
@@ -89,7 +89,7 @@ data class SyncCreateHoldRequest (
     description = "The prison code of the location that initiated the transaction.",
     example = "LEI",
     nullable = false,
-    required = true
+    required = true,
   )
   val holdLocation: String,
 
@@ -97,9 +97,8 @@ data class SyncCreateHoldRequest (
     description = "The amount to hold.",
     example = "10.23",
     nullable = false,
-    required = true
+    required = true,
   )
-
   @field:Digits(integer = 19, fraction = 2)
   val amount: BigDecimal,
 

@@ -33,11 +33,10 @@ class HoldsServiceTest {
     private lateinit var holdsApiClient: HoldsApiClient
 
     @Spy
-    private lateinit var mockedTimeConversionService : TimeConversionService
+    private lateinit var mockedTimeConversionService: TimeConversionService
 
     @Mock
     private lateinit var holdsMappingRepository: HoldsMappingRepository
-
 
     @InjectMocks
     private lateinit var holdsService: HoldsService
@@ -46,13 +45,12 @@ class HoldsServiceTest {
 
     @Test
     fun `should send the hold request to the hold service, store the mapping and return the created hold`() {
-
       val holdsCreatedAt = LocalDateTime.now()
       val holdsUntilDate = LocalDateTime.now().plusDays(1)
 
       val syncCreateHoldRequest = SyncCreateHoldRequest(
         prisonNumber = "AD23451",
-        subAccountCode = "2101",
+        subAccountCode = 2101,
         holdNumber = 123456789,
         createdAt = holdsCreatedAt,
         createdBy = "USER",
@@ -62,7 +60,7 @@ class HoldsServiceTest {
         description = "Test Hold",
         holdType = "WHF",
         holdLocation = "LEI",
-        amount = BigDecimal(99.99)
+        amount = BigDecimal("99.99"),
       )
 
       val holdsCreatedAtUTC = timeConversionService.toUtcInstant(holdsCreatedAt)
@@ -78,9 +76,9 @@ class HoldsServiceTest {
         holdUntilDate = holdsUntilDateUTC,
         isReleased = false,
         description = "Test Hold",
-        holdType =  CreateHoldRequest.HoldType.WHF,
+        holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
-        amount = BigDecimal(99.99).toPence()
+        amount = BigDecimal("99.99").toPence(),
       )
 
       val createHoldResponse = HoldResponse(
@@ -94,18 +92,17 @@ class HoldsServiceTest {
         holdUntilDate = holdsUntilDateUTC,
         isReleased = false,
         description = "Test Hold",
-        holdType =  HoldResponse.HoldType.WHF,
+        holdType = HoldResponse.HoldType.WHF,
         holdLocation = "LEI",
-        amount = BigDecimal(99.99).toPence()
+        amount = BigDecimal("99.99").toPence(),
       )
 
-      whenever(holdsApiClient.postHolds(createHoldRequest)).thenReturn(createHoldResponse)
-      whenever(holdsMappingRepository.save(HoldsMapping( legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponse.id))).thenReturn(HoldsMapping( id = 1L, legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponse.id))
+      whenever(holdsApiClient.postHold(createHoldRequest)).thenReturn(createHoldResponse)
+      whenever(holdsMappingRepository.save(HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponse.id))).thenReturn(HoldsMapping(id = 1L, legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponse.id))
 
       val createdHold = holdsService.createHold(syncCreateHoldRequest)
 
       assertThat(createdHold).isEqualTo(createHoldResponse)
-
     }
   }
 }

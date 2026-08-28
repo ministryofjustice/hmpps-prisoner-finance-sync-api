@@ -1,33 +1,42 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.holds
 
-import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.junit.jupiter.MockitoExtension
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.LocalDateTime
-import kotlin.time.Instant
 
-
-@ExtendWith(MockitoExtension::class)
+@ExtendWith(MockitoExtension::class, HoldsApiExtension::class)
 class HoldsIntegrationTest : IntegrationTestBase() {
+
+  @BeforeEach
+  fun setup() {
+    integrationTestHelpers.clearDB()
+    hmppsAuth.stubGrantToken()
+  }
 
   @Nested
   @DisplayName("postHolds")
   inner class PostHolds {
 
     @Test
-    fun `should return a 201 when a hold is created`(){
-
-      val holdRequest = SyncCreateHoldRequest(
+    fun `should return a 201 when a hold is created`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
         prisonNumber = "AD23451",
-        subAccountCode = "2102",
+        subAccountCode = 2101,
         holdNumber = 123456789,
         createdAt = LocalDateTime.now(),
         createdBy = "USER",
@@ -37,8 +46,27 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         description = "Test Hold",
         holdType = "WHF",
         holdLocation = "LEI",
-        amount = BigDecimal("99.99")
+        amount = BigDecimal("99.99"),
       )
+
+      val timeConversionService = TimeConversionService()
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = "USER",
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = CreateHoldRequest.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = syncHoldRequest.amount.toPence(),
+      )
+
+      holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
         .post()
@@ -46,10 +74,9 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         .accept(MediaType.APPLICATION_JSON)
         .contentType(MediaType.APPLICATION_JSON)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(holdRequest)
+        .bodyValue(syncHoldRequest)
         .exchange()
         .expectStatus().isCreated
-
     }
   }
 }

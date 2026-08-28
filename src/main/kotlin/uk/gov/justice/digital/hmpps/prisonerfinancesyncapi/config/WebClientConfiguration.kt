@@ -9,8 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.AccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.SubAccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsApi
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.holds.HoldsController
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsControllerApi
 import uk.gov.justice.hmpps.kotlin.auth.authorisedWebClient
 import uk.gov.justice.hmpps.kotlin.auth.healthWebClient
 import java.time.Duration
@@ -53,16 +52,16 @@ class WebClientConfiguration(
   fun transactionApi(@Qualifier("generalLedgerApiWebClient") webClient: WebClient): TransactionControllerApi = TransactionControllerApi(webClient)
 
   @Bean
-  fun holdsApi(@Qualifier("holdsApiWebClient") webClient: WebClient): HoldsApi = HoldsApi(webClient)
-
-  @Bean
   fun holdsApiWebClient(
     authorizedClientManager: OAuth2AuthorizedClientManager,
-    builder: WebClient.Builder): WebClient = builder.authorisedWebClient(
+    builder: WebClient.Builder,
+  ): WebClient = builder.authorisedWebClient(
     authorizedClientManager = authorizedClientManager,
     registrationId = "holds-api",
     url = holdsApiBaseUri,
     timeout = timeout,
   )
 
+  @Bean
+  fun holdsApi(@Qualifier("holdsApiWebClient") webClient: WebClient): HoldsControllerApi = HoldsControllerApi(webClient)
 }

@@ -14,7 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.HoldsService
 @RestController
 class HoldsController(var holdsService: HoldsService) {
   @PostMapping("/sync/holds")
-  fun postHolds(@RequestBody createHoldRequest: SyncCreateHoldRequest) : ResponseEntity<HoldResponse>{
+  fun postHolds(@RequestBody createHoldRequest: SyncCreateHoldRequest): ResponseEntity<HoldResponse> {
     val createdHold = holdsService.createHold(syncCreateHoldRequest = createHoldRequest)
     return ResponseEntity.status(201).body(createdHold)
   }
