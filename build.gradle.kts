@@ -229,7 +229,6 @@ tasks {
 }
 
 tasks.register<JacocoReport>("jacocoUnitTestReport") {
-  dependsOn("unitTest")
   executionData.setFrom(layout.buildDirectory.file("jacoco/unitTest.exec"))
   classDirectories.setFrom(sourceSets.main.get().output)
   sourceDirectories.setFrom(sourceSets.main.get().allSource)
@@ -252,7 +251,6 @@ tasks.register<JacocoReport>("jacocoUnitTestReport") {
 }
 
 tasks.register<JacocoReport>("jacocoTestIntegrationReport") {
-  dependsOn("integrationTest")
   executionData.setFrom(layout.buildDirectory.file("jacoco/integrationTest.exec"))
 
   classDirectories.setFrom(sourceSets.main.get().output)
