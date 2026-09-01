@@ -24,6 +24,7 @@ class HoldsApiClient(
     message404: String = "Not found",
     message502: String = "Bad Gateway - General Ledger Unreachable or throwing an error",
     message500: String = "Unexpected Error",
+    message409: String = "Conflict",
   ): T {
     try {
       return block()
@@ -38,6 +39,8 @@ class HoldsApiClient(
 
         e.statusCode == HttpStatus.INTERNAL_SERVER_ERROR -> throw CustomException(message502, HttpStatus.BAD_GATEWAY, e)
 
+        e.statusCode == HttpStatus.CONFLICT -> throw CustomException(message409, HttpStatus.CONFLICT, e)
+
         else -> throw CustomException(message500, HttpStatus.INTERNAL_SERVER_ERROR, e)
       }
     }
@@ -46,9 +49,13 @@ class HoldsApiClient(
   @Throws(WebClientResponseException::class)
   fun postHold(request: CreateHoldRequest): HoldResponse {
     log.info("Creating Hold for hold number ${request.legacyHoldNumber} for prison number ${request.prisonNumber}")
+    val response = handleExceptions(
+      block = {
+        holdsControllerApi.postHold(request)
+          .block()
+      },
+    )
 
-    return holdsControllerApi.postHold(request)
-      .block()
-      ?: throw IllegalStateException("Received null response when creating hold ${request.legacyHoldNumber}")
+    return response ?: throw IllegalStateException("Received null response when creating hold ${request.legacyHoldNumber}")
   }
 }

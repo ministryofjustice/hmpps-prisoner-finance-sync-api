@@ -37,7 +37,7 @@ class HoldsService(
       holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
       isReleased = syncCreateHoldRequest.isReleased,
       holdType = mapHoldType(syncCreateHoldRequest.holdType),
-      amount = syncCreateHoldRequest.amount.toPence().toLong(),
+      amount = syncCreateHoldRequest.amount.toPence(),
       holdLocation = syncCreateHoldRequest.holdLocation,
       holdUntilDate = if (syncCreateHoldRequest.holdUntilDate != null) timeConversionService.toUtcInstant(syncCreateHoldRequest.holdUntilDate) else null,
       description = syncCreateHoldRequest.description,

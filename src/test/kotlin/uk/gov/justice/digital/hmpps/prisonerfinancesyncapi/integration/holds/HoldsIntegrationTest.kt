@@ -106,5 +106,36 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isForbidden
     }
+
+    @Test
+    fun `should return a 409 when a hold has already been created`() {
+      val legacyHoldNumber = 123456789L
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = legacyHoldNumber,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+      )
+
+      holdsApi.stubAlreadyCreated()
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isEqualTo(409)
+    }
   }
 }
