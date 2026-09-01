@@ -48,6 +48,12 @@ spring:
             client-secret: ${general-ledger-api.client.secret}
             authorization-grant-type: client_credentials
             scope: read
+          holds-api:
+            provider: hmpps-auth
+            client-id: ${holds-api.client.id}
+            client-secret: ${holds-api.client.secret}
+            authorization-grant-type: client_credentials
+            scope: read
 
   http:
     codecs:

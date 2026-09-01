@@ -27,6 +27,8 @@ hmpps-auth:
 general-ledger-api:
     url: http://localhost:8091
 
+holds-api:
+  url: http://localhost:8092
 
 springdoc:
   packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi

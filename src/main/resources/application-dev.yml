@@ -12,3 +12,9 @@ general-ledger-api:
   client:
     id: ${GENERAL_LEDGER_API_CLIENT_ID:hmpps-prisoner-finance-general-ledger-api}
     secret: ${GENERAL_LEDGER_API_CLIENT_ID:clientsecret}
+
+holds-api:
+  url: ${HOLDS_API_URL:http://localhost:8081}
+  client:
+    id: ${HOLDS_API_CLIENT_ID:hmpps-prisoner-finance-holds-api}
+    secret: ${HOLDS_API_CLIENT_ID:clientsecret}

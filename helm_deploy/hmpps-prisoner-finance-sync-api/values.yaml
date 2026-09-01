@@ -68,6 +68,10 @@ generic-service:
       GENERAL_LEDGER_API_CLIENT_ID: 'API_CLIENT_ID'
       GENERAL_LEDGER_API_CLIENT_SECRET: 'API_CLIENT_SECRET'
 
+    hmpps-prisoner-finance-holds-api-client-creds:
+        HOLDS_API_CLIENT_ID: 'API_CLIENT_ID'
+        HOLDS_API_CLIENT_SECRET: 'API_CLIENT_SECRET'
+
     rds-postgresql-instance-output:
       DB_SERVER: "rds_instance_endpoint"
       DB_NAME: "database_name"

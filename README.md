@@ -152,19 +152,29 @@ The configuration is in build.gradle.kts under apiSpecs. This creates two tasks:
 `buildGeneralledgerApiClient`: Generates the Kotlin data classes (Models) and WebClient interfaces (API) from the local JSON file.
 
 ### How to Update
-If the General Ledger API changes:
+If the General Ledger or holds API changes:
 
-Download the latest spec:
+Clean up existing clients
 
-```sh
-./gradlew writeGeneralledgerJson
+```shell
+./gradlew cleanOpenApi
 ```
-build API client:
-```sh
-./gradlew buildGeneralledgerApiClient
+
+Download specs for new clients
+
+```shell
+./gradlew downloadAllOpenApiSpecs
+```
+
+Build new api clients
+
+```shell
+./gradlew buildAllApiClients
 ```
 
 Verify & Regenerate: Check the diff in openapi-specs/generalledger.json and run a build to ensure the code compiles.
+
+Do a new build to verify everything is okay
 
 ```sh
 ./gradlew clean build
