@@ -105,7 +105,6 @@ val generateTasks = apiSpecs.map { (name, _) ->
   tasks.register<GenerateTask>("build${name.replaceFirstChar { it.titlecase() }}ApiClient") {
     group = "openapi tools"
     description = "Generates Kotlin client and models for $name"
-    dependsOn(downloadAllOpenApiSpecs)
 
     generatorName.set("kotlin")
     library.set("jvm-spring-webclient")
