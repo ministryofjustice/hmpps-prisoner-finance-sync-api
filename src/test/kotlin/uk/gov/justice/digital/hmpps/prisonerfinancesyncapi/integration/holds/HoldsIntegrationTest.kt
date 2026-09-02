@@ -1,5 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.holds
 
+import com.github.tomakehurst.wiremock.client.WireMock
+import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
+import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -21,6 +24,8 @@ import java.time.LocalDateTime
 
 @ExtendWith(MockitoExtension::class, HoldsApiExtension::class)
 class HoldsIntegrationTest : IntegrationTestBase() {
+
+  private val wiremockClient = WireMock(8092)
 
   @BeforeEach
   fun setup() {
@@ -108,10 +113,10 @@ class HoldsIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a 409 when a hold has already been created`() {
+    fun `should return a 409 when a hold already exists in the mapping table`() {
       val legacyHoldNumber = 123456789L
       val syncHoldRequest = SyncCreateHoldRequest(
-        prisonNumber = "AD23451",
+        prisonNumber = "AD23111",
         subAccountCode = 2101,
         holdNumber = legacyHoldNumber,
         createdAt = LocalDateTime.now(),
@@ -120,12 +125,39 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         holdUntilDate = LocalDateTime.now().plusDays(1),
         isReleased = false,
         description = "Test Hold",
-        holdType = "WHF",
+        holdType = "HOA",
         holdLocation = "LEI",
-        amount = BigDecimal("99.99"),
+        amount = BigDecimal("20"),
       )
 
-      holdsApi.stubAlreadyCreated()
+      val timeConversionService = TimeConversionService()
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = syncHoldRequest.prisonNumber,
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = syncHoldRequest.holdNumber,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = syncHoldRequest.createdBy,
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = syncHoldRequest.isReleased,
+        description = syncHoldRequest.description,
+        holdType = CreateHoldRequest.HoldType.HOA,
+        holdLocation = syncHoldRequest.holdLocation,
+        amount = syncHoldRequest.amount.toPence(),
+      )
+
+      holdsApi.stubPostHold(expectedHoldRequest)
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isEqualTo(201)
 
       webTestClient
         .post()
@@ -136,6 +168,8 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         .bodyValue(syncHoldRequest)
         .exchange()
         .expectStatus().isEqualTo(409)
+
+      wiremockClient.verifyThat(1, postRequestedFor(urlPathMatching("/holds")))
     }
   }
 }
