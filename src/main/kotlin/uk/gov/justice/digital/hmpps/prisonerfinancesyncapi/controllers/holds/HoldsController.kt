@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
@@ -16,6 +17,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.HOLDS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.HoldsService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
@@ -67,5 +70,12 @@ class HoldsController(var holdsService: HoldsService) {
   fun postHolds(@RequestBody createHoldRequest: SyncCreateHoldRequest): ResponseEntity<HoldResponse> {
     val createdHold = holdsService.createHold(syncCreateHoldRequest = createHoldRequest)
     return ResponseEntity.status(201).body(createdHold)
+  }
+
+  @PostMapping("/sync/holds/{holdNumber}/release")
+  fun releaseHold(@PathVariable holdNumber: Long, @RequestBody syncHoldReleaseRequest: SyncReleaseHoldRequest): ResponseEntity<SyncReleasedHoldResponse> {
+    val response = holdsService.releaseHold(holdNumber, releaseRequest = syncHoldReleaseRequest)
+
+    return ResponseEntity.status(200).body(response)
   }
 }

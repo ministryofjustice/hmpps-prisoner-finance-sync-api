@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-09-01.73.43db37f"
+    "version" : "2026-09-02.96.be62f5d"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
@@ -99,6 +99,237 @@
         },
         "security" : [ {
           "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
+      }
+    },
+    "/holds/{id}/release" : {
+      "post" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Release a hold by its id",
+        "description" : "Release a hold by its id. This will set the released flag to true and no longer be included in the prisoner's hold balance.",
+        "operationId" : "releaseHoldById",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReleaseHoldRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Hold Released",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReleasedHoldResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
+      }
+    },
+    "/holds/{prisonNumber}/balance" : {
+      "get" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Get the account hold balance.",
+        "description" : "Get the account hold balance.",
+        "operationId" : "getAccountHoldBalance",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Overall hold balance of the account for all sub accounts",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HoldBalanceResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
+      }
+    },
+    "/holds/{prisonNumber}/balance/{subAccountRef}" : {
+      "get" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Get the sub account hold balance.",
+        "description" : "Get the sub account hold balance.",
+        "operationId" : "getSubAccountHoldBalance",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "subAccountRef",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Hold balance of the sub account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HoldBalanceResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
         } ]
       }
     },
@@ -300,6 +531,55 @@
           }
         },
         "required" : [ "status" ]
+      },
+      "ReleaseHoldRequest" : {
+        "type" : "object",
+        "properties" : {
+          "releaseDateTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "releaseDateTime" ]
+      },
+      "ReleasedHoldResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "prisonNumber" : {
+            "type" : "string"
+          },
+          "subAccountRef" : {
+            "type" : "string",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ]
+          },
+          "amountReleased" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "releasedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "amountReleased", "id", "prisonNumber", "releasedAt", "subAccountRef" ]
+      },
+      "HoldBalanceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "balanceDateTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "amount", "balanceDateTime" ]
       }
     },
     "securitySchemes" : {

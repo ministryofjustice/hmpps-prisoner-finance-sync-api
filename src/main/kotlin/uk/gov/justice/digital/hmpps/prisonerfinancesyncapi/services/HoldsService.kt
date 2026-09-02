@@ -8,8 +8,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMap
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 
 @Service
 class HoldsService(
@@ -56,5 +60,21 @@ class HoldsService(
     holdsMappingRepository.save(holdsMapping)
 
     return response
+  }
+
+  fun releaseHold(holdNumber: Long, releaseRequest: SyncReleaseHoldRequest): SyncReleasedHoldResponse {
+    val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(holdNumber)!!
+
+    val releaseHoldRequest = ReleaseHoldRequest(
+      releaseDateTime = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
+    )
+    val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest)
+
+    return SyncReleasedHoldResponse(
+      prisonNumber = response.prisonNumber,
+      holdNumber = holdNumber,
+      amountReleased = response.amountReleased.toPounds(),
+      releasedAt = timeConversionService.toLocalDateTime(response.releasedAt),
+    )
   }
 }
