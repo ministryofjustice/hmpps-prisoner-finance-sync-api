@@ -7,6 +7,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -20,6 +21,7 @@ class IntegrationTestHelpers(
   private val jwtAuthHelper: JwtAuthorisationHelper,
   private val generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
   private val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
+  private val holdsMappingRepository: HoldsMappingRepository,
 ) {
 
   lateinit var webTestClient: WebTestClient
@@ -72,5 +74,6 @@ class IntegrationTestHelpers(
   fun clearDB() {
     generalLedgerTransactionMappingRepository.deleteAllInBatch()
     nomisSyncPayloadRepository.deleteAllInBatch()
+    holdsMappingRepository.deleteAllInBatch()
   }
 }

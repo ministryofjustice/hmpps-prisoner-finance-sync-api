@@ -28,6 +28,12 @@ class HoldsService(
   fun mapHoldType(holdType: String) = CreateHoldRequest.HoldType.valueOf(holdType.uppercase())
 
   fun createHold(syncCreateHoldRequest: SyncCreateHoldRequest): HoldResponse {
+    val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(syncCreateHoldRequest.holdNumber)
+
+    if (mapping != null) {
+      throw CustomException("Hold number already in use. Hold UUID: ${mapping.holdsUuid} Hold number: ${mapping.legacyHoldNumber}", HttpStatusCode.valueOf(409))
+    }
+
     val createHoldRequest = CreateHoldRequest(
       prisonNumber = syncCreateHoldRequest.prisonNumber,
       legacyHoldNumber = syncCreateHoldRequest.holdNumber,

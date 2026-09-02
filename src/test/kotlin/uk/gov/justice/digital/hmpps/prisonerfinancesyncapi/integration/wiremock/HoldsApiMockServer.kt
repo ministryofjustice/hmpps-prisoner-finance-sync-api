@@ -100,15 +100,4 @@ class HoldsApiMockServer :
         ),
     )
   }
-
-  fun stubAlreadyCreated() {
-    stubFor(
-      post(urlPathEqualTo("/holds"))
-        .willReturn(
-          aResponse()
-            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-            .withStatus(409),
-        ),
-    )
-  }
 }
