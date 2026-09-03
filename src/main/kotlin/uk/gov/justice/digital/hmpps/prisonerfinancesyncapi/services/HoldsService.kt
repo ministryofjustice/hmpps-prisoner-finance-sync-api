@@ -64,7 +64,7 @@ class HoldsService(
   }
 
   fun releaseHold(holdNumber: Long, releaseRequest: SyncReleaseHoldRequest): SyncReleasedHoldResponse {
-    val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(holdNumber) ?: throw CustomException("No hold mapping found with this hold number", HttpStatus.NOT_FOUND)
+    val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(holdNumber) ?: throw CustomException("No hold mapping found for hold number: $holdNumber", HttpStatus.NOT_FOUND)
 
     val releaseHoldRequest = ReleaseHoldRequest(
       releaseDateTime = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
