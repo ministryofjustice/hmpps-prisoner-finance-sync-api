@@ -8,6 +8,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsCo
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleaseHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
+import java.util.UUID
 
 @Component
 class HoldsApiClient(
@@ -57,5 +60,21 @@ class HoldsApiClient(
     )
 
     return response ?: throw IllegalStateException("Received null response when creating hold ${request.legacyHoldNumber}")
+  }
+
+  @Throws(WebClientResponseException::class)
+  fun postHoldRelease(holdsUUID: UUID, request: ReleaseHoldRequest): ReleasedHoldResponse {
+    log.info("Releasing Hold for hold ID $holdsUUID")
+    val response = handleExceptions(
+      block = {
+        holdsControllerApi.releaseHoldById(
+          id = holdsUUID,
+          releaseHoldRequest = request,
+        )
+          .block()
+      },
+    )
+
+    return response ?: throw IllegalStateException("Received null response when creating hold $holdsUUID")
   }
 }

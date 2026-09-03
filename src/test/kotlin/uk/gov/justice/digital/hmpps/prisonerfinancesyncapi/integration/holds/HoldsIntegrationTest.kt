@@ -3,29 +3,41 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.holds
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
+import org.springframework.test.web.reactive.server.expectBody
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.util.UUID
 
 @ExtendWith(MockitoExtension::class, HoldsApiExtension::class)
-class HoldsIntegrationTest : IntegrationTestBase() {
+class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsMappingRepository) : IntegrationTestBase() {
 
   private val wiremockClient = WireMock(8092)
+  val timeConversionService = TimeConversionService()
+  val mapper = ObjectMapper()
 
   @BeforeEach
   fun setup() {
@@ -53,8 +65,6 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         holdLocation = "LEI",
         amount = BigDecimal("99.99"),
       )
-
-      val timeConversionService = TimeConversionService()
 
       val expectedHoldRequest = CreateHoldRequest(
         prisonNumber = "AD23451",
@@ -170,6 +180,139 @@ class HoldsIntegrationTest : IntegrationTestBase() {
         .expectStatus().isEqualTo(409)
 
       wiremockClient.verifyThat(1, postRequestedFor(urlPathMatching("/holds")))
+    }
+  }
+
+  @Nested
+  @DisplayName("postHoldRelease")
+  inner class PostHoldRelease {
+
+    @Test
+    fun `should return a 200 when a hold is released`() {
+      //    If the hold has already been released, this is the same behaviour
+
+      val legacyHoldNumber = 123456789L
+      val holdsUUID = UUID.randomUUID()
+      // Setup the mapping for stubs
+      holdsMappingRepository.saveAndFlush(HoldsMapping(legacyHoldNumber = legacyHoldNumber, holdsUuid = holdsUUID))
+
+      val releaseRequest = SyncReleaseHoldRequest(
+        releaseDateTime = LocalDateTime.now(),
+      )
+
+      val prisonNumber = "AD23451"
+      val amount = 500L
+
+      holdsApi.stubReleaseHold(
+        prisonNumber = prisonNumber,
+        releasedAt = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
+        amount = amount,
+        holdsUUID = holdsUUID,
+      )
+
+      val response = webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(releaseRequest)
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<SyncReleasedHoldResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.prisonNumber).isEqualTo(prisonNumber)
+      assertThat(response.releasedAt).isEqualTo(releaseRequest.releaseDateTime)
+      assertThat(response.holdNumber).isEqualTo(legacyHoldNumber)
+      assertThat(response.amountReleased).isEqualTo(amount.toPounds())
+    }
+
+    @Test
+    fun `should return a 400 if the hold number is not a Long `() {
+      val legacyHoldNumber = "notALong"
+
+      val releaseRequest = SyncReleaseHoldRequest(
+        releaseDateTime = LocalDateTime.now(),
+      )
+
+      webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(releaseRequest)
+        .exchange()
+        .expectStatus().isBadRequest
+    }
+
+    @Test
+    fun `should return a 400 if the body is malformed `() {
+      val legacyHoldNumber = 123456789L
+
+      val releaseRequest = mapper.writeValueAsString({ "key" to "value" })
+
+      webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(releaseRequest)
+        .exchange()
+        .expectStatus().isBadRequest
+    }
+
+    @Test
+    fun `should return a 403 if sent the wrong role`() {
+      val legacyHoldNumber = 123456789L
+
+      val releaseRequest = SyncReleaseHoldRequest(
+        releaseDateTime = LocalDateTime.now(),
+      )
+
+      webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf("ROLE__WRONG_ROLE")))
+        .bodyValue(releaseRequest)
+        .exchange()
+        .expectStatus().isForbidden
+    }
+
+    @Test
+    fun `should return a 404 if a mapping does not exist for that hold number`() {
+      val legacyHoldNumber = 123456789L
+
+      val releaseRequest = SyncReleaseHoldRequest(
+        releaseDateTime = LocalDateTime.now(),
+      )
+
+      webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(releaseRequest)
+        .exchange()
+        .expectStatus().isNotFound
+    }
+
+    @Test
+    fun `should return a 404 if the holds api returns a 404`() {
+      val legacyHoldNumber = 123456789L
+      val holdsUUID = UUID.randomUUID()
+      // Setup the mapping for stubs
+      holdsMappingRepository.saveAndFlush(HoldsMapping(legacyHoldNumber = legacyHoldNumber, holdsUuid = holdsUUID))
+
+      val releaseRequest = SyncReleaseHoldRequest(
+        releaseDateTime = LocalDateTime.now(),
+      )
+
+      holdsApi.stubReleaseHoldNotFound(holdsUUID)
+
+      webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(releaseRequest)
+        .exchange()
+        .expectStatus().isNotFound
     }
   }
 }

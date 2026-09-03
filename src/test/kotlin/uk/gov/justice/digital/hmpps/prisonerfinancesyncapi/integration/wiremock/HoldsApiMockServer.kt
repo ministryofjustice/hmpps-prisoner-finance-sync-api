@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
+import java.time.Instant
 import java.util.UUID
 
 class HoldsApiExtension :
@@ -100,4 +102,33 @@ class HoldsApiMockServer :
         ),
     )
   }
+
+  fun stubReleaseHold(prisonNumber: String, releasedAt: Instant, amount: Long, holdsUUID: UUID) = stubFor(
+    post(urlPathEqualTo("/holds/$holdsUUID/release"))
+      .willReturn(
+        aResponse()
+          .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+          .withStatus(200)
+          .withBody(
+            mapper.writeValueAsString(
+              ReleasedHoldResponse(
+                id = UUID.randomUUID(),
+                prisonNumber = prisonNumber,
+                subAccountRef = ReleasedHoldResponse.SubAccountRef.CASH,
+                amountReleased = amount,
+                releasedAt = releasedAt,
+              ),
+            ),
+          ),
+      ),
+  )
+
+  fun stubReleaseHoldNotFound(holdsUUID: UUID) = stubFor(
+    post(urlPathEqualTo("/holds/$holdsUUID/release"))
+      .willReturn(
+        aResponse()
+          .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+          .withStatus(404),
+      ),
+  )
 }
