@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
@@ -63,7 +64,7 @@ class HoldsService(
   }
 
   fun releaseHold(holdNumber: Long, releaseRequest: SyncReleaseHoldRequest): SyncReleasedHoldResponse {
-    val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(holdNumber)!!
+    val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(holdNumber) ?: throw CustomException("No hold mapping found with this hold number", HttpStatus.NOT_FOUND)
 
     val releaseHoldRequest = ReleaseHoldRequest(
       releaseDateTime = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
