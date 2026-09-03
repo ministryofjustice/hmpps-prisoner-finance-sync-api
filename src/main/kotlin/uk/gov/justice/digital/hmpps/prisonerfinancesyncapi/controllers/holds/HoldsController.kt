@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.HOLDS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
@@ -82,7 +81,7 @@ class HoldsController(var holdsService: HoldsService) {
       ApiResponse(
         responseCode = "200",
         description = "Hold record released.",
-        content = [Content(schema = Schema(implementation = ReleasedHoldResponse::class))],
+        content = [Content(schema = Schema(implementation = SyncReleasedHoldResponse::class))],
       ),
       ApiResponse(
         responseCode = "400",
