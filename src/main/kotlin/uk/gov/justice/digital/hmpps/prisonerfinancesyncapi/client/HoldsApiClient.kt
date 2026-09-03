@@ -64,7 +64,7 @@ class HoldsApiClient(
 
   @Throws(WebClientResponseException::class)
   fun postHoldRelease(holdsUUID: UUID, request: ReleaseHoldRequest): ReleasedHoldResponse {
-    log.info("Releasing Hold for hold number $holdsUUID")
+    log.info("Releasing Hold for hold ID $holdsUUID")
     val response = handleExceptions(
       block = {
         holdsControllerApi.releaseHoldById(
