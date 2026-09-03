@@ -11,6 +11,12 @@ const httpParams = {
 
 const baseUrl = `http://${domain}`
 
+export const options = {
+    thresholds: {
+        checks: ['rate==1.0'],
+    }
+}
+
 export default function verify_health() {
     const res = http.get(`${baseUrl}/health`, httpParams)
 
