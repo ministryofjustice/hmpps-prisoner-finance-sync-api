@@ -122,4 +122,13 @@ class HoldsApiMockServer :
           ),
       ),
   )
+
+  fun stubReleaseHoldNotFound(holdsUUID: UUID) = stubFor(
+    post(urlPathEqualTo("/holds/$holdsUUID/release"))
+      .willReturn(
+        aResponse()
+          .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+          .withStatus(404),
+      ),
+  )
 }

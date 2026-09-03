@@ -292,5 +292,27 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         .exchange()
         .expectStatus().isNotFound
     }
+
+    @Test
+    fun `should return a 404 if the holds api returns a 404`() {
+      val legacyHoldNumber = 123456789L
+      val holdsUUID = UUID.randomUUID()
+      // Setup the mapping for stubs
+      holdsMappingRepository.saveAndFlush(HoldsMapping(legacyHoldNumber = legacyHoldNumber, holdsUuid = holdsUUID))
+
+      val releaseRequest = SyncReleaseHoldRequest(
+        releaseDateTime = LocalDateTime.now(),
+      )
+
+      holdsApi.stubReleaseHoldNotFound(holdsUUID)
+
+      webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(releaseRequest)
+        .exchange()
+        .expectStatus().isNotFound
+    }
   }
 }
