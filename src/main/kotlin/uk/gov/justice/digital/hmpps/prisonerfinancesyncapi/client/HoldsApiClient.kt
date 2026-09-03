@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
@@ -76,5 +77,16 @@ class HoldsApiClient(
     )
 
     return response ?: throw IllegalStateException("Received null response when creating hold $holdsUUID")
+  }
+
+  @Throws(WebClientResponseException::class)
+  fun getSubAccountHoldBalance(prisonNumber: String, subAccountReference: String): HoldBalanceResponse {
+    val response = handleExceptions(
+      block = {
+        holdsControllerApi.getSubAccountHoldBalance(prisonNumber, subAccountReference)
+          .block()
+      },
+    )
+    return response ?: throw IllegalStateException("Received null response requesting hold balance for  $prisonNumber $subAccountReference")
   }
 }

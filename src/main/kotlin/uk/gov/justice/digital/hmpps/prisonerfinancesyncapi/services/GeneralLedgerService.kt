@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -26,6 +27,7 @@ import java.util.UUID
 @Service("generalLedgerService")
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
+  private val holdsApiClient: HoldsApiClient,
   private val accountMapping: LedgerAccountMappingService,
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
@@ -205,8 +207,13 @@ class GeneralLedgerService(
         log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
         continue
       }
+      val subAccountHoldBalance = holdsApiClient.getSubAccountHoldBalance(prisonNumber, account.reference)
+
       val accountCode = accountMapping.mapSubAccountPrisonerReferenceToNOMIS(account.reference).toString()
-      subAccounts[accountCode] = SubAccountBalanceForReconciliation.fromSubAccountBalanceResponse(subAccountBalance)
+      subAccounts[accountCode] = SubAccountBalanceForReconciliation.fromSubAccountBalanceResponse(
+        subAccountBalanceResponse = subAccountBalance,
+        subAccountBalanceHoldResponse = subAccountHoldBalance,
+      )
     }
 
     return subAccounts

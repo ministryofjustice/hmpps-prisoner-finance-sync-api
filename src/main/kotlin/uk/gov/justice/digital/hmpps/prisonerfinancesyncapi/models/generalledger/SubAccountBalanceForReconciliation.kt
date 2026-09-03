@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger
 
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -9,10 +10,9 @@ data class SubAccountBalanceForReconciliation(
   val balanceDateTime: Instant,
 ) {
   companion object {
-    fun fromSubAccountBalanceResponse(subAccountBalanceResponse: SubAccountBalanceResponse) = SubAccountBalanceForReconciliation(
+    fun fromSubAccountBalanceResponse(subAccountBalanceResponse: SubAccountBalanceResponse, subAccountBalanceHoldResponse: HoldBalanceResponse) = SubAccountBalanceForReconciliation(
       totalBalance = subAccountBalanceResponse.amount.toBigDecimal().movePointLeft(2).setScale(2),
-      // hardcoded for now
-      holdBalance = BigDecimal.ZERO,
+      holdBalance = subAccountBalanceHoldResponse.amount.toBigDecimal().movePointLeft(2).setScale(2),
       balanceDateTime = subAccountBalanceResponse.balanceDateTime,
     )
   }
