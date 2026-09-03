@@ -28,6 +28,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
@@ -44,7 +46,7 @@ import java.util.UUID
 import kotlin.random.Random
 import kotlin.random.nextLong
 
-@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class)
+@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class, HoldsApiExtension::class)
 class GeneralLedgerTest : IntegrationTestBase() {
 
   @Autowired
@@ -64,6 +66,7 @@ class GeneralLedgerTest : IntegrationTestBase() {
   @BeforeEach
   fun setup() {
     generalLedgerApi.resetAll()
+    holdsApi.resetAll()
     hmppsAuth.stubGrantToken()
     listAppender = ListAppender<ILoggingEvent>().apply { start() }
     rootLogger.addAppender(listAppender)
@@ -1638,6 +1641,21 @@ class GeneralLedgerTest : IntegrationTestBase() {
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, 1000)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[1].id, 2000)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[2].id, 0)
+      holdsApi.stubGetHoldForSubAccount(
+        testPrisonNumber,
+        "CASH",
+        1000,
+      )
+      holdsApi.stubGetHoldForSubAccount(
+        testPrisonNumber,
+        "SPENDS",
+        0,
+      )
+      holdsApi.stubGetHoldForSubAccount(
+        testPrisonNumber,
+        "SAVINGS",
+        2050,
+      )
 
       val body = webTestClient
         .get()
@@ -1645,7 +1663,6 @@ class GeneralLedgerTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk()
-        // TODO: make a DTO for subaccount balances, and confirm this looks correct
         .expectBody<Map<String, SubAccountBalanceForReconciliation>>().returnResult().responseBody!!
 
       assertThat(body).hasSize(3)
@@ -1653,6 +1670,10 @@ class GeneralLedgerTest : IntegrationTestBase() {
       assertThat(body["2101"]?.totalBalance).isEqualTo(BigDecimal("10.00"))
       assertThat(body["2102"]?.totalBalance).isEqualTo(BigDecimal("20.00"))
       assertThat(body["2103"]?.totalBalance).isEqualTo(BigDecimal("0.00"))
+
+      assertThat(body["2101"]?.holdBalance).isEqualTo(BigDecimal("10.00"))
+      assertThat(body["2102"]?.holdBalance).isEqualTo(BigDecimal("0.00"))
+      assertThat(body["2103"]?.holdBalance).isEqualTo(BigDecimal("20.50"))
     }
   }
 }

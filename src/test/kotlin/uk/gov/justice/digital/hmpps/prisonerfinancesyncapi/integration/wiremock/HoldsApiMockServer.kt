@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
 import java.time.Instant
@@ -131,4 +132,19 @@ class HoldsApiMockServer :
           .withStatus(404),
       ),
   )
+  fun stubGetHoldForSubAccount(prisonNumber: String, subAccountReference: String, amount: Long) {
+    val holdBalanceResponse = HoldBalanceResponse(
+      balanceDateTime = Instant.now(),
+      amount = amount,
+    )
+    stubFor(
+      get(urlPathEqualTo("/holds/$prisonNumber/balance/$subAccountReference"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(mapper.writeValueAsString(holdBalanceResponse)),
+        ),
+    )
+  }
 }

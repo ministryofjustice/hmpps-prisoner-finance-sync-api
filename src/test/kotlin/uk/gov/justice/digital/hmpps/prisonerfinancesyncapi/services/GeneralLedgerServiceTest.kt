@@ -29,6 +29,7 @@ import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -40,6 +41,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -57,6 +59,9 @@ class GeneralLedgerServiceTest {
 
   @Mock
   private lateinit var generalLedgerApiClient: GeneralLedgerApiClient
+
+  @Mock
+  private lateinit var holdsApiClient: HoldsApiClient
 
   @Mock
   private lateinit var telemetryClient: TelemetryClient
@@ -212,7 +217,7 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
-    fun `Should get all prisoner sub accounts`() {
+    fun `Should get all prisoner sub accounts and balances`() {
       val parentUUID = UUID.randomUUID()
       val subAccounts = mutableListOf<SubAccountResponse>()
 
@@ -238,6 +243,8 @@ class GeneralLedgerServiceTest {
             amount = 0L,
           ),
         )
+        whenever(holdsApiClient.getSubAccountHoldBalance(prisonNumber, subAccount.reference))
+          .thenReturn(HoldBalanceResponse(amount = 0L, balanceDateTime = Instant.now()))
       }
 
       val balances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
@@ -247,6 +254,7 @@ class GeneralLedgerServiceTest {
 
       for (account in subAccounts) {
         verify(generalLedgerApiClient).findSubAccountBalanceByAccountId(account.id)
+        verify(holdsApiClient).getSubAccountHoldBalance(prisonNumber, account.reference)
       }
     }
   }
