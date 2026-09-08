@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-09-02.96.be62f5d"
+    "version" : "2026-09-07.114.12b82c7"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
@@ -184,6 +184,96 @@
         } ]
       }
     },
+    "/holds/{prisonNumber}" : {
+      "get" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Get all Holds for prisonNumber",
+        "description" : "Get All Holds for prisonNumber, if prisonNumber does not exist an empty list is returned",
+        "operationId" : "getHolds",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
+          }
+        }, {
+          "name" : "pageNumber",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "All Holds for prisonNumber, if prisonNumber does not exist an empty list is returned",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedResponseHoldResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Page requested is out of range",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
+      }
+    },
     "/holds/{prisonNumber}/balance" : {
       "get" : {
         "tags" : [ "Holds Controller" ],
@@ -195,7 +285,8 @@
           "in" : "path",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
           }
         } ],
         "responses" : {
@@ -266,7 +357,8 @@
           "in" : "path",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
           }
         }, {
           "name" : "subAccountRef",
@@ -566,6 +658,37 @@
           }
         },
         "required" : [ "amountReleased", "id", "prisonNumber", "releasedAt", "subAccountRef" ]
+      },
+      "PagedResponseHoldResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/HoldResponse"
+            }
+          },
+          "pageNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "isLastPage" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
       },
       "HoldBalanceResponse" : {
         "type" : "object",

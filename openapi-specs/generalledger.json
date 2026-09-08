@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-09-01.721.969e724"
+    "version" : "2026-09-04.728.f186c03"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
