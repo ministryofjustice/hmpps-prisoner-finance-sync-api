@@ -18,6 +18,16 @@ configure<JacocoPluginExtension> {
   toolVersion = "0.8.14"
 }
 
+configurations {
+  named("ktlint") {
+    resolutionStrategy.eachDependency {
+      if (requested.group == "org.jetbrains.kotlin") {
+        useVersion("2.2.0")
+      }
+    }
+  }
+}
+
 dependencies {
   implementation("uk.gov.justice.service.hmpps:hmpps-kotlin-spring-boot-starter:3.0.1")
   implementation("org.springframework.boot:spring-boot-starter-webflux")
