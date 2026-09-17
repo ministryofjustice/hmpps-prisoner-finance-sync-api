@@ -12,6 +12,7 @@ generic-service:
     HMPPS_AUTH_URL: "https://sign-in-preprod.hmpps.service.justice.gov.uk/auth"
     GENERAL_LEDGER_API_URL: "https://prisoner-finance-general-ledger-api-preprod.hmpps.service.justice.gov.uk"
     HOLDS_API_URL: "https://prisoner-finance-holds-api-preprod.hmpps.service.justice.gov.uk"
+    ADVANCES_API_URL: "https://prisoner-finance-advances-api-preprod.hmpps.service.justice.gov.uk"
 
 # CloudPlatform AlertManager receiver to route prometheus alerts to slack
 # See https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/how-to-create-alarms.html#creating-your-own-custom-alerts

@@ -30,6 +30,9 @@ general-ledger-api:
 holds-api:
   url: http://localhost:8092
 
+advances-api:
+  url: http://localhost:8093
+
 springdoc:
   packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi
   packages-to-exclude:

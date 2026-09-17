@@ -1,0 +1,388 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "HMPPS Prisoner Finance Advances Api",
+    "contact" : {
+      "name" : "HMPPS Digital Studio",
+      "email" : "feedback@digital.justice.gov.uk"
+    },
+    "version" : "2026-09-17.49.cfea7e8"
+  },
+  "servers" : [ {
+    "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
+    "description" : "Development"
+  }, {
+    "url" : "https://prisoner-finance-advances-api-preprod.hmpps.service.justice.gov.uk",
+    "description" : "Pre-Production"
+  }, {
+    "url" : "https://prisoner-finance-advances-api.hmpps.service.justice.gov.uk",
+    "description" : "Production"
+  }, {
+    "url" : "http://localhost:8080",
+    "description" : "Local"
+  } ],
+  "security" : [ {
+    "bearer-jwt" : [ "read", "write" ]
+  } ],
+  "tags" : [ {
+    "name" : "ADVANCES",
+    "description" : "Endpoints for advance management and viewing in prisoner finance."
+  } ],
+  "paths" : {
+    "/advances" : {
+      "post" : {
+        "tags" : [ "Advance Record Controller" ],
+        "summary" : "Create a new advance record",
+        "description" : "Creates a new advance record for a prisoner's spends account.",
+        "operationId" : "postAdvanceRecord",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAdvanceRecordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Advance record Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdvanceRecordResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
+        } ]
+      }
+    },
+    "/hello" : {
+      "get" : {
+        "tags" : [ "Hello World Controller" ],
+        "summary" : "Hello World Endpoint",
+        "operationId" : "hello",
+        "responses" : {
+          "200" : {
+            "description" : "Hello World!",
+            "content" : {
+              "text/plain" : { }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RO", "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
+        } ]
+      }
+    },
+    "/advances/{prisonNumber}" : {
+      "get" : {
+        "tags" : [ "Advance Record Controller" ],
+        "operationId" : "getAdvances",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
+          }
+        }, {
+          "name" : "pageNumber",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Paginated advance records for prisonNumber",
+            "content" : {
+              "application/json" : { }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW", "ROLE_PRISONER_FINANCE__ADVANCES__RO" ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "CreateAdvanceRecordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "legacyPaymentProfileId" : {
+            "type" : "string",
+            "description" : "The payment profile id from NOMIS",
+            "example" : "123456789"
+          },
+          "legacyInformationNumber" : {
+            "type" : "string",
+            "description" : "The information number for the advance from NOMIS",
+            "example" : "12345678-1"
+          },
+          "prisonNumber" : {
+            "type" : "string",
+            "description" : "The prison number of the offender this advance was for",
+            "example" : "A9917EC"
+          },
+          "prisonID" : {
+            "type" : "string",
+            "description" : "The prison ID that issued this advance",
+            "example" : "LEI"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount in pence issued in the advance",
+            "example" : 500
+          },
+          "createdOn" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date time when the advance was created with the time set to midnight",
+            "example" : "2024-06-18T00:00:00.000000"
+          },
+          "repaymentStartDate" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date time when the payments are intended to begin",
+            "example" : "2024-06-18T00:00:00.000000"
+          },
+          "repaymentAmount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount in pence to be repaid weekly",
+            "example" : 50
+          },
+          "reference" : {
+            "type" : "string",
+            "description" : "The reference from the payment profile ",
+            "example" : "FNC"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The username that created this advance",
+            "example" : "JOHN_USER"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "The current status of this advance",
+            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ],
+            "example" : "AdvanceStatus.ACTIVE"
+          }
+        },
+        "required" : [ "amount", "createdBy", "createdOn", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "reference", "repaymentAmount", "repaymentStartDate", "status" ]
+      },
+      "AdvanceRecordResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "legacyPaymentProfileId" : {
+            "type" : "string"
+          },
+          "legacyInformationNumber" : {
+            "type" : "string"
+          },
+          "prisonNumber" : {
+            "type" : "string"
+          },
+          "prisonID" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdOn" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "repaymentStartDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "repaymentAmount" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "reference" : {
+            "type" : "string"
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ]
+          }
+        },
+        "required" : [ "amount", "createdBy", "createdOn", "id", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "reference", "repaymentAmount", "repaymentStartDate", "status" ]
+      },
+      "ErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errorCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "userMessage" : {
+            "type" : [ "string", "null" ]
+          },
+          "developerMessage" : {
+            "type" : [ "string", "null" ]
+          },
+          "moreInfo" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "status" ]
+      }
+    },
+    "securitySchemes" : {
+      "bearer-jwt" : {
+        "type" : "http",
+        "description" : "A HMPPS Auth access token with either role: `[ROLE_PRISONER_FINANCE__ADVANCES__RO, ROLE_PRISONER_FINANCE__ADVANCES__RW]`",
+        "name" : "Authorization",
+        "in" : "header",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  }
+}

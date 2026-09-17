@@ -76,6 +76,7 @@ kotlin {
 val apiSpecs = mapOf(
   "generalledger" to "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk/v3/api-docs",
   "holds" to "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk/v3/api-docs",
+  "advances" to "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk/v3/api-docs",
 )
 
 val cleanOpenApi = tasks.register("cleanOpenApi") {

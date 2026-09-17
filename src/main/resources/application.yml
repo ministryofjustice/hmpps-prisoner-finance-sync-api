@@ -54,6 +54,12 @@ spring:
             client-secret: ${holds-api.client.secret}
             authorization-grant-type: client_credentials
             scope: read
+          advances-api:
+            provider: hmpps-auth
+            client-id: ${advances-api.client.id}
+            client-secret: ${advances-api.client.secret}
+            authorization-grant-type: client_credentials
+            scope: read
 
   http:
     codecs:

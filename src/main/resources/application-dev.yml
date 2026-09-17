@@ -18,3 +18,9 @@ holds-api:
   client:
     id: ${HOLDS_API_CLIENT_ID:hmpps-prisoner-finance-holds-api}
     secret: ${HOLDS_API_CLIENT_ID:clientsecret}
+
+advances-api:
+  url: ${ADVANCES_API_URL:http://localhost:8081}
+  client:
+    id: ${ADVANCES_API_CLIENT_ID:hmpps-prisoner-finance-holds-api}
+    secret: ${ADVANCES_API_CLIENT_ID:clientsecret}
