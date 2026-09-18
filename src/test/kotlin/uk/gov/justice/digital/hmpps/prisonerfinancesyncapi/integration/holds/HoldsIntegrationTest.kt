@@ -140,8 +140,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         amount = BigDecimal("20"),
       )
 
-      val timeConversionService = TimeConversionService()
-
       val expectedHoldRequest = CreateHoldRequest(
         prisonNumber = syncHoldRequest.prisonNumber,
         subAccountRef = CreateHoldRequest.SubAccountRef.CASH,

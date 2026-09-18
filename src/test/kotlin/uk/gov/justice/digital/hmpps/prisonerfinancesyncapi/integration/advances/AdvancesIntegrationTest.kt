@@ -40,7 +40,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return 201 and the created advance`() {
+    fun `should return a 201 and the created advance`() {
       val createdOn = LocalDateTime.now()
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
@@ -58,7 +58,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         status = CreateAdvanceRecordRequest.Status.ACTIVE,
       )
 
-      val stubbedResponse = AdvanceRecordResponse(
+      val stubbedAdvanceResponse = AdvanceRecordResponse(
         id = UUID.randomUUID(),
         legacyPaymentProfileId = "1234",
         legacyInformationNumber = "5678",
@@ -73,7 +73,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         status = AdvanceRecordResponse.Status.ACTIVE,
       )
 
-      advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedResponse)
+      advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedAdvanceResponse)
 
       val responseBody = webTestClient.post().uri("/sync/advances")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
@@ -85,7 +85,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .returnResult()
         .responseBody!!
 
-      assertThat(responseBody).isEqualTo(stubbedResponse)
+      assertThat(responseBody).isEqualTo(stubbedAdvanceResponse)
     }
 
     @Test
@@ -119,7 +119,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a 409 when a advance already exists in the mapping table`() {
+    fun `should return a 409 when an advance already exists in the mapping table`() {
       val createdOn = LocalDateTime.now()
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
@@ -155,23 +155,21 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedAdvanceResponse)
 
       webTestClient.post().uri("/sync/advances")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRecordRequest)
         .exchange()
         .expectStatus()
         .isCreated
-        .expectBody<AdvanceRecordResponse>()
-        .returnResult()
-        .responseBody!!
 
       webTestClient.post().uri("/sync/advances")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRecordRequest)
         .exchange()
         .expectStatus().isEqualTo(409)
-        .expectBody<AdvanceRecordResponse>()
-        .returnResult()
-        .responseBody!!
 
       wiremockClient.verifyThat(1, postRequestedFor(urlPathMatching("/advances")))
     }
