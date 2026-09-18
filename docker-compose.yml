@@ -41,6 +41,50 @@ services:
       timeout: 5s
       retries: 5
 
+  hmpps-prisoner-finance-holds-db:
+    container_name: hmpps-prisoner-finance-holds-db
+    image: postgres:18.6
+    restart: always
+    networks:
+      - hmpps
+    ports:
+      - "5438:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=holds
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  hmpps-prisoner-finance-holds-api:
+    image: ghcr.io/ministryofjustice/hmpps-prisoner-finance-holds-api:latest
+    networks:
+      - hmpps
+    container_name: hmpps-prisoner-finance-holds-api
+    ports:
+      - "8087:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ping" ]
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=dev
+      - HMPPS_AUTH_URL=http://hmpps-auth:8080/auth
+      - DB_SERVER=hmpps-prisoner-finance-holds-db
+      - DB_NAME=holds
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - GENERAL_LEDGER_API_URL=hmpps-prisoner-finance-general-ledger-api
+
+    depends_on:
+      hmpps-auth:
+        condition: service_started
+      hmpps-prisoner-finance-holds-db:
+        condition: service_healthy
+        restart: true
+
   hmpps-auth:
     image: ghcr.io/ministryofjustice/hmpps-auth:latest
     platform: linux/amd64
@@ -101,6 +145,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  localstack:
+    image: localstack/localstack:4
+    networks:
+      - hmpps
+    container_name: localstack
+    ports:
+      - "4566:4566"
+      - 8999:8080
+    environment:
+      - SERVICES=sqs
+      - DEFAULT_REGION=eu-west-2
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
 
 networks:
   hmpps:
