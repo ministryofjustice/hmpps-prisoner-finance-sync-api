@@ -3,6 +3,7 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDateTime
 
 data class SyncCreateAdvanceRecordRequest (
 
@@ -22,10 +23,10 @@ data class SyncCreateAdvanceRecordRequest (
   val amount: BigDecimal,
 
   @field:Schema(description = "The date time when the advance was created with the time set to midnight", example = "2024-06-18T00:00:00.000000", required = true)
-  val createdOn: Instant,
+  val createdOn: LocalDateTime,
 
   @field:Schema(description = "The date time when the payments are intended to begin", example = "2024-06-18T00:00:00.000000", required = true)
-  val repaymentStartDate: Instant,
+  val repaymentStartDate: LocalDateTime,
 
   @field:Schema(description = "The amount to be repaid weekly", example = "0.50", required = true)
   val repaymentAmount: BigDecimal,

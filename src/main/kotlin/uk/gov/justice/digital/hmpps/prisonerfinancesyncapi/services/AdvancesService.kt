@@ -9,7 +9,10 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 
 @Service
-class AdvancesService(var advancesApiClient: AdvancesApiClient) {
+class AdvancesService(
+  var advancesApiClient: AdvancesApiClient,
+  var timeConversionService: TimeConversionService,
+) {
   fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest) : AdvanceRecordResponse {
 
     val createAdvanceRecordRequest = CreateAdvanceRecordRequest(
@@ -18,8 +21,8 @@ class AdvancesService(var advancesApiClient: AdvancesApiClient) {
       prisonNumber = syncCreateAdvanceRecordRequest.prisonNumber,
       prisonID = syncCreateAdvanceRecordRequest.prisonID,
       amount = syncCreateAdvanceRecordRequest.amount.toPence(),
-      createdOn = syncCreateAdvanceRecordRequest.createdOn,
-      repaymentStartDate = syncCreateAdvanceRecordRequest.repaymentStartDate,
+      createdOn = timeConversionService.toUtcInstant(syncCreateAdvanceRecordRequest.createdOn),
+      repaymentStartDate = timeConversionService.toUtcInstant(syncCreateAdvanceRecordRequest.repaymentStartDate),
       repaymentAmount = syncCreateAdvanceRecordRequest.repaymentAmount.toPence(),
       reference = syncCreateAdvanceRecordRequest.reference,
       createdBy = syncCreateAdvanceRecordRequest.createdBy,

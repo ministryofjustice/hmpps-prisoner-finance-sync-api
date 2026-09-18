@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
-import com.github.tomakehurst.wiremock.client.WireMock.equalToJson
+import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
 import com.github.tomakehurst.wiremock.client.WireMock.post
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
@@ -13,8 +14,12 @@ import org.junit.jupiter.api.extension.AfterAllCallback
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
+import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.util.UUID
 
 class AdvancesApiExtension :
   BeforeAllCallback,
@@ -56,17 +61,27 @@ class AdvancesApiMockServer : WireMockServer(
     )
   }
 
-  fun stubPostAdvance(request: CreateAdvanceRecordRequest, advanceRecordResponse: AdvanceRecordResponse) {
+  fun stubPostAdvance(advanceRequest: SyncCreateAdvanceRecordRequest, advanceRecordResponse: AdvanceRecordResponse) {
 
-    val expectedRequestBody = mapper.writeValueAsString(request)
 
     stubFor(
-      post("/advances")
-        .withRequestBody(equalToJson(expectedRequestBody))
+      post( "/advances")
+        .withRequestBody(matchingJsonPath("$.legacyPaymentProfileId", equalTo(advanceRequest.legacyPaymentProfileId)))
+        .withRequestBody(matchingJsonPath("$.legacyInformationNumber", equalTo(advanceRequest.legacyInformationNumber)))
+        .withRequestBody(matchingJsonPath("$.prisonNumber", equalTo(advanceRequest.prisonNumber)))
+        .withRequestBody(matchingJsonPath("$.prisonID", equalTo(advanceRequest.prisonID)))
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(advanceRequest.amount.toPence().toString())))
+        .withRequestBody(matchingJsonPath("$.createdOn", equalTo(advanceRequest.createdOn.toString())))
+        .withRequestBody(matchingJsonPath("$.repaymentStartDate", equalTo(advanceRequest.repaymentStartDate.toString())))
+        .withRequestBody(matchingJsonPath("$.repaymentAmount", equalTo(advanceRequest.repaymentAmount.toPence().toString())))
+        .withRequestBody(matchingJsonPath("$.reference", equalTo(advanceRequest.reference)))
+        .withRequestBody(matchingJsonPath("$.createdBy", equalTo(advanceRequest.createdBy)))
+        .withRequestBody(matchingJsonPath("$.status", equalTo(advanceRequest.status.toString())))
         .willReturn(
-        aResponse()
-          .withHeader("Content-Type", "application/json")
-          .withBody(mapper.writeValueAsString(advanceRecordResponse)).withStatus(201)
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(mapper.writeValueAsString(advanceRecordResponse)),
       )
     )
   }
