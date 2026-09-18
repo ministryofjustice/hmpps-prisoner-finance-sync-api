@@ -16,6 +16,12 @@ general-ledger-api:
     id: hmpps-prisoner-finance-general-ledger-api
     secret: clientsecret
 
+holds-api:
+  url: http://localhost:8087
+  client:
+    id: hmpps-prisoner-finance-holds-api
+    secret: clientsecret
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
