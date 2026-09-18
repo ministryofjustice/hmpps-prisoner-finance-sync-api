@@ -6,15 +6,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.Advan
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.math.BigDecimal
 
 @Service
 class AdvancesService(
   var advancesApiClient: AdvancesApiClient,
   var timeConversionService: TimeConversionService,
 ) {
-  fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest) : AdvanceRecordResponse {
-
+  fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest): AdvanceRecordResponse {
     val createAdvanceRecordRequest = CreateAdvanceRecordRequest(
       legacyPaymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
       legacyInformationNumber = syncCreateAdvanceRecordRequest.legacyInformationNumber,

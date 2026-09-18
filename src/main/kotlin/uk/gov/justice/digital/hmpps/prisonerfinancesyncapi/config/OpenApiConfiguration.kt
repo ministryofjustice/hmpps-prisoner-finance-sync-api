@@ -12,7 +12,6 @@ import org.springframework.boot.info.BuildProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-
 const val HOLDS = "Holds"
 const val ADVANCES = "Advances"
 const val TAG_NOMIS_SYNC = "NOMIS Sync"

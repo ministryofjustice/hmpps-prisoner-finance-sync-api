@@ -16,10 +16,9 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.util.UUID
 
 class AdvancesApiExtension :
   BeforeAllCallback,
@@ -43,11 +42,12 @@ class AdvancesApiExtension :
   }
 }
 
-class AdvancesApiMockServer : WireMockServer(
-  WireMockConfiguration.wireMockConfig()
-    .port(8093)
-    .notifier(ConsoleNotifier(true)),
-) {
+class AdvancesApiMockServer :
+  WireMockServer(
+    WireMockConfiguration.wireMockConfig()
+      .port(8093)
+      .notifier(ConsoleNotifier(true)),
+  ) {
   private val mapper = ObjectMapper().registerModule(JavaTimeModule())
 
   fun stubHealthPing(status: Int) {
@@ -62,17 +62,17 @@ class AdvancesApiMockServer : WireMockServer(
   }
 
   fun stubPostAdvance(advanceRequest: SyncCreateAdvanceRecordRequest, advanceRecordResponse: AdvanceRecordResponse) {
-
+    val timeConversionService = TimeConversionService()
 
     stubFor(
-      post( "/advances")
+      post("/advances")
         .withRequestBody(matchingJsonPath("$.legacyPaymentProfileId", equalTo(advanceRequest.legacyPaymentProfileId)))
         .withRequestBody(matchingJsonPath("$.legacyInformationNumber", equalTo(advanceRequest.legacyInformationNumber)))
         .withRequestBody(matchingJsonPath("$.prisonNumber", equalTo(advanceRequest.prisonNumber)))
         .withRequestBody(matchingJsonPath("$.prisonID", equalTo(advanceRequest.prisonID)))
         .withRequestBody(matchingJsonPath("$.amount", equalTo(advanceRequest.amount.toPence().toString())))
-        .withRequestBody(matchingJsonPath("$.createdOn", equalTo(advanceRequest.createdOn.toString())))
-        .withRequestBody(matchingJsonPath("$.repaymentStartDate", equalTo(advanceRequest.repaymentStartDate.toString())))
+        .withRequestBody(matchingJsonPath("$.createdOn", equalTo(timeConversionService.toUtcInstant(advanceRequest.createdOn).toString())))
+        .withRequestBody(matchingJsonPath("$.repaymentStartDate", equalTo(timeConversionService.toUtcInstant(advanceRequest.repaymentStartDate).toString())))
         .withRequestBody(matchingJsonPath("$.repaymentAmount", equalTo(advanceRequest.repaymentAmount.toPence().toString())))
         .withRequestBody(matchingJsonPath("$.reference", equalTo(advanceRequest.reference)))
         .withRequestBody(matchingJsonPath("$.createdBy", equalTo(advanceRequest.createdBy)))
@@ -82,7 +82,7 @@ class AdvancesApiMockServer : WireMockServer(
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
             .withStatus(201)
             .withBody(mapper.writeValueAsString(advanceRecordResponse)),
-      )
+        ),
     )
   }
 }

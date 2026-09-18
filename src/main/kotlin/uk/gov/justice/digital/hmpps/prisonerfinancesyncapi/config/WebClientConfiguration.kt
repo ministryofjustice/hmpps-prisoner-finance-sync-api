@@ -83,8 +83,4 @@ class WebClientConfiguration(
 
   @Bean
   fun advanceRecordApi(@Qualifier("advancesApiWebClient") webClient: WebClient): AdvanceRecordControllerApi = AdvanceRecordControllerApi(webClient)
-
-
-
-
 }

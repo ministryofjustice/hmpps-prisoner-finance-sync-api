@@ -7,8 +7,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.Advan
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 
 @Component
-class AdvancesApiClient  (
-  private val advanceRecordControllerApi: AdvanceRecordControllerApi
+class AdvancesApiClient(
+  private val advanceRecordControllerApi: AdvanceRecordControllerApi,
 ) : ApiClientBase("Advances API") {
 
   @Throws(WebClientResponseException::class)

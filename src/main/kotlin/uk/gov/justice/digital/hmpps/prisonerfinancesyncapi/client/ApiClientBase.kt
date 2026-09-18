@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 
-open class ApiClientBase(val serviceName : String) {
+open class ApiClientBase(val serviceName: String) {
 
   companion object {
     val log: Logger = LoggerFactory.getLogger(this::class.java)!!
@@ -39,5 +39,4 @@ open class ApiClientBase(val serviceName : String) {
       }
     }
   }
-
 }

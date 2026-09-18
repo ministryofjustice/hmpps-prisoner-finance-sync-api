@@ -19,7 +19,7 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/sync/advances")
-  fun postAdvance(@RequestBody createAdvanceRequest: SyncCreateAdvanceRecordRequest) : ResponseEntity<AdvanceRecordResponse> {
+  fun postAdvance(@RequestBody createAdvanceRequest: SyncCreateAdvanceRecordRequest): ResponseEntity<AdvanceRecordResponse> {
     val createAdvanceRecordResponse = advancesService.createAdvance(createAdvanceRequest)
     return ResponseEntity.status(201).body(createAdvanceRecordResponse)
   }

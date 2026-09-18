@@ -16,21 +16,16 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.AdvancesApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.AdvancesApiExtension.Companion.advancesApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
-import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class, AdvancesApiExtension::class)
-class AdvancesIntegrationTest() : IntegrationTestBase() {
+class AdvancesIntegrationTest : IntegrationTestBase() {
 
   val timeConversionService = TimeConversionService()
   private val wiremockClient = WireMock(8093)
@@ -46,23 +41,22 @@ class AdvancesIntegrationTest() : IntegrationTestBase() {
 
     @Test
     fun `should return 201 and the created advance`() {
+      val createdOn = LocalDateTime.now()
+      val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
-    val createdOn = LocalDateTime.now()
-    val repaymentStartDate = LocalDateTime.now().plusDays(1)
-
-    val syncCreateAdvanceRecordRequest = SyncCreateAdvanceRecordRequest(
-      legacyPaymentProfileId = "1234",
-      legacyInformationNumber = "5678",
-      prisonNumber = "A1234BC",
-      prisonID = "LEI",
-      amount = BigDecimal("5.00"),
-      createdOn = createdOn,
-      repaymentStartDate = repaymentStartDate,
-      repaymentAmount = BigDecimal("0.50"),
-      reference = "REF",
-      createdBy = "USER",
-      status = CreateAdvanceRecordRequest.Status.ACTIVE,
-    )
+      val syncCreateAdvanceRecordRequest = SyncCreateAdvanceRecordRequest(
+        legacyPaymentProfileId = "1234",
+        legacyInformationNumber = "5678",
+        prisonNumber = "A1234BC",
+        prisonID = "LEI",
+        amount = BigDecimal("5.00"),
+        createdOn = createdOn,
+        repaymentStartDate = repaymentStartDate,
+        repaymentAmount = BigDecimal("0.50"),
+        reference = "REF",
+        createdBy = "USER",
+        status = CreateAdvanceRecordRequest.Status.ACTIVE,
+      )
 
       val stubbedResponse = AdvanceRecordResponse(
         id = UUID.randomUUID(),
@@ -71,8 +65,8 @@ class AdvancesIntegrationTest() : IntegrationTestBase() {
         prisonNumber = "A1234BC",
         prisonID = "LEI",
         amount = 500,
-        createdOn = timeConversionService.toUtcInstant(createdOn),
-        repaymentStartDate = timeConversionService.toUtcInstant(repaymentStartDate),
+        createdOn = timeConversionService.toUtcInstant(createdOn as LocalDateTime),
+        repaymentStartDate = timeConversionService.toUtcInstant(repaymentStartDate as LocalDateTime),
         repaymentAmount = 50,
         reference = "REF",
         createdBy = "USER",
@@ -92,12 +86,10 @@ class AdvancesIntegrationTest() : IntegrationTestBase() {
         .responseBody!!
 
       assertThat(responseBody).isEqualTo(stubbedResponse)
-
     }
 
     @Test
     fun `should return a 403 when using the incorrect role`() {
-
       val createdOn = LocalDateTime.now()
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
@@ -126,10 +118,8 @@ class AdvancesIntegrationTest() : IntegrationTestBase() {
         .expectStatus().isForbidden
     }
 
-
     @Test
     fun `should return a 409 when a advance already exists in the mapping table`() {
-
       val createdOn = LocalDateTime.now()
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
@@ -144,7 +134,8 @@ class AdvancesIntegrationTest() : IntegrationTestBase() {
         repaymentAmount = BigDecimal("50"),
         reference = "REF",
         createdBy = "USER",
-        status = CreateAdvanceRecordRequest.Status.ACTIVE)
+        status = CreateAdvanceRecordRequest.Status.ACTIVE,
+      )
 
       val stubbedAdvanceResponse = AdvanceRecordResponse(
         id = UUID.randomUUID(),
@@ -163,7 +154,7 @@ class AdvancesIntegrationTest() : IntegrationTestBase() {
 
       advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedAdvanceResponse)
 
-     webTestClient.post().uri("/sync/advances")
+      webTestClient.post().uri("/sync/advances")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRecordRequest)
         .exchange()

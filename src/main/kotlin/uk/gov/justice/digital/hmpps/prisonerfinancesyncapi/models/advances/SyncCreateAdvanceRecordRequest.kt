@@ -2,10 +2,9 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 
 import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
-import java.time.Instant
 import java.time.LocalDateTime
 
-data class SyncCreateAdvanceRecordRequest (
+data class SyncCreateAdvanceRecordRequest(
 
   @field:Schema(description = "The payment profile id from NOMIS", example = "123456789", required = true)
   val legacyPaymentProfileId: String,
@@ -38,6 +37,6 @@ data class SyncCreateAdvanceRecordRequest (
   val createdBy: String,
 
   @field:Schema(description = "The current status of this advance", example = "AdvanceStatus.ACTIVE", required = true)
-  val status: CreateAdvanceRecordRequest.Status
+  val status: CreateAdvanceRecordRequest.Status,
 
 )
