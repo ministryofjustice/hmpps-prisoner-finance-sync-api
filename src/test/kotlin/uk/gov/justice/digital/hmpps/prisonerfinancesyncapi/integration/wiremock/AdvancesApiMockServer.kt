@@ -66,7 +66,7 @@ class AdvancesApiMockServer :
 
     stubFor(
       post("/advances")
-        .withRequestBody(matchingJsonPath("$.legacyPaymentProfileId", equalTo(advanceRequest.legacyPaymentProfileId)))
+        .withRequestBody(matchingJsonPath("$.legacyPaymentProfileId", equalTo(advanceRequest.legacyPaymentProfileId.toString())))
         .withRequestBody(matchingJsonPath("$.legacyInformationNumber", equalTo(advanceRequest.legacyInformationNumber)))
         .withRequestBody(matchingJsonPath("$.prisonNumber", equalTo(advanceRequest.prisonNumber)))
         .withRequestBody(matchingJsonPath("$.prisonID", equalTo(advanceRequest.prisonID)))

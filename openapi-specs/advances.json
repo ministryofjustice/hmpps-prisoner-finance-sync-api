@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-09-17.49.cfea7e8"
+    "version" : "2026-09-21.51.be32d7e"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
@@ -241,9 +241,10 @@
         "type" : "object",
         "properties" : {
           "legacyPaymentProfileId" : {
-            "type" : "string",
+            "type" : "integer",
+            "format" : "int64",
             "description" : "The payment profile id from NOMIS",
-            "example" : "123456789"
+            "example" : 123456789
           },
           "legacyInformationNumber" : {
             "type" : "string",
@@ -311,7 +312,8 @@
             "format" : "uuid"
           },
           "legacyPaymentProfileId" : {
-            "type" : "string"
+            "type" : "integer",
+            "format" : "int64"
           },
           "legacyInformationNumber" : {
             "type" : "string"

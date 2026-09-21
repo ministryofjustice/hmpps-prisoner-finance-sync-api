@@ -45,7 +45,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
       val syncCreateAdvanceRecordRequest = SyncCreateAdvanceRecordRequest(
-        legacyPaymentProfileId = "1234",
+        legacyPaymentProfileId = 1234,
         legacyInformationNumber = "5678",
         prisonNumber = "A1234BC",
         prisonID = "LEI",
@@ -60,7 +60,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
       val stubbedAdvanceResponse = AdvanceRecordResponse(
         id = UUID.randomUUID(),
-        legacyPaymentProfileId = "1234",
+        legacyPaymentProfileId = 1234,
         legacyInformationNumber = "5678",
         prisonNumber = "A1234BC",
         prisonID = "LEI",
@@ -94,7 +94,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
       val syncCreateAdvanceRecordRequest = SyncCreateAdvanceRecordRequest(
-        legacyPaymentProfileId = "1234",
+        legacyPaymentProfileId = 1234,
         legacyInformationNumber = "5678",
         prisonNumber = "A1234BC",
         prisonID = "LEI",
@@ -124,7 +124,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
       val syncCreateAdvanceRecordRequest = SyncCreateAdvanceRecordRequest(
-        legacyPaymentProfileId = "1234",
+        legacyPaymentProfileId = 1234,
         legacyInformationNumber = "5678",
         prisonNumber = "A1234BC",
         prisonID = "LEI",
@@ -139,7 +139,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
       val stubbedAdvanceResponse = AdvanceRecordResponse(
         id = UUID.randomUUID(),
-        legacyPaymentProfileId = "1234",
+        legacyPaymentProfileId = 1234,
         legacyInformationNumber = "5678",
         prisonNumber = "A1234BC",
         prisonID = "LEI",

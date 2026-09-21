@@ -26,7 +26,7 @@ data class AdvanceMapping(
   var id: Long? = null,
 
   @Column(name = "legacy_payment_profile_id", nullable = false, unique = true)
-  var legacyPaymentProfileId: String,
+  var legacyPaymentProfileId: Long,
 
   @Column(name = "advance_uuid", nullable = false, unique = true)
   var advanceUuid: UUID,
