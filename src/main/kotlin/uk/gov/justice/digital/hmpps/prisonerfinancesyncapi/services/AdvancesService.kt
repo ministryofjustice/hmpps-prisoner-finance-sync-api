@@ -1,14 +1,12 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
-import org.springframework.http.HttpStatusCode
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 
 @Service
@@ -17,11 +15,14 @@ class AdvancesService(
   var timeConversionService: TimeConversionService,
   var advancesMappingRepository: AdvancesMappingRepository,
 ) {
-  fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest): AdvanceRecordResponse {
+  fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
     val mapping = advancesMappingRepository.findAdvanceMappingByLegacyPaymentProfileId(syncCreateAdvanceRecordRequest.legacyPaymentProfileId)
 
     if (mapping != null) {
-      throw CustomException("Advance number already in use. Advance UUID: ${mapping.advanceUuid} Advance number: ${mapping.legacyPaymentProfileId}", HttpStatusCode.valueOf(409))
+      return SyncCreateAdvanceRecordResponse(
+        paymentProfileId = mapping.legacyPaymentProfileId,
+        advanceUuid = mapping.advanceUuid,
+      )
     }
 
     val createAdvanceRecordRequest = CreateAdvanceRecordRequest(
@@ -47,6 +48,11 @@ class AdvancesService(
 
     advancesMappingRepository.save(advanceMapping)
 
-    return response
+    val syncCreateAdvanceRecordResponse = SyncCreateAdvanceRecordResponse(
+      paymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
+      advanceUuid = advanceMapping.advanceUuid,
+    )
+
+    return syncCreateAdvanceRecordResponse
   }
 }

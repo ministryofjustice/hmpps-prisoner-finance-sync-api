@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ADVANCES
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AdvancesService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
@@ -51,11 +51,6 @@ class AdvancesController(private val advancesService: AdvancesService) {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "409",
-        description = "Conflict - Legacy Payment Profile Id already in use",
-        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
-      ),
-      ApiResponse(
         responseCode = "500",
         description = "Internal Server Error - An unexpected error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -65,8 +60,8 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/sync/advances")
-  fun postAdvance(@RequestBody createAdvanceRequest: SyncCreateAdvanceRecordRequest): ResponseEntity<AdvanceRecordResponse> {
-    val createAdvanceRecordResponse = advancesService.createAdvance(createAdvanceRequest)
-    return ResponseEntity.status(201).body(createAdvanceRecordResponse)
+  fun postAdvance(@RequestBody createAdvanceRequest: SyncCreateAdvanceRecordRequest): ResponseEntity<SyncCreateAdvanceRecordResponse> {
+    val syncCreateAdvanceRecordResponse = advancesService.createAdvance(createAdvanceRequest)
+    return ResponseEntity.status(201).body(syncCreateAdvanceRecordResponse)
   }
 }

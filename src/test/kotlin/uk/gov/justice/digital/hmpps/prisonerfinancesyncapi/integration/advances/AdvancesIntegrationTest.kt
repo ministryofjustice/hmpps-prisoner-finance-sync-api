@@ -19,6 +19,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -58,8 +59,10 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         status = CreateAdvanceRecordRequest.Status.ACTIVE,
       )
 
+      val advanceUuid = UUID.randomUUID()
+
       val stubbedAdvanceResponse = AdvanceRecordResponse(
-        id = UUID.randomUUID(),
+        id = advanceUuid,
         legacyPaymentProfileId = 1234,
         legacyInformationNumber = "5678",
         prisonNumber = "A1234BC",
@@ -73,6 +76,11 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         status = AdvanceRecordResponse.Status.ACTIVE,
       )
 
+      val stubbedSyncCreateAdvanceRecordResponse = SyncCreateAdvanceRecordResponse(
+        paymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
+        advanceUuid = advanceUuid,
+      )
+
       advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedAdvanceResponse)
 
       val responseBody = webTestClient.post().uri("/sync/advances")
@@ -81,11 +89,12 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .exchange()
         .expectStatus()
         .isCreated
-        .expectBody<AdvanceRecordResponse>()
+        .expectBody<SyncCreateAdvanceRecordResponse>()
         .returnResult()
         .responseBody!!
 
-      assertThat(responseBody).isEqualTo(stubbedAdvanceResponse)
+      assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
+      assertThat(responseBody.advanceUuid).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceUuid)
     }
 
     @Test
@@ -119,7 +128,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a 409 when an advance already exists in the mapping table`() {
+    fun `should return a 201 when an advance already exists in the mapping table`() {
       val createdOn = LocalDateTime.now()
       val repaymentStartDate = LocalDateTime.now().plusDays(1)
 
@@ -135,6 +144,13 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         reference = "REF",
         createdBy = "USER",
         status = CreateAdvanceRecordRequest.Status.ACTIVE,
+      )
+
+      val advanceUuid = UUID.randomUUID()
+
+      val syncCreateAdvanceRecordResponse = SyncCreateAdvanceRecordResponse(
+        paymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
+        advanceUuid = advanceUuid,
       )
 
       val stubbedAdvanceResponse = AdvanceRecordResponse(
@@ -169,7 +185,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRecordRequest)
         .exchange()
-        .expectStatus().isEqualTo(409)
+        .expectStatus().isEqualTo(201)
 
       wiremockClient.verifyThat(1, postRequestedFor(urlPathMatching("/advances")))
     }

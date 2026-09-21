@@ -17,7 +17,7 @@ class HoldsApiClient(
 
   @Throws(WebClientResponseException::class)
   fun postHold(request: CreateHoldRequest): HoldResponse {
-    log?.info("Creating Hold for hold number ${request.legacyHoldNumber} for prison number ${request.prisonNumber}")
+    log.info("Creating Hold for hold number ${request.legacyHoldNumber} for prison number ${request.prisonNumber}")
     val response = handleExceptions(
       block = {
         holdsControllerApi.postHold(request)

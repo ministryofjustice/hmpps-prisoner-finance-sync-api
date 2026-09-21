@@ -9,6 +9,7 @@ data class SyncCreateAdvanceRecordRequest(
   @field:Schema(description = "The payment profile id from NOMIS", example = "123456789", required = true)
   val legacyPaymentProfileId: Long,
 
+  // This is date value in a different format with incremental versions
   @field:Schema(description = "The information number for the advance from NOMIS", example = "12345678-1", required = true)
   val legacyInformationNumber: String,
 
