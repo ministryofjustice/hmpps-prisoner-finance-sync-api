@@ -7,7 +7,7 @@ import java.net.URI
 import java.nio.file.Files
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "11.0.8"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "11.0.9"
   kotlin("plugin.spring") version "2.4.20"
   id("org.jetbrains.kotlin.plugin.noarg") version "2.4.20"
   id("org.openapi.generator") version "7.25.0"
