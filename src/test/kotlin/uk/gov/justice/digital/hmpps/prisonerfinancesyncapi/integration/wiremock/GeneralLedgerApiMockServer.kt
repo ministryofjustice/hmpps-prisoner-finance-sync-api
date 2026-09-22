@@ -208,6 +208,32 @@ class GeneralLedgerApiMockServer :
     )
   }
 
+  fun stubGetAccountReturnsError(
+    reference: String,
+    errorCode: Int = 500,
+  ) {
+    stubFor(
+      get(urlPathEqualTo("/accounts"))
+        .withQueryParam("reference", equalTo(reference))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(errorCode)
+            .withBody(
+              """
+              {
+                  "status": $errorCode,
+                  "errorCode": null,
+                  "userMessage": "GL Server Error",
+                  "developerMessage": "GL Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   // POST /accounts -> Returns 500
   fun stubCreateAccountReturnsServerError(reference: String) {
     stubFor(

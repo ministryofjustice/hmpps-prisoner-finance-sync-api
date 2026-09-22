@@ -27,7 +27,7 @@ open class ApiClientBase(val serviceName: String) {
         e.statusCode == HttpStatus.BAD_REQUEST && e.responseBodyAsString.contains("Page requested is out of range") ->
           throw CustomException(message = "Page requested is out of range", status = HttpStatus.BAD_REQUEST)
 
-        e.statusCode == HttpStatus.BAD_REQUEST -> throw CustomException(message400, HttpStatus.BAD_REQUEST, e)
+        e.statusCode == HttpStatus.BAD_REQUEST -> throw CustomException(message400, HttpStatus.BAD_REQUEST, e, developerMessage = e.responseBodyAsString)
 
         e.statusCode == HttpStatus.NOT_FOUND -> throw CustomException(message404, HttpStatus.NOT_FOUND, e)
 

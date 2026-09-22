@@ -1,7 +1,9 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.holds
 
 import com.github.tomakehurst.wiremock.client.WireMock
+import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
+import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -16,38 +18,306 @@ import org.springframework.test.web.reactive.server.expectBody
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.InMemoryAccountCache
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class, HoldsApiExtension::class)
 class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsMappingRepository) : IntegrationTestBase() {
 
+  private val accountMappingService = LedgerAccountMappingService()
+
   private val wiremockClient = WireMock(8092)
   val timeConversionService = TimeConversionService()
   val mapper = ObjectMapper()
 
+  @Autowired
+  lateinit var requestCache: InMemoryAccountCache
+
   @BeforeEach
   fun setup() {
     integrationTestHelpers.clearDB()
+    generalLedgerApi.resetAll()
+    holdsApi.resetAll()
     hmppsAuth.stubGrantToken()
+    requestCache.clear()
   }
+
+  val prisonSubaccountUUID = UUID.randomUUID()
+  val prisonerSubaccountUUID = UUID.randomUUID()
+
+  data class HoldAccountsStubbedUUIDs(
+    val prisonParentAccount: UUID,
+    val prisonSubAccount: UUID,
+    val prisonerParentAccount: UUID,
+    val prisonerSubAccount: UUID,
+  )
 
   @Nested
   @DisplayName("postHolds")
   inner class PostHolds {
+
+    private fun stubGlAllAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest): HoldAccountsStubbedUUIDs {
+      val prisonParentAccount = UUID.randomUUID()
+      val prisonHoldSubAccount = UUID.randomUUID()
+
+      generalLedgerApi.stubGetAccount(
+        reference = syncHoldRequest.holdLocation,
+        returnUuid = prisonParentAccount,
+        subAccounts = listOf(
+          SubAccountResponse(
+            reference = "2199:${syncHoldRequest.holdType}",
+            parentAccountId = prisonParentAccount,
+            createdBy = "TEST",
+            id = prisonHoldSubAccount,
+            createdAt = Instant.now(),
+          ),
+        ),
+      )
+
+      val prisonerParentAccount = UUID.randomUUID()
+      val prisonerHoldSubAccount = UUID.randomUUID()
+
+      generalLedgerApi.stubGetAccount(
+        reference = syncHoldRequest.prisonNumber,
+        returnUuid = prisonerParentAccount,
+        subAccounts = listOf(
+          SubAccountResponse(
+            reference = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
+            parentAccountId = prisonerParentAccount,
+            createdBy = "TEST",
+            id = prisonerHoldSubAccount,
+            createdAt = Instant.now(),
+          ),
+        ),
+      )
+
+      return HoldAccountsStubbedUUIDs(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonHoldSubAccount,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerHoldSubAccount,
+      )
+    }
+
+    private fun stubCreateGlSubAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest): HoldAccountsStubbedUUIDs {
+      val prisonParentAccount = UUID.randomUUID()
+      val prisonHoldSubAccount = UUID.randomUUID()
+
+      generalLedgerApi.stubGetAccount(
+        reference = syncHoldRequest.holdLocation,
+        returnUuid = prisonParentAccount,
+        subAccounts = emptyList(),
+      )
+
+      generalLedgerApi.stubCreateSubAccount(
+        reference = "2199:${syncHoldRequest.holdType}",
+        returnUuid = prisonHoldSubAccount.toString(),
+        parentId = prisonParentAccount,
+      )
+
+      val prisonerParentAccount = UUID.randomUUID()
+      val prisonerHoldSubAccount = UUID.randomUUID()
+
+      generalLedgerApi.stubGetAccount(
+        reference = syncHoldRequest.prisonNumber,
+        returnUuid = prisonerParentAccount,
+        subAccounts = emptyList(),
+      )
+
+      generalLedgerApi.stubCreateSubAccount(
+        reference = accountMappingService.mapPrisonerSubAccount(
+          syncHoldRequest.subAccountCode,
+        ),
+        returnUuid = prisonerHoldSubAccount.toString(),
+        parentId = prisonerParentAccount,
+      )
+
+      return HoldAccountsStubbedUUIDs(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonHoldSubAccount,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerHoldSubAccount,
+      )
+    }
+
+    private fun stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest: SyncCreateHoldRequest): HoldAccountsStubbedUUIDs {
+      val prisonParentAccount = UUID.randomUUID()
+      val prisonHoldSubAccount = UUID.randomUUID()
+
+      generalLedgerApi.stubGetAccountNotFound(
+        reference = syncHoldRequest.holdLocation,
+      )
+
+      generalLedgerApi.stubCreateAccount(
+        reference = syncHoldRequest.holdLocation,
+        returnUuid = prisonParentAccount,
+      )
+
+      generalLedgerApi.stubCreateSubAccount(
+        reference = "2199:${syncHoldRequest.holdType}",
+        returnUuid = prisonHoldSubAccount.toString(),
+        parentId = prisonParentAccount,
+      )
+
+      val prisonerParentAccount = UUID.randomUUID()
+      val prisonerHoldSubAccount = UUID.randomUUID()
+
+      generalLedgerApi.stubGetAccountNotFound(
+        reference = syncHoldRequest.prisonNumber,
+      )
+
+      generalLedgerApi.stubCreateAccount(
+        reference = syncHoldRequest.prisonNumber,
+        returnUuid = prisonerParentAccount,
+      )
+
+      generalLedgerApi.stubCreateSubAccount(
+        reference = accountMappingService.mapPrisonerSubAccount(
+          syncHoldRequest.subAccountCode,
+        ),
+        returnUuid = prisonerHoldSubAccount.toString(),
+        parentId = prisonerParentAccount,
+      )
+
+      return HoldAccountsStubbedUUIDs(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonHoldSubAccount,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerHoldSubAccount,
+      )
+    }
+
+    @Test
+    fun `should return a 201 when a hold is created and create GL subAccounts if they do not exist`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = "USER",
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = CreateHoldRequest.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
+      )
+
+      val stubsAccounts = stubCreateGlSubAccountsForHolds(syncHoldRequest)
+      holdsApi.stubPostHold(expectedHoldRequest)
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isCreated
+
+      generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncHoldRequest.holdLocation}")))
+      generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncHoldRequest.prisonNumber}")))
+
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
+
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonParentAccount}/sub-accounts")))
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonerParentAccount}/sub-accounts")))
+    }
+
+    @Test
+    fun `should return a 201 when a hold is created and create GL subAccounts and parent accounts if they do not exist`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = "USER",
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = CreateHoldRequest.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
+      )
+
+      val stubsAccounts = stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest)
+      holdsApi.stubPostHold(expectedHoldRequest)
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isCreated
+
+      generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncHoldRequest.holdLocation}")))
+      generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncHoldRequest.prisonNumber}")))
+
+      generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts")))
+
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonParentAccount}/sub-accounts")))
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonerParentAccount}/sub-accounts")))
+    }
 
     @Test
     fun `should return a 201 when a hold is created`() {
@@ -64,6 +334,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = "WHF",
         holdLocation = "LEI",
         amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
       )
 
       val expectedHoldRequest = CreateHoldRequest(
@@ -79,8 +350,11 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
+      stubGlAllAccountsForHolds(syncHoldRequest)
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -92,34 +366,12 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         .bodyValue(syncHoldRequest)
         .exchange()
         .expectStatus().isCreated
-    }
 
-    @Test
-    fun `should return a 403 when using the incorrect role`() {
-      val syncHoldRequest = SyncCreateHoldRequest(
-        prisonNumber = "AD23451",
-        subAccountCode = 2101,
-        holdNumber = 123456789,
-        createdAt = LocalDateTime.now(),
-        createdBy = "USER",
-        holdFromDate = LocalDateTime.now(),
-        holdUntilDate = LocalDateTime.now().plusDays(1),
-        isReleased = false,
-        description = "Test Hold",
-        holdType = "WHF",
-        holdLocation = "LEI",
-        amount = BigDecimal("99.99"),
-      )
+      generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncHoldRequest.holdLocation}")))
+      generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncHoldRequest.prisonNumber}")))
 
-      webTestClient
-        .post()
-        .uri("/sync/holds")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf("ROLE__INCORRECT_ROLE")))
-        .bodyValue(syncHoldRequest)
-        .exchange()
-        .expectStatus().isForbidden
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
+      generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/sub-accounts.*")))
     }
 
     @Test
@@ -138,6 +390,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = "HOA",
         holdLocation = "LEI",
         amount = BigDecimal("20"),
+        holdTransactionId = 12345,
       )
 
       val expectedHoldRequest = CreateHoldRequest(
@@ -153,8 +406,11 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.HOA,
         holdLocation = syncHoldRequest.holdLocation,
         amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
+      stubGlAllAccountsForHolds(syncHoldRequest)
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -178,6 +434,231 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         .expectStatus().isEqualTo(201)
 
       wiremockClient.verifyThat(1, postRequestedFor(urlPathMatching("/holds")))
+    }
+
+    @Test
+    fun `should return a 502 when the hold service returns an error 500`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = "USER",
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = CreateHoldRequest.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
+      )
+
+      stubGlAllAccountsForHolds(syncHoldRequest)
+      holdsApi.stubPostHoldReturnsError(expectedHoldRequest)
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isEqualTo(502)
+    }
+
+    @Test
+    fun `should return a 502 when the General Ledger service returns an error 500`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = "USER",
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = CreateHoldRequest.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
+      )
+
+      generalLedgerApi.stubGetAccountReturnsError(syncHoldRequest.holdLocation)
+      generalLedgerApi.stubGetAccountReturnsError(syncHoldRequest.prisonNumber)
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isEqualTo(502)
+    }
+
+    @Test
+    fun `should return a 400 when the hold service returns an error 400`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = "USER",
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = CreateHoldRequest.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
+      )
+
+      stubGlAllAccountsForHolds(syncHoldRequest)
+      holdsApi.stubPostHoldReturnsError(expectedHoldRequest, statusCode = 400)
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isEqualTo(400)
+    }
+
+    @Test
+    fun `should return a 400 when the General Ledger service returns an error 400`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val expectedHoldRequest = CreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
+        createdBy = "USER",
+        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
+        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = CreateHoldRequest.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = syncHoldRequest.amount.toPence(),
+        prisonSubAccountId = prisonSubaccountUUID,
+        prisonerSubAccountId = prisonerSubaccountUUID,
+      )
+
+      generalLedgerApi.stubGetAccountReturnsError(syncHoldRequest.holdLocation, errorCode = 400)
+      generalLedgerApi.stubGetAccountReturnsError(syncHoldRequest.prisonNumber, errorCode = 400)
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isEqualTo(400)
+    }
+
+    @Test
+    fun `should return a 403 when using the incorrect role`() {
+      val syncHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = "AD23451",
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = LocalDateTime.now(),
+        createdBy = "USER",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = LocalDateTime.now().plusDays(1),
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      webTestClient
+        .post()
+        .uri("/sync/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf("ROLE__INCORRECT_ROLE")))
+        .bodyValue(syncHoldRequest)
+        .exchange()
+        .expectStatus().isForbidden
     }
   }
 

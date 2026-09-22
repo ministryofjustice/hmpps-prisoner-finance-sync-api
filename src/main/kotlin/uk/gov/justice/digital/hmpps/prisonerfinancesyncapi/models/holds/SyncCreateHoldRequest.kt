@@ -2,8 +2,11 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Digits
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Schema(description = "Create Hold Request")
 data class SyncCreateHoldRequest(
@@ -102,4 +105,43 @@ data class SyncCreateHoldRequest(
   @field:Digits(integer = 19, fraction = 2)
   val amount: BigDecimal,
 
-)
+  @field:Schema(
+    description = "The transaction id of the hold transaction.",
+    nullable = false,
+    required = true,
+  )
+  val holdTransactionId: Long,
+
+  @field:Schema(
+    description = "The transaction id of the hold release transaction.",
+    nullable = true,
+    required = false,
+  )
+  val releaseTransactionId: Long? = null,
+
+) {
+  fun toCreateHoldRequest(
+    subAccountRef: CreateHoldRequest.SubAccountRef,
+    createdAt: Instant,
+    holdFromDate: Instant,
+    holdUntilDate: Instant? = null,
+    prisonSubAccountId: UUID,
+    prisonerSubAccountId: UUID,
+  ) = CreateHoldRequest(
+    prisonNumber = this.prisonNumber,
+    legacyHoldNumber = this.holdNumber,
+    subAccountRef = subAccountRef,
+    createdAt = createdAt,
+    createdBy = this.createdBy,
+    holdFromDate = holdFromDate,
+    isReleased = this.isReleased,
+    holdType = CreateHoldRequest.HoldType.valueOf(this.holdType.uppercase()),
+    amount = this.amount.toPence(),
+    holdLocation = this.holdLocation,
+    holdUntilDate = holdUntilDate,
+    description = this.description,
+    prisonSubAccountId = prisonSubAccountId,
+    prisonerSubAccountId = prisonerSubAccountId,
+    holdLegacyTransactionId = this.holdTransactionId,
+  )
+}

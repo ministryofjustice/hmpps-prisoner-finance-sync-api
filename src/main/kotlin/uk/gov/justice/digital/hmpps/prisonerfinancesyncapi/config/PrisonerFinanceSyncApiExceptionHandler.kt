@@ -48,7 +48,7 @@ class PrisonerFinanceSyncApiExceptionHandler(
       ErrorResponse(
         status = e.status.value(),
         userMessage = e.message,
-        developerMessage = e.message,
+        developerMessage = e.developerMessage ?: e.message,
       ),
     ).also { log.info("CustomExceptionThrown: {}", e.message) }
 
