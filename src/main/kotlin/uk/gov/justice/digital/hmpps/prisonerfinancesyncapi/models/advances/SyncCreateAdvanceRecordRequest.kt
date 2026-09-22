@@ -6,10 +6,11 @@ import java.time.LocalDateTime
 
 data class SyncCreateAdvanceRecordRequest(
 
+  // This is a unique id tying the advance record to the prisoner supplied by NOMIS
   @field:Schema(description = "The payment profile id from NOMIS", example = "123456789", required = true)
   val legacyPaymentProfileId: Long,
 
-  // This is date value in a different format with incremental versions
+  // This is a reference number that is unique within the account supplied by NOMIS
   @field:Schema(description = "The information number for the advance from NOMIS", example = "12345678-1", required = true)
   val legacyInformationNumber: String,
 
