@@ -17,6 +17,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.HOLDS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.HoldsService
@@ -53,11 +54,6 @@ class HoldsController(var holdsService: HoldsService) {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "409",
-        description = "Conflict - Legacy Hold Number already in use",
-        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
-      ),
-      ApiResponse(
         responseCode = "500",
         description = "Internal Server Error - An unexpected error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -67,9 +63,9 @@ class HoldsController(var holdsService: HoldsService) {
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/sync/holds")
-  fun postHolds(@RequestBody createHoldRequest: SyncCreateHoldRequest): ResponseEntity<HoldResponse> {
-    val createdHold = holdsService.createHold(syncCreateHoldRequest = createHoldRequest)
-    return ResponseEntity.status(201).body(createdHold)
+  fun postHolds(@RequestBody createHoldRequest: SyncCreateHoldRequest): ResponseEntity<SyncCreateHoldResponse> {
+    val syncCreateHoldResponse = holdsService.createHold(syncCreateHoldRequest = createHoldRequest)
+    return ResponseEntity.status(201).body(syncCreateHoldResponse)
   }
 
   @Operation(

@@ -8,9 +8,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomExceptio
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
@@ -32,11 +32,11 @@ class HoldsService(
 
   fun mapHoldType(holdType: String) = CreateHoldRequest.HoldType.valueOf(holdType.uppercase())
 
-  fun createHold(syncCreateHoldRequest: SyncCreateHoldRequest): HoldResponse {
+  fun createHold(syncCreateHoldRequest: SyncCreateHoldRequest): SyncCreateHoldResponse {
     val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(syncCreateHoldRequest.holdNumber)
 
     if (mapping != null) {
-      throw CustomException("Hold number already in use. Hold UUID: ${mapping.holdsUuid} Hold number: ${mapping.legacyHoldNumber}", HttpStatusCode.valueOf(409))
+      return SyncCreateHoldResponse(mapping.legacyHoldNumber, mapping.holdsUuid)
     }
 
     val createHoldRequest = CreateHoldRequest(
@@ -60,7 +60,9 @@ class HoldsService(
 
     holdsMappingRepository.save(holdsMapping)
 
-    return response
+    val syncCreateHoldResponse = SyncCreateHoldResponse(createHoldRequest.legacyHoldNumber, response.id)
+
+    return syncCreateHoldResponse
   }
 
   fun releaseHold(holdNumber: Long, releaseRequest: SyncReleaseHoldRequest): SyncReleasedHoldResponse {

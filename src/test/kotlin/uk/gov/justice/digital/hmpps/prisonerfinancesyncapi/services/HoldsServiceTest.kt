@@ -21,6 +21,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Hold
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
@@ -87,8 +88,10 @@ class HoldsServiceTest {
         amount = BigDecimal("99.99").toPence(),
       )
 
+      val createHoldResponseId = UUID.randomUUID()
+
       val createHoldResponse = HoldResponse(
-        id = UUID.randomUUID(),
+        id = createHoldResponseId,
         prisonNumber = "AD23451",
         subAccountRef = HoldResponse.SubAccountRef.CASH,
         legacyHoldNumber = 123456789,
@@ -103,12 +106,25 @@ class HoldsServiceTest {
         amount = BigDecimal("99.99").toPence(),
       )
 
+      val syncCreateHoldResponse = SyncCreateHoldResponse(
+        holdNumber = createHoldRequest.legacyHoldNumber,
+        holdUuid = createHoldResponseId,
+      )
+
       whenever(holdsApiClient.postHold(createHoldRequest)).thenReturn(createHoldResponse)
-      whenever(holdsMappingRepository.save(HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponse.id))).thenReturn(HoldsMapping(id = 1L, legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponse.id))
+      whenever(
+        holdsMappingRepository.save(
+          HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponseId),
+        ),
+      )
+        .thenReturn(
+          HoldsMapping(id = 1L, legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponseId),
+        )
 
       val createdHold = holdsService.createHold(syncCreateHoldRequest)
 
-      assertThat(createdHold).isEqualTo(createHoldResponse)
+      assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
+      assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
     }
 
     @Test

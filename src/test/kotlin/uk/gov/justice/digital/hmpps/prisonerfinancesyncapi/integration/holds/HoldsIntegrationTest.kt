@@ -123,7 +123,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
     }
 
     @Test
-    fun `should return a 409 when a hold already exists in the mapping table`() {
+    fun `should return a 201 when a hold already exists in the mapping table`() {
       val legacyHoldNumber = 123456789L
       val syncHoldRequest = SyncCreateHoldRequest(
         prisonNumber = "AD23111",
@@ -139,8 +139,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdLocation = "LEI",
         amount = BigDecimal("20"),
       )
-
-      val timeConversionService = TimeConversionService()
 
       val expectedHoldRequest = CreateHoldRequest(
         prisonNumber = syncHoldRequest.prisonNumber,
@@ -177,7 +175,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncHoldRequest)
         .exchange()
-        .expectStatus().isEqualTo(409)
+        .expectStatus().isEqualTo(201)
 
       wiremockClient.verifyThat(1, postRequestedFor(urlPathMatching("/holds")))
     }
