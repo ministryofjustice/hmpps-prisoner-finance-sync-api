@@ -1,7 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import org.springframework.http.HttpStatus
-import org.springframework.http.HttpStatusCode
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
@@ -13,7 +12,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCrea
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.LedgerAccountMappingService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 
 @Service
@@ -21,16 +20,13 @@ class HoldsService(
   var timeConversionService: TimeConversionService,
   var holdsApiClient: HoldsApiClient,
   var holdsMappingRepository: HoldsMappingRepository,
+  val idempotencyService: GeneralLedgerIdempotencyService,
+  val accountResolver: GeneralLedgerAccountResolver,
+  val requestCache: InMemoryAccountCache = InMemoryAccountCache(),
+  val accountMapping: LedgerAccountMappingService,
 ) {
-
-  fun mapSubAccountCodeToSubAccountRef(code: Int): CreateHoldRequest.SubAccountRef = when (code) {
-    2101 -> CreateHoldRequest.SubAccountRef.CASH
-    2102 -> CreateHoldRequest.SubAccountRef.SPENDS
-    2103 -> CreateHoldRequest.SubAccountRef.SAVINGS
-    else -> throw CustomException("Unexpected account code", HttpStatusCode.valueOf(400))
-  }
-
-  fun mapHoldType(holdType: String) = CreateHoldRequest.HoldType.valueOf(holdType.uppercase())
+  // HARDCODED, the only hold account code used in NOMIS as far as we know
+  val holdNOMISAccountCode = 2199
 
   fun createHold(syncCreateHoldRequest: SyncCreateHoldRequest): SyncCreateHoldResponse {
     val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(syncCreateHoldRequest.holdNumber)
@@ -39,22 +35,46 @@ class HoldsService(
       return SyncCreateHoldResponse(mapping.legacyHoldNumber, mapping.holdsUuid)
     }
 
-    val createHoldRequest = CreateHoldRequest(
-      prisonNumber = syncCreateHoldRequest.prisonNumber,
-      legacyHoldNumber = syncCreateHoldRequest.holdNumber,
-      subAccountRef = mapSubAccountCodeToSubAccountRef(syncCreateHoldRequest.subAccountCode),
-      createdAt = timeConversionService.toUtcInstant(syncCreateHoldRequest.createdAt),
-      createdBy = syncCreateHoldRequest.createdBy,
-      holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
-      isReleased = syncCreateHoldRequest.isReleased,
-      holdType = mapHoldType(syncCreateHoldRequest.holdType),
-      amount = syncCreateHoldRequest.amount.toPence(),
-      holdLocation = syncCreateHoldRequest.holdLocation,
-      holdUntilDate = if (syncCreateHoldRequest.holdUntilDate != null) timeConversionService.toUtcInstant(syncCreateHoldRequest.holdUntilDate) else null,
-      description = syncCreateHoldRequest.description,
+    val prisonSubAccountId = accountResolver.resolveSubAccount(
+      prisonId = syncCreateHoldRequest.holdLocation,
+      offenderId = "",
+      accountCode = holdNOMISAccountCode,
+      transactionType = syncCreateHoldRequest.holdType,
+      parentCache = requestCache,
     )
 
-    val response = holdsApiClient.postHold(createHoldRequest)
+    val prisonerSubAccountId = accountResolver.resolveSubAccount(
+      prisonId = "",
+      offenderId = syncCreateHoldRequest.prisonNumber,
+      accountCode = syncCreateHoldRequest.subAccountCode,
+      transactionType = syncCreateHoldRequest.holdType,
+      parentCache = requestCache,
+    )
+
+    val subAccountRef = accountMapping.mapPrisonerSubAccount(
+      syncCreateHoldRequest.subAccountCode,
+    )
+
+    val createHoldRequest = syncCreateHoldRequest.toCreateHoldRequest(
+      subAccountRef = CreateHoldRequest.SubAccountRef.valueOf(subAccountRef),
+      createdAt = timeConversionService.toUtcInstant(syncCreateHoldRequest.createdAt),
+      holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
+      holdUntilDate = if (syncCreateHoldRequest.holdUntilDate != null) {
+        timeConversionService.toUtcInstant(syncCreateHoldRequest.holdUntilDate)
+      } else {
+        null
+      },
+      prisonSubAccountId = prisonSubAccountId,
+      prisonerSubAccountId = prisonerSubAccountId,
+    )
+
+    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(
+      transactionId = syncCreateHoldRequest.holdTransactionId,
+      // HARDCODED, we do not expect any hold transaction to have more than one entry
+      entrySequence = 1,
+    )
+
+    val response = holdsApiClient.postHold(createHoldRequest, idempotencyKey = idempotencyKey)
 
     val holdsMapping = HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = response.id)
 

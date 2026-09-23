@@ -36,8 +36,9 @@ class GeneralLedgerApiClient(
   }
 
   // GET /accounts?reference={reference}
-  fun findAccountByReference(reference: String): AccountResponse? = accountApi.getAccounts(reference)
-    .block()
+  fun findAccountByReference(reference: String): AccountResponse? = handleExceptions(
+    { accountApi.getAccounts(reference).block() },
+  )
     ?.firstOrNull()
 
   // GET /sub-accounts/{accountId}/balance

@@ -2,15 +2,16 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -36,19 +37,77 @@ class HoldsServiceTest {
   @DisplayName("Create Hold")
   inner class CreateHold {
 
-    @Mock
-    private lateinit var holdsApiClient: HoldsApiClient
-
     @Spy
     private lateinit var mockedTimeConversionService: TimeConversionService
 
     @Mock
+    private lateinit var holdsApiClient: HoldsApiClient
+
+    @Mock
     private lateinit var holdsMappingRepository: HoldsMappingRepository
 
-    @InjectMocks
+    @Spy
+    private lateinit var idempotencyService: GeneralLedgerIdempotencyService
+
+    @Mock
+    private lateinit var accountResolver: GeneralLedgerAccountResolver
+
+    @Spy
+    private lateinit var accountMapping: LedgerAccountMappingService
+
+    @Spy
+    private lateinit var requestCache: InMemoryAccountCache
+
     private lateinit var holdsService: HoldsService
 
+    @BeforeEach
+    fun setup() {
+      // InjectMocks does not work for some reason
+      holdsService = HoldsService(
+        timeConversionService,
+        holdsApiClient,
+        holdsMappingRepository,
+        idempotencyService,
+        accountResolver,
+        requestCache,
+        accountMapping,
+      )
+    }
+
     val timeConversionService = TimeConversionService()
+
+    val prisonSubaccountUUID = UUID.randomUUID()
+    val prisonerSubaccountUUID = UUID.randomUUID()
+
+    fun mockAccountResolver(
+      syncCreateHoldRequest: SyncCreateHoldRequest,
+      prisonSubaccountUUID: UUID,
+      prisonerSubaccountUUID: UUID,
+    ) {
+      whenever(
+        accountResolver.resolveSubAccount(
+          prisonId = eq(syncCreateHoldRequest.holdLocation),
+          offenderId = eq(""),
+          accountCode = eq(2199),
+          transactionType = eq(syncCreateHoldRequest.holdType),
+          parentCache = any(),
+        ),
+      ).thenReturn(
+        prisonSubaccountUUID,
+      )
+
+      whenever(
+        accountResolver.resolveSubAccount(
+          prisonId = eq(""),
+          offenderId = eq(syncCreateHoldRequest.prisonNumber),
+          accountCode = eq(syncCreateHoldRequest.subAccountCode),
+          transactionType = eq(syncCreateHoldRequest.holdType),
+          parentCache = any(),
+        ),
+      ).thenReturn(
+        prisonerSubaccountUUID,
+      )
+    }
 
     @Test
     fun `should send the hold request to the hold service, store the mapping and return the created hold`() {
@@ -68,6 +127,7 @@ class HoldsServiceTest {
         holdType = "WHF",
         holdLocation = "LEI",
         amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
       )
 
       val holdsCreatedAtUTC = timeConversionService.toUtcInstant(holdsCreatedAt)
@@ -86,6 +146,9 @@ class HoldsServiceTest {
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = BigDecimal("99.99").toPence(),
+        prisonerSubAccountId = prisonerSubaccountUUID,
+        prisonSubAccountId = prisonSubaccountUUID,
+        holdLegacyTransactionId = syncCreateHoldRequest.holdTransactionId,
       )
 
       val createHoldResponseId = UUID.randomUUID()
@@ -111,7 +174,15 @@ class HoldsServiceTest {
         holdUuid = createHoldResponseId,
       )
 
-      whenever(holdsApiClient.postHold(createHoldRequest)).thenReturn(createHoldResponse)
+      mockAccountResolver(syncCreateHoldRequest, prisonSubaccountUUID, prisonerSubaccountUUID)
+
+      whenever(
+        holdsApiClient.postHold(
+          request = eq(createHoldRequest),
+          idempotencyKey = any(),
+        ),
+      ).thenReturn(createHoldResponse)
+
       whenever(
         holdsMappingRepository.save(
           HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = createHoldResponseId),
@@ -145,6 +216,7 @@ class HoldsServiceTest {
         holdType = "WHF",
         holdLocation = "LEI",
         amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
       )
 
       val holdsCreatedAtUTC = timeConversionService.toUtcInstant(holdsCreatedAt)
@@ -163,6 +235,9 @@ class HoldsServiceTest {
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = BigDecimal("99.99").toPence(),
+        prisonerSubAccountId = prisonerSubaccountUUID,
+        prisonSubAccountId = prisonSubaccountUUID,
+        holdLegacyTransactionId = syncCreateHoldRequest.holdTransactionId,
       )
 
       val createHoldResponse = HoldResponse(
@@ -183,7 +258,14 @@ class HoldsServiceTest {
 
       val responseBytes = createHoldResponse.id.toString().toByteArray(StandardCharsets.UTF_8)
 
-      whenever(holdsApiClient.postHold(createHoldRequest)).thenThrow(
+      mockAccountResolver(syncCreateHoldRequest, prisonSubaccountUUID, prisonerSubaccountUUID)
+
+      whenever(
+        holdsApiClient.postHold(
+          request = eq(createHoldRequest),
+          idempotencyKey = any(),
+        ),
+      ).thenThrow(
         WebClientResponseException(
           409,
           "Conflict",

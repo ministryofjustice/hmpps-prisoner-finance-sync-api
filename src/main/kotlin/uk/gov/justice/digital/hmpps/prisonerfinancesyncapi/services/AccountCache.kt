@@ -8,4 +8,5 @@ interface AccountCache {
     parentRef: String,
     supplier: () -> AccountResponse,
   ): AccountResponse
+  fun clear()
 }

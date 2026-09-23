@@ -104,6 +104,40 @@ class HoldsApiMockServer :
     )
   }
 
+  fun stubPostHoldReturnsError(holdRequest: CreateHoldRequest, statusCode: Int = 500) {
+    stubFor(
+      post(urlPathEqualTo("/holds"))
+        .withRequestBody(matchingJsonPath("$.prisonNumber", equalTo(holdRequest.prisonNumber)))
+        .withRequestBody(matchingJsonPath("$.legacyHoldNumber", equalTo(holdRequest.legacyHoldNumber.toString())))
+        .withRequestBody(matchingJsonPath("$.subAccountRef", equalTo(holdRequest.subAccountRef.toString())))
+        .withRequestBody(matchingJsonPath("$.createdAt", equalTo(holdRequest.createdAt.toString())))
+        .withRequestBody(matchingJsonPath("$.createdBy", equalTo(holdRequest.createdBy)))
+        .withRequestBody(matchingJsonPath("$.holdFromDate", equalTo(holdRequest.holdFromDate.toString())))
+        .withRequestBody(matchingJsonPath("$.isReleased", equalTo(holdRequest.isReleased.toString())))
+        .withRequestBody(matchingJsonPath("$.holdType", equalTo(holdRequest.holdType.toString())))
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(holdRequest.amount.toString())))
+        .withRequestBody(matchingJsonPath("$.holdLocation", equalTo(holdRequest.holdLocation)))
+        .withRequestBody(matchingJsonPath("$.holdUntilDate", equalTo(holdRequest.holdUntilDate.toString())))
+        .withRequestBody(matchingJsonPath("$.description", equalTo(holdRequest.description)))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(statusCode)
+            .withBody(
+              """
+                      {
+                      "status": $statusCode,
+                      "errorCode": "Error",
+                      "userMessage": "Error",
+                      "developerMessage": "Error",
+                      "moreInfo": "more info"
+                    }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   fun stubReleaseHold(prisonNumber: String, releasedAt: Instant, amount: Long, holdsUUID: UUID) = stubFor(
     post(urlPathEqualTo("/holds/$holdsUUID/release"))
       .willReturn(
