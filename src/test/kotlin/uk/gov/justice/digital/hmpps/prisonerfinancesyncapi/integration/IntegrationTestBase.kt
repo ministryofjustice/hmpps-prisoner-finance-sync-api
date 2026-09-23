@@ -21,6 +21,8 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.PostgresContainer
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.config.registerPostgresProperties
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.AdvancesApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.AdvancesApiExtension.Companion.advancesApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension
@@ -30,7 +32,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
 import java.util.EnumSet
 
-@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class, HoldsApiExtension::class)
+@ExtendWith(
+  HmppsAuthApiExtension::class,
+  GeneralLedgerApiExtension::class,
+  HoldsApiExtension::class,
+  AdvancesApiExtension::class,
+)
 @SpringBootTest(
   webEnvironment = RANDOM_PORT,
   properties = ["spring.autoconfigure.exclude=uk.gov.justice.hmpps.sqs.HmppsSqsConfiguration"],
@@ -70,6 +77,7 @@ abstract class IntegrationTestBase {
     hmppsAuth.stubHealthPing(status)
     generalLedgerApi.stubHealthPing(status)
     holdsApi.stubHealthPing(status)
+    advancesApi.stubHealthPing(status)
   }
 
   companion object {
