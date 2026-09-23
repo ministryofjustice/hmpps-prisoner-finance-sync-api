@@ -11,16 +11,22 @@ hmpps-auth:
   url: "http://localhost:8090/auth"
 
 general-ledger-api:
-  url: http://localhost:8084
+  url: ${GENERAL_LEDGER_API_URL:http://localhost:8081}
   client:
-    id: hmpps-prisoner-finance-general-ledger-api
-    secret: clientsecret
+    id: ${GENERAL_API_CLIENT_ID:hmpps-prisoner-finance-general-ledger-api}
+    secret: ${GENERAL_API_CLIENT_SECRET:hmpps-prisoner-finance-general-ledger-api}
 
 holds-api:
-  url: http://localhost:8087
+  url: ${HOLDS_API_URL:http://localhost:8082}
   client:
-    id: hmpps-prisoner-finance-holds-api
-    secret: clientsecret
+    id: ${HOLDS_API_CLIENT_ID:hmpps-prisoner-finance-holds-api-1}
+    secret: ${HOLDS_API_CLIENT_SECRET:clientsecret}
+
+advances-api:
+  url: ${ADVANCES_API_URL:http://localhost:8083}
+  client:
+    id: ${ADVANCES_API_CLIENT_ID:hmpps-prisoner-finance-advances-api-1}
+    secret: ${ADVANCES_API_CLIENT_SECRET:clientsecret}
 
 logging:
   level:

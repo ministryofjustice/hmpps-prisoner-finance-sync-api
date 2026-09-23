@@ -65,7 +65,7 @@ services:
       - hmpps
     container_name: hmpps-prisoner-finance-holds-api
     ports:
-      - "8087:8080"
+      - "8082:8080"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ping" ]
     environment:
@@ -106,7 +106,7 @@ services:
       - hmpps
     container_name: hmpps-prisoner-finance-general-ledger-api
     ports:
-      - "8084:8080"
+      - "8081:8080"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ping"]
     environment:
@@ -145,6 +145,50 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  hmpps-prisoner-finance-advances-api:
+    image: ghcr.io/ministryofjustice/hmpps-prisoner-finance-advances-api:latest
+    networks:
+      - hmpps
+    container_name: hmpps-prisoner-finance-advances-api
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ping" ]
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=dev
+      - HMPPS_AUTH_URL=http://hmpps-auth:8080/auth
+      - DB_SERVER=hmpps-prisoner-finance-advances-db
+      - DB_NAME=advances
+      - DB_USER=postgres
+      - DB_PASS=postgres
+    depends_on:
+      hmpps-auth:
+        condition: service_started
+      hmpps-prisoner-finance-general-ledger-db:
+        condition: service_healthy
+        restart: true
+
+  hmpps-prisoner-finance-advances-db:
+    container_name: hmpps-prisoner-finance-advances-db
+    image: postgres:16.15
+    restart: always
+    networks:
+      - hmpps
+    ports:
+      - "5439:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=advances
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
   localstack:
     image: localstack/localstack:4
     networks:
