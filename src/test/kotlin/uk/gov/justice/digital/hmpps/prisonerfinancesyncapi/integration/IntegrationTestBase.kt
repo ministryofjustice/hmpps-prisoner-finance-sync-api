@@ -32,8 +32,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
 import java.util.EnumSet
 
-@ExtendWith(HmppsAuthApiExtension::class, GeneralLedgerApiExtension::class, HoldsApiExtension::class,
-  AdvancesApiExtension::class)
+@ExtendWith(
+  HmppsAuthApiExtension::class,
+  GeneralLedgerApiExtension::class,
+  HoldsApiExtension::class,
+  AdvancesApiExtension::class,
+)
 @SpringBootTest(
   webEnvironment = RANDOM_PORT,
   properties = ["spring.autoconfigure.exclude=uk.gov.justice.hmpps.sqs.HmppsSqsConfiguration"],

@@ -93,7 +93,6 @@ services:
       - hmpps
     ports:
       - "5436:5432"
-      - "5439:5432"
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
@@ -111,7 +110,6 @@ services:
     container_name: hmpps-prisoner-finance-advances-api
     ports:
       - "8088:8080"
-      - "8083:8080"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ping" ]
     environment:
