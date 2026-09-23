@@ -15,3 +15,6 @@ class GeneralLedgerApiHealthPing(@Qualifier("generalLedgerHealthWebClient") webC
 
 @Component("holdsHealthPing")
 class HoldsApiHealthPing(@Qualifier("holdsHealthWebClient") webClient: WebClient) : HealthPingCheck(webClient)
+
+@Component("advancesHealthPing")
+class AdvancesApiHealthPing(@Qualifier("advancesHealthWebClient") webClient: WebClient) : HealthPingCheck(webClient)

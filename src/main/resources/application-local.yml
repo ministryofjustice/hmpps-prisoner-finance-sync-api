@@ -28,6 +28,12 @@ advances-api:
     id: ${ADVANCES_API_CLIENT_ID:hmpps-prisoner-finance-advances-api-1}
     secret: ${ADVANCES_API_CLIENT_SECRET:clientsecret}
 
+advances-api:
+  url: http://localhost:8088
+  client:
+    id: hmpps-prisoner-finance-advances-api
+    secret: clientsecret
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
