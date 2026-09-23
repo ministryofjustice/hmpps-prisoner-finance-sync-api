@@ -63,21 +63,15 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
   val prisonSubaccountUUID = UUID.randomUUID()
   val prisonerSubaccountUUID = UUID.randomUUID()
 
-  data class HoldAccountsStubbedUUIDs(
-    val prisonParentAccount: UUID,
-    val prisonSubAccount: UUID,
-    val prisonerParentAccount: UUID,
-    val prisonerSubAccount: UUID,
-  )
-
   @Nested
   @DisplayName("postHolds")
   inner class PostHolds {
+    val prisonParentAccount = UUID.randomUUID()
+    val prisonHoldSubAccount = UUID.randomUUID()
+    val prisonerParentAccount = UUID.randomUUID()
+    val prisonerHoldSubAccount = UUID.randomUUID()
 
-    private fun stubGlAllAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest): HoldAccountsStubbedUUIDs {
-      val prisonParentAccount = UUID.randomUUID()
-      val prisonHoldSubAccount = UUID.randomUUID()
-
+    private fun stubGlAllAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest) {
       generalLedgerApi.stubGetAccount(
         reference = syncHoldRequest.holdLocation,
         returnUuid = prisonParentAccount,
@@ -92,9 +86,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         ),
       )
 
-      val prisonerParentAccount = UUID.randomUUID()
-      val prisonerHoldSubAccount = UUID.randomUUID()
-
       generalLedgerApi.stubGetAccount(
         reference = syncHoldRequest.prisonNumber,
         returnUuid = prisonerParentAccount,
@@ -108,19 +99,9 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
           ),
         ),
       )
-
-      return HoldAccountsStubbedUUIDs(
-        prisonParentAccount = prisonParentAccount,
-        prisonSubAccount = prisonHoldSubAccount,
-        prisonerParentAccount = prisonerParentAccount,
-        prisonerSubAccount = prisonerHoldSubAccount,
-      )
     }
 
-    private fun stubCreateGlSubAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest): HoldAccountsStubbedUUIDs {
-      val prisonParentAccount = UUID.randomUUID()
-      val prisonHoldSubAccount = UUID.randomUUID()
-
+    private fun stubCreateGlSubAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest) {
       generalLedgerApi.stubGetAccount(
         reference = syncHoldRequest.holdLocation,
         returnUuid = prisonParentAccount,
@@ -132,9 +113,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         returnUuid = prisonHoldSubAccount.toString(),
         parentId = prisonParentAccount,
       )
-
-      val prisonerParentAccount = UUID.randomUUID()
-      val prisonerHoldSubAccount = UUID.randomUUID()
 
       generalLedgerApi.stubGetAccount(
         reference = syncHoldRequest.prisonNumber,
@@ -149,19 +127,9 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         returnUuid = prisonerHoldSubAccount.toString(),
         parentId = prisonerParentAccount,
       )
-
-      return HoldAccountsStubbedUUIDs(
-        prisonParentAccount = prisonParentAccount,
-        prisonSubAccount = prisonHoldSubAccount,
-        prisonerParentAccount = prisonerParentAccount,
-        prisonerSubAccount = prisonerHoldSubAccount,
-      )
     }
 
-    private fun stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest: SyncCreateHoldRequest): HoldAccountsStubbedUUIDs {
-      val prisonParentAccount = UUID.randomUUID()
-      val prisonHoldSubAccount = UUID.randomUUID()
-
+    private fun stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest: SyncCreateHoldRequest) {
       generalLedgerApi.stubGetAccountNotFound(
         reference = syncHoldRequest.holdLocation,
       )
@@ -176,9 +144,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         returnUuid = prisonHoldSubAccount.toString(),
         parentId = prisonParentAccount,
       )
-
-      val prisonerParentAccount = UUID.randomUUID()
-      val prisonerHoldSubAccount = UUID.randomUUID()
 
       generalLedgerApi.stubGetAccountNotFound(
         reference = syncHoldRequest.prisonNumber,
@@ -195,13 +160,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         ),
         returnUuid = prisonerHoldSubAccount.toString(),
         parentId = prisonerParentAccount,
-      )
-
-      return HoldAccountsStubbedUUIDs(
-        prisonParentAccount = prisonParentAccount,
-        prisonSubAccount = prisonHoldSubAccount,
-        prisonerParentAccount = prisonerParentAccount,
-        prisonerSubAccount = prisonerHoldSubAccount,
       )
     }
 
@@ -240,7 +198,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      val stubsAccounts = stubCreateGlSubAccountsForHolds(syncHoldRequest)
+      stubCreateGlSubAccountsForHolds(syncHoldRequest)
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -258,8 +216,8 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
 
-      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonParentAccount}/sub-accounts")))
-      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonerParentAccount}/sub-accounts")))
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonParentAccount/sub-accounts")))
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerParentAccount/sub-accounts")))
     }
 
     @Test
@@ -297,7 +255,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      val stubsAccounts = stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest)
+      stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest)
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -315,8 +273,8 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts")))
 
-      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonParentAccount}/sub-accounts")))
-      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/${stubsAccounts.prisonerParentAccount}/sub-accounts")))
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonParentAccount/sub-accounts")))
+      generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerParentAccount/sub-accounts")))
     }
 
     @Test
