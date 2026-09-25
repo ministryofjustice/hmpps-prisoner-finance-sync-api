@@ -69,6 +69,18 @@ class HoldsController(var holdsService: HoldsService) {
   }
 
   @Operation(
+    summary = "Migrate an historical hold record",
+    description = "Migrates an historical hold record from the legacy system to the holds service",
+  )
+  //TODO API RESPONSES
+  // TODO Secruity requirements
+  @PostMapping("/migrate/holds")
+  fun migrateHolds(@RequestBody migrateHoldRequest: SyncCreateHoldRequest) {
+    //val syncCreateHoldResponse = holdsService.migrateHold(migrateHoldRequest = migrateHoldRequest)
+    //return ResponseEntity.status(201).body(syncCreateHoldResponse)
+  }
+
+  @Operation(
     summary = "Release an existing hold record",
     description = "Releases a specific hold in the holds service",
   )

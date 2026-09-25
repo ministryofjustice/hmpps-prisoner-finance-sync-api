@@ -27,6 +27,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Hold
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.InMemoryAccountCache
@@ -750,6 +751,45 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         .bodyValue(releaseRequest)
         .exchange()
         .expectStatus().isNotFound
+    }
+  }
+
+  @Nested
+  @DisplayName("migrateHolds")
+  inner class MigrateHolds {
+    @Test
+    fun `should return 201 when a hold is migrated, sending null for transactionId fields if there are no mappings`() {
+      val hold  = SyncCreateHoldRequest(
+        subAccountCode = 2101,
+        holdNumber = 12345,
+        holdTransactionId = 1234567,
+        releaseTransactionId = null,
+        prisonNumber = "A123456",
+        createdAt = LocalDateTime.now(),
+        createdBy = "",
+        holdFromDate = LocalDateTime.now(),
+        holdUntilDate = null,
+        isReleased = false,
+        description = "",
+        holdType = "HOA",
+        holdLocation = "LEI",
+        amount = BigDecimal.valueOf(100),
+      )
+
+      val response = webTestClient.post().uri("/migrate/holds")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(hold)
+        .exchange()
+        .expectStatus().isCreated
+        .expectBody<SyncCreateHoldResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.holdNumber).isEqualTo(12345)
+
+      // TODO: Check mapping table
     }
   }
 }
