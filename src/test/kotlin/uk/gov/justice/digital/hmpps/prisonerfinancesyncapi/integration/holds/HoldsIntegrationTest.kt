@@ -757,9 +757,21 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
   @Nested
   @DisplayName("migrateHolds")
   inner class MigrateHolds {
+
+    // 400, 403, 502 tests
+
+    // 201 that passes the mappings
+
+    // 201 when hold is release, and we've got both transactions
+
+    // 400 when hold is released but doesn't have a released transaction
+
+    // 400 when hold doesn't have any transactions
+
     @Test
     fun `should return 201 when a hold is migrated, sending null for transactionId fields if there are no mappings`() {
-      val hold  = SyncCreateHoldRequest(
+      // add missing stubs
+      val hold = SyncCreateHoldRequest(
         subAccountCode = 2101,
         holdNumber = 12345,
         holdTransactionId = 1234567,

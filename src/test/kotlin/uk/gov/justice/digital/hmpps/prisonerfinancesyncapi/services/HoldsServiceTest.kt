@@ -17,8 +17,11 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
@@ -26,6 +29,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCrea
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -33,51 +37,53 @@ import java.util.UUID
 @DisplayName("Holds Service Test")
 class HoldsServiceTest {
 
+  @Spy
+  private lateinit var timeConversionService: TimeConversionService
+
+  @Mock
+  private lateinit var holdsApiClient: HoldsApiClient
+
+  @Mock
+  private lateinit var holdsMappingRepository: HoldsMappingRepository
+
+  @Spy
+  private lateinit var idempotencyService: GeneralLedgerIdempotencyService
+
+  @Mock
+  private lateinit var accountResolver: GeneralLedgerAccountResolver
+
+  @Spy
+  private lateinit var accountMapping: LedgerAccountMappingService
+
+  @Spy
+  private lateinit var requestCache: InMemoryAccountCache
+
+  @Mock
+  private lateinit var generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository
+
+  private lateinit var holdsService: HoldsService
+
+  @BeforeEach
+  fun setup() {
+    // InjectMocks does not work for some reason
+    holdsService = HoldsService(
+      timeConversionService,
+      holdsApiClient,
+      holdsMappingRepository,
+      idempotencyService,
+      accountResolver,
+      requestCache,
+      accountMapping,
+      generalLedgerTransactionMappingRepository,
+    )
+  }
+
+  val prisonSubaccountUUID = UUID.randomUUID()
+  val prisonerSubaccountUUID = UUID.randomUUID()
+
   @Nested
   @DisplayName("Create Hold")
   inner class CreateHold {
-
-    @Spy
-    private lateinit var mockedTimeConversionService: TimeConversionService
-
-    @Mock
-    private lateinit var holdsApiClient: HoldsApiClient
-
-    @Mock
-    private lateinit var holdsMappingRepository: HoldsMappingRepository
-
-    @Spy
-    private lateinit var idempotencyService: GeneralLedgerIdempotencyService
-
-    @Mock
-    private lateinit var accountResolver: GeneralLedgerAccountResolver
-
-    @Spy
-    private lateinit var accountMapping: LedgerAccountMappingService
-
-    @Spy
-    private lateinit var requestCache: InMemoryAccountCache
-
-    private lateinit var holdsService: HoldsService
-
-    @BeforeEach
-    fun setup() {
-      // InjectMocks does not work for some reason
-      holdsService = HoldsService(
-        timeConversionService,
-        holdsApiClient,
-        holdsMappingRepository,
-        idempotencyService,
-        accountResolver,
-        requestCache,
-        accountMapping,
-      )
-    }
-
-    val timeConversionService = TimeConversionService()
-
-    val prisonSubaccountUUID = UUID.randomUUID()
-    val prisonerSubaccountUUID = UUID.randomUUID()
 
     fun mockAccountResolver(
       syncCreateHoldRequest: SyncCreateHoldRequest,
@@ -282,6 +288,181 @@ class HoldsServiceTest {
         .isEqualTo(409)
 
       verify(holdsMappingRepository, times(0)).save(any())
+    }
+  }
+
+  @Nested
+  @DisplayName("Migrate Holds")
+  inner class MigrateHolds {
+
+    val prisonNumber = "AD23451"
+
+    private fun mockTransactionMapping(holdTransactionGLId: UUID, legacyTransactionId: Long, transactionType: String) {
+      whenever(
+        generalLedgerTransactionMappingRepository.findGeneralLedgerTransactionMappingByLegacyTransactionId(
+          legacyTransactionId,
+        ),
+      )
+        .thenReturn(
+          listOf(
+            GeneralLedgerTransactionMapping(
+              entrySequence = 1,
+              glTransactionUuid = holdTransactionGLId,
+              createdAt = Instant.now(),
+              transactionType = transactionType,
+              caseloadId = "",
+              legacyTransactionId = legacyTransactionId,
+            ),
+          ),
+        )
+    }
+
+    @Test
+    fun `should send the migrate hold request to the hold service, store the mapping and return the created hold`() {
+      val holdsCreatedAt = LocalDateTime.now()
+
+      val syncCreateHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = prisonNumber,
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = holdsCreatedAt,
+        createdBy = "USER",
+        holdFromDate = holdsCreatedAt,
+        holdUntilDate = null,
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val holdsCreatedAtUTC = timeConversionService.toUtcInstant(holdsCreatedAt)
+
+      val createHoldRequest = CreateHoldMigrationRequest(
+        prisonNumber = syncCreateHoldRequest.prisonNumber,
+        legacyHoldNumber = syncCreateHoldRequest.holdNumber,
+        subAccountRef = CreateHoldMigrationRequest.SubAccountRef.CASH,
+        createdAt = timeConversionService.toUtcInstant(syncCreateHoldRequest.createdAt),
+        createdBy = syncCreateHoldRequest.createdBy,
+        holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
+        isReleased = syncCreateHoldRequest.isReleased,
+        holdType = CreateHoldMigrationRequest.HoldType.WHF,
+        amount = syncCreateHoldRequest.amount.toPence(),
+        holdLocation = syncCreateHoldRequest.holdLocation,
+        holdUntilDate = null,
+        description = syncCreateHoldRequest.description,
+        holdTransactionId = null,
+        releasedTransactionId = null,
+      )
+
+      val createHoldResponseId = UUID.randomUUID()
+
+      val createHoldResponse = HoldResponse(
+        id = createHoldResponseId,
+        prisonNumber = "AD23451",
+        subAccountRef = HoldResponse.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = holdsCreatedAtUTC,
+        createdBy = "USER",
+        holdFromDate = holdsCreatedAtUTC,
+        isReleased = false,
+        description = "Test Hold",
+        holdType = HoldResponse.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99").toPence(),
+      )
+
+      val syncCreateHoldResponse = SyncCreateHoldResponse(
+        holdNumber = createHoldRequest.legacyHoldNumber,
+        holdUuid = createHoldResponseId,
+      )
+
+      whenever(holdsApiClient.migrateHold(createHoldRequest))
+        .thenReturn(createHoldResponse)
+
+      val createdHold = holdsService.migrateHold(syncCreateHoldRequest)
+
+      assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
+      assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+    }
+
+    @Test
+    fun `should send the migrate hold request to the hold service, retrieve the GL mappings, store the mapping and return the created hold`() {
+      val holdsCreatedAt = LocalDateTime.now()
+
+      val syncCreateHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = prisonNumber,
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = holdsCreatedAt,
+        createdBy = "USER",
+        holdFromDate = holdsCreatedAt,
+        holdUntilDate = null,
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+        releaseTransactionId = 12322,
+      )
+
+      val holdsCreatedAtUTC = timeConversionService.toUtcInstant(holdsCreatedAt)
+
+      val holdTransactionGLId = UUID.randomUUID()
+      val releasedTransactionGLId = UUID.randomUUID()
+
+      val createHoldRequest = CreateHoldMigrationRequest(
+        prisonNumber = syncCreateHoldRequest.prisonNumber,
+        legacyHoldNumber = syncCreateHoldRequest.holdNumber,
+        subAccountRef = CreateHoldMigrationRequest.SubAccountRef.CASH,
+        createdAt = timeConversionService.toUtcInstant(syncCreateHoldRequest.createdAt),
+        createdBy = syncCreateHoldRequest.createdBy,
+        holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
+        isReleased = syncCreateHoldRequest.isReleased,
+        holdType = CreateHoldMigrationRequest.HoldType.WHF,
+        amount = syncCreateHoldRequest.amount.toPence(),
+        holdLocation = syncCreateHoldRequest.holdLocation,
+        holdUntilDate = null,
+        description = syncCreateHoldRequest.description,
+        holdTransactionId = holdTransactionGLId,
+        releasedTransactionId = releasedTransactionGLId,
+      )
+
+      val createHoldResponseId = UUID.randomUUID()
+
+      val createHoldResponse = HoldResponse(
+        id = createHoldResponseId,
+        prisonNumber = "AD23451",
+        subAccountRef = HoldResponse.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = holdsCreatedAtUTC,
+        createdBy = "USER",
+        holdFromDate = holdsCreatedAtUTC,
+        isReleased = false,
+        description = "Test Hold",
+        holdType = HoldResponse.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99").toPence(),
+        holdTransactionId = holdTransactionGLId,
+        releasedTransactionId = releasedTransactionGLId,
+      )
+
+      val syncCreateHoldResponse = SyncCreateHoldResponse(
+        holdNumber = createHoldRequest.legacyHoldNumber,
+        holdUuid = createHoldResponseId,
+      )
+
+      mockTransactionMapping(holdTransactionGLId = holdTransactionGLId, legacyTransactionId = syncCreateHoldRequest.holdTransactionId, transactionType = "WHF")
+      mockTransactionMapping(holdTransactionGLId = releasedTransactionGLId, legacyTransactionId = syncCreateHoldRequest.releaseTransactionId!!, transactionType = "WFR")
+
+      whenever(holdsApiClient.migrateHold(createHoldRequest)).thenReturn(createHoldResponse)
+
+      val createdHold = holdsService.migrateHold(syncCreateHoldRequest)
+
+      assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
+      assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
     }
   }
 }
