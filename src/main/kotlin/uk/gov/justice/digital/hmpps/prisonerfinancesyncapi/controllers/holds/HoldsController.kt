@@ -97,13 +97,13 @@ class HoldsController(var holdsService: HoldsService) {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "502",
-        description = "Dependency Error - An unexpected error occurred in the hold service.",
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "500",
-        description = "Internal Server Error - An unexpected error occurred.",
+        responseCode = "502",
+        description = "Dependency Error - An unexpected error occurred in the hold service.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],

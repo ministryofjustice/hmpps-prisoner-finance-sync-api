@@ -102,14 +102,15 @@ class HoldsService(
     return transaction.firstOrNull()?.glTransactionUuid
   }
 
-  private fun trySaveHoldMapping(holdsMapping: HoldsMapping) {
+  private fun tryToSaveHoldMapping(holdsMapping: HoldsMapping) {
     try {
       holdsMappingRepository.save(holdsMapping)
     } catch (e: DataIntegrityViolationException) {
       // ignore the exception if the mapping already exists
-      if (e.message?.contains("duplicate key value violates unique constraint \"uc_holds_mapping_holds_uuid\"") != true) {
-        throw e
+      if (e.message?.contains("duplicate key value violates unique constraint \"uc_holds_mapping_holds_uuid\"") == true) {
+        return
       }
+      throw e
     }
   }
 
@@ -150,7 +151,7 @@ class HoldsService(
 
     val holdsMapping = HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = response.id)
 
-    trySaveHoldMapping(holdsMapping)
+    tryToSaveHoldMapping(holdsMapping)
 
     val syncCreateHoldResponse = SyncCreateHoldResponse(createHoldMigrationRequest.legacyHoldNumber, response.id)
 
