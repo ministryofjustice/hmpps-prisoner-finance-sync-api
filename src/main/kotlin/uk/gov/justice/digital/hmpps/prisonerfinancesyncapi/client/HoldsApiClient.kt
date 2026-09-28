@@ -33,7 +33,7 @@ class HoldsApiClient(
 
   @Throws(WebClientResponseException::class)
   fun migrateHold(request: CreateHoldMigrationRequest): HoldResponse {
-    log.info("Creating Hold for hold number ${request.legacyHoldNumber} for prison number ${request.prisonNumber}")
+    log.info("Migrating Hold for hold number ${request.legacyHoldNumber} for prison number ${request.prisonNumber}")
     val response = handleExceptions(
       block = {
         holdMigrationControllerApi.migrateHold(request)

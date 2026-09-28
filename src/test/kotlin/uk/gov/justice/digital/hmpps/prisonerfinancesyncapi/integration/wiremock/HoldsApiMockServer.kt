@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
+import com.github.tomakehurst.wiremock.client.WireMock.absent
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
@@ -11,6 +12,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.post
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
+import com.github.tomakehurst.wiremock.matching.StringValuePattern
 import org.junit.jupiter.api.extension.AfterAllCallback
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
@@ -20,6 +22,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHo
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.Instant
 import java.util.UUID
 
@@ -95,6 +99,61 @@ class HoldsApiMockServer :
         .withRequestBody(matchingJsonPath("$.holdLocation", equalTo(holdRequest.holdLocation)))
         .withRequestBody(matchingJsonPath("$.holdUntilDate", equalTo(holdRequest.holdUntilDate.toString())))
         .withRequestBody(matchingJsonPath("$.description", equalTo(holdRequest.description)))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(mapper.writeValueAsString(holdResponse)),
+        ),
+    )
+  }
+
+  private fun equalToOrAbsent(value: String?): StringValuePattern {
+    if (value == null || value.isEmpty()) {
+      return absent()
+    } else {
+      return equalTo(value)
+    }
+  }
+
+  fun stubMigrateHold(
+    holdRequest: SyncCreateHoldRequest,
+    subAccountRef: HoldResponse.SubAccountRef,
+    responseHoldId: UUID = UUID.randomUUID(),
+    holdTransactionId: UUID? = null,
+    releaseTransactionId: UUID? = null,
+  ) {
+    val holdResponse = HoldResponse(
+      id = responseHoldId,
+      prisonNumber = holdRequest.prisonNumber,
+      legacyHoldNumber = holdRequest.holdNumber,
+      subAccountRef = subAccountRef,
+      createdAt = Instant.now(),
+      createdBy = holdRequest.createdBy,
+      holdFromDate = Instant.now(),
+      isReleased = holdRequest.isReleased,
+      holdType = HoldResponse.HoldType.valueOf(holdRequest.holdType.toString()),
+      amount = holdRequest.amount.toPence(),
+      holdLocation = holdRequest.holdLocation,
+      holdUntilDate = Instant.now(),
+      description = holdRequest.description,
+      releasedTransactionId = releaseTransactionId,
+      holdTransactionId = holdTransactionId,
+    )
+
+    stubFor(
+      post(urlPathEqualTo("/migrate/holds"))
+        .withRequestBody(matchingJsonPath("$.prisonNumber", equalTo(holdRequest.prisonNumber)))
+        .withRequestBody(matchingJsonPath("$.legacyHoldNumber", equalTo(holdRequest.holdNumber.toString())))
+        .withRequestBody(matchingJsonPath("$.subAccountRef", equalTo(subAccountRef.toString())))
+        .withRequestBody(matchingJsonPath("$.createdBy", equalTo(holdRequest.createdBy)))
+        .withRequestBody(matchingJsonPath("$.isReleased", equalTo(holdRequest.isReleased.toString())))
+        .withRequestBody(matchingJsonPath("$.holdType", equalTo(holdRequest.holdType)))
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(holdRequest.amount.toPence().toString())))
+        .withRequestBody(matchingJsonPath("$.holdLocation", equalTo(holdRequest.holdLocation)))
+        .withRequestBody(matchingJsonPath("$.description", equalTo(holdRequest.description)))
+        .withRequestBody(matchingJsonPath("$.releasedTransactionId", equalToOrAbsent(releaseTransactionId?.toString())))
+        .withRequestBody(matchingJsonPath("$.holdTransactionId", equalToOrAbsent(holdTransactionId?.toString())))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)

@@ -75,9 +75,9 @@ class HoldsController(var holdsService: HoldsService) {
   // TODO API RESPONSES
   // TODO Secruity requirements
   @PostMapping("/migrate/holds")
-  fun migrateHolds(@RequestBody migrateHoldRequest: SyncCreateHoldRequest) {
-    // val syncCreateHoldResponse = holdsService.migrateHold(migrateHoldRequest = migrateHoldRequest)
-    // return ResponseEntity.status(201).body(syncCreateHoldResponse)
+  fun migrateHolds(@RequestBody migrateHoldRequest: SyncCreateHoldRequest): ResponseEntity<SyncCreateHoldResponse> {
+    val syncCreateHoldResponse = holdsService.migrateHold(syncCreateHoldRequest = migrateHoldRequest)
+    return ResponseEntity.status(201).body(syncCreateHoldResponse)
   }
 
   @Operation(
