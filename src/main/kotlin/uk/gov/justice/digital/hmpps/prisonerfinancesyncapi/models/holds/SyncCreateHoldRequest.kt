@@ -144,4 +144,28 @@ data class SyncCreateHoldRequest(
     prisonerSubAccountId = prisonerSubAccountId,
     holdLegacyTransactionId = this.holdTransactionId,
   )
+
+  fun toCreateMigrationHoldRequest(
+    subAccountRef: String,
+    holdTransactionGlId: UUID? = null,
+    releasedTransactionGlId: UUID? = null,
+    holdUntilDate: Instant? = null,
+    createdAt: Instant,
+    holdFromDate: Instant,
+  ) = CreateHoldMigrationRequest(
+    prisonNumber = this.prisonNumber,
+    legacyHoldNumber = this.holdNumber,
+    subAccountRef = CreateHoldMigrationRequest.SubAccountRef.valueOf(subAccountRef),
+    createdAt = createdAt,
+    holdFromDate = holdFromDate,
+    holdUntilDate = holdUntilDate,
+    createdBy = this.createdBy,
+    isReleased = this.isReleased,
+    holdType = CreateHoldMigrationRequest.HoldType.valueOf(this.holdType),
+    amount = this.amount.toPence(),
+    holdLocation = this.holdLocation,
+    description = this.description,
+    holdTransactionId = holdTransactionGlId,
+    releasedTransactionId = releasedTransactionGlId,
+  )
 }
