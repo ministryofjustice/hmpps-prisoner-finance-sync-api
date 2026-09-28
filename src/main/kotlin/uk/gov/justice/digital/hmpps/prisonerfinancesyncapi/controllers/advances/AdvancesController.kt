@@ -16,7 +16,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ADVANCES
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AdvancesService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
@@ -33,7 +32,7 @@ class AdvancesController(private val advancesService: AdvancesService) {
       ApiResponse(
         responseCode = "201",
         description = "Advance record created.",
-        content = [Content(schema = Schema(implementation = HoldResponse::class))],
+        content = [Content(schema = Schema(implementation = SyncCreateAdvanceRecordResponse::class))],
       ),
       ApiResponse(
         responseCode = "400",
