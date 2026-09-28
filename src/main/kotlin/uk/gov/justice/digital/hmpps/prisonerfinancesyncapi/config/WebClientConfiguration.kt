@@ -11,6 +11,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.SubAccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsMigrationControllerApi
 import uk.gov.justice.hmpps.kotlin.auth.authorisedWebClient
 import uk.gov.justice.hmpps.kotlin.auth.healthWebClient
 import java.time.Duration
@@ -80,6 +81,9 @@ class WebClientConfiguration(
 
   @Bean
   fun holdsApi(@Qualifier("holdsApiWebClient") webClient: WebClient): HoldsControllerApi = HoldsControllerApi(webClient)
+
+  @Bean
+  fun holdsMigrationApi(@Qualifier("holdsApiWebClient") webClient: WebClient): HoldsMigrationControllerApi = HoldsMigrationControllerApi(webClient)
 
   @Bean
   fun advanceRecordApi(@Qualifier("advancesApiWebClient") webClient: WebClient): AdvanceRecordControllerApi = AdvanceRecordControllerApi(webClient)
