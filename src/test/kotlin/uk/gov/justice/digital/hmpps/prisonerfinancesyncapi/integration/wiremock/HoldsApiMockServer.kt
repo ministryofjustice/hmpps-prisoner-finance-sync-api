@@ -171,7 +171,7 @@ class HoldsApiMockServer :
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-            .withStatus(500)
+            .withStatus(statusCode)
             .withBody(
               """
               {

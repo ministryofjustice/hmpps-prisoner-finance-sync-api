@@ -295,7 +295,15 @@ class HoldsServiceTest {
   @Nested
   @DisplayName("Migrate Holds")
   inner class MigrateHolds {
+    val holdsCreatedAt = LocalDateTime.now()
+    val holdsCreatedAtUTC: Instant by lazy {
+      timeConversionService.toUtcInstant(holdsCreatedAt)
+    }
+    val createHoldResponseId = UUID.randomUUID()
+    val holdTransactionGLId = UUID.randomUUID()
+    val releasedTransactionGLId = UUID.randomUUID()
     val prisonNumber = "AD23451"
+
     val syncNotReleasedCreateHoldRequest = SyncCreateHoldRequest(
       prisonNumber = prisonNumber,
       subAccountCode = 2101,
@@ -348,14 +356,6 @@ class HoldsServiceTest {
           ),
         )
     }
-
-    val holdsCreatedAt = LocalDateTime.now()
-    val holdsCreatedAtUTC: Instant by lazy {
-      timeConversionService.toUtcInstant(holdsCreatedAt)
-    }
-    val createHoldResponseId = UUID.randomUUID()
-    val holdTransactionGLId = UUID.randomUUID()
-    val releasedTransactionGLId = UUID.randomUUID()
 
     @Test
     fun `should send the migrate hold request to the hold service, store the mapping and return the created hold`() {
