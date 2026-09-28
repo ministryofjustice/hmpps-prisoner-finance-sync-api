@@ -1,918 +1,926 @@
 {
-  "openapi": "3.1.0",
-  "info": {
-    "title": "HMPPS Prisoner Finance Holds Api",
-    "contact": {
-      "name": "HMPPS Digital Studio",
-      "email": "feedback@digital.justice.gov.uk"
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "HMPPS Prisoner Finance Holds Api",
+    "contact" : {
+      "name" : "HMPPS Digital Studio",
+      "email" : "feedback@digital.justice.gov.uk"
     },
-    "version": "2026-09-22"
+    "version" : "2026-09-25.174.3046ce1"
   },
-  "servers": [
-    {
-      "url": "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
-      "description": "Development"
-    },
-    {
-      "url": "https://prisoner-finance-holds-api-preprod.hmpps.service.justice.gov.uk",
-      "description": "Pre-Production"
-    },
-    {
-      "url": "https://prisoner-finance-holds-api.hmpps.service.justice.gov.uk",
-      "description": "Production"
-    },
-    {
-      "url": "http://localhost:8080",
-      "description": "Local"
-    }
-  ],
-  "security": [
-    {
-      "bearer-jwt": [
-        "read",
-        "write"
-      ]
-    }
-  ],
-  "tags": [
-    {
-      "name": "Holds Controller",
-      "description": "Endpoints for hold management and viewing in prisoner finance."
-    }
-  ],
-  "paths": {
-    "/holds": {
-      "post": {
-        "tags": [
-          "Holds Controller"
-        ],
-        "summary": "Create a new hold",
-        "description": "Creates a new hold for a prisoner's sub-account.",
-        "operationId": "postHold",
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "description": "An Idempotency Key to ensure that transactions are not repeated",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateHoldRequest"
+  "servers" : [ {
+    "url" : "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
+    "description" : "Development"
+  }, {
+    "url" : "https://prisoner-finance-holds-api-preprod.hmpps.service.justice.gov.uk",
+    "description" : "Pre-Production"
+  }, {
+    "url" : "https://prisoner-finance-holds-api.hmpps.service.justice.gov.uk",
+    "description" : "Production"
+  }, {
+    "url" : "http://localhost:8080",
+    "description" : "Local"
+  } ],
+  "security" : [ {
+    "bearer-jwt" : [ "read", "write" ]
+  } ],
+  "tags" : [ {
+    "name" : "Holds Controller",
+    "description" : "Endpoints for hold management and viewing in prisoner finance."
+  } ],
+  "paths" : {
+    "/migrate/holds" : {
+      "post" : {
+        "tags" : [ "Holds Migration Controller" ],
+        "summary" : "Migrate a legacy hold",
+        "description" : "Migrates a legacy hold from NOMIS.",
+        "operationId" : "migrateHold",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateHoldMigrationRequest"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "201": {
-            "description": "Hold Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HoldResponse"
+        "responses" : {
+          "201" : {
+            "description" : "Hold Migrated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HoldResponse"
                 }
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - requires a valid OAuth2 token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403": {
-            "description": "Forbidden - requires an appropriate role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal Server Error - An unexpected error occurred.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Bad Gateway - General Ledger responded with an error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer-jwt": [
-              "ROLE_PRISONER_FINANCE__HOLDS__RW"
-            ]
-          }
-        ]
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
       }
     },
-    "/holds/{id}/release": {
-      "post": {
-        "tags": [
-          "Holds Controller"
-        ],
-        "summary": "Release a hold by its id",
-        "description": "Release a hold by its id. This will set the released flag to true and no longer be included in the prisoner's hold balance.",
-        "operationId": "releaseHoldById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+    "/holds" : {
+      "post" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Create a new hold",
+        "description" : "Creates a new hold for a prisoner's sub-account.",
+        "operationId" : "postHold",
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "description" : "An Idempotency Key to ensure that transactions are not repeated",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReleaseHoldRequest"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateHoldRequest"
               }
             }
           },
-          "required": true
+          "required" : true
         },
-        "responses": {
-          "200": {
-            "description": "Hold Released",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReleasedHoldResponse"
+        "responses" : {
+          "201" : {
+            "description" : "Hold Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HoldResponse"
                 }
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - requires a valid OAuth2 token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403": {
-            "description": "Forbidden - requires an appropriate role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal Server Error - An unexpected error occurred.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502" : {
+            "description" : "Bad Gateway - General Ledger responded with an error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer-jwt": [
-              "ROLE_PRISONER_FINANCE__HOLDS__RW"
-            ]
-          }
-        ]
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
       }
     },
-    "/holds/{prisonNumber}": {
-      "get": {
-        "tags": [
-          "Holds Controller"
-        ],
-        "summary": "Get all Holds for prisonNumber",
-        "description": "Get All Holds for prisonNumber, if prisonNumber does not exist an empty list is returned",
-        "operationId": "getHolds",
-        "parameters": [
-          {
-            "name": "prisonNumber",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
-            }
-          },
-          {
-            "name": "pageNumber",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "minimum": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "minimum": 1
-            }
+    "/holds/{id}/release" : {
+      "post" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Release a hold by its id",
+        "description" : "Release a hold by its id. This will set the released flag to true and no longer be included in the prisoner's hold balance.",
+        "operationId" : "releaseHoldById",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "All Holds for prisonNumber, if prisonNumber does not exist an empty list is returned",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagedResponseHoldResponse"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReleaseHoldRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Hold Released",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReleasedHoldResponse"
                 }
               }
             }
           },
-          "400": {
-            "description": "Page requested is out of range",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - requires a valid OAuth2 token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403": {
-            "description": "Forbidden - requires an appropriate role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal Server Error - An unexpected error occurred.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer-jwt": [
-              "ROLE_PRISONER_FINANCE__HOLDS__RO",
-              "ROLE_PRISONER_FINANCE__HOLDS__RW"
-            ]
-          }
-        ]
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
       }
     },
-    "/holds/{prisonNumber}/balance": {
-      "get": {
-        "tags": [
-          "Holds Controller"
-        ],
-        "summary": "Get the account hold balance.",
-        "description": "Get the account hold balance.",
-        "operationId": "getAccountHoldBalance",
-        "parameters": [
-          {
-            "name": "prisonNumber",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
-            }
+    "/holds/{prisonNumber}" : {
+      "get" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Get all Holds for prisonNumber",
+        "description" : "Get All Holds for prisonNumber, if prisonNumber does not exist an empty list is returned",
+        "operationId" : "getHolds",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Overall hold balance of the account for all sub accounts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HoldBalanceResponse"
+        }, {
+          "name" : "pageNumber",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "All Holds for prisonNumber, if prisonNumber does not exist an empty list is returned",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedResponseHoldResponse"
                 }
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "400" : {
+            "description" : "Page requested is out of range",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - requires a valid OAuth2 token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403": {
-            "description": "Forbidden - requires an appropriate role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal Server Error - An unexpected error occurred.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer-jwt": [
-              "ROLE_PRISONER_FINANCE__HOLDS__RO",
-              "ROLE_PRISONER_FINANCE__HOLDS__RW"
-            ]
-          }
-        ]
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
       }
     },
-    "/holds/{prisonNumber}/balance/{subAccountRef}": {
-      "get": {
-        "tags": [
-          "Holds Controller"
-        ],
-        "summary": "Get the sub account hold balance.",
-        "description": "Get the sub account hold balance.",
-        "operationId": "getSubAccountHoldBalance",
-        "parameters": [
-          {
-            "name": "prisonNumber",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
-            }
-          },
-          {
-            "name": "subAccountRef",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
+    "/holds/{prisonNumber}/balance" : {
+      "get" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Get the account hold balance.",
+        "description" : "Get the account hold balance.",
+        "operationId" : "getAccountHoldBalance",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "Hold balance of the sub account",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HoldBalanceResponse"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Overall hold balance of the account for all sub accounts",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HoldBalanceResponse"
                 }
               }
             }
           },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401": {
-            "description": "Unauthorized - requires a valid OAuth2 token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403": {
-            "description": "Forbidden - requires an appropriate role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal Server Error - An unexpected error occurred.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer-jwt": [
-              "ROLE_PRISONER_FINANCE__HOLDS__RO",
-              "ROLE_PRISONER_FINANCE__HOLDS__RW"
-            ]
-          }
-        ]
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
       }
     },
-    "/hello": {
-      "get": {
-        "tags": [
-          "Hello World Controller"
-        ],
-        "summary": "Hello World Endpoint",
-        "operationId": "hello",
-        "responses": {
-          "200": {
-            "description": "Hello World!",
-            "content": {
-              "text/plain": {}
-            }
-          },
-          "401": {
-            "description": "Unauthorized - requires a valid OAuth2 token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+    "/holds/{prisonNumber}/balance/{subAccountRef}" : {
+      "get" : {
+        "tags" : [ "Holds Controller" ],
+        "summary" : "Get the sub account hold balance.",
+        "description" : "Get the sub account hold balance.",
+        "operationId" : "getSubAccountHoldBalance",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
+          }
+        }, {
+          "name" : "subAccountRef",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Hold balance of the sub account",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HoldBalanceResponse"
                 }
               }
             }
           },
-          "403": {
-            "description": "Forbidden - requires an appropriate role",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal Server Error - An unexpected error occurred.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security": [
-          {
-            "bearer-jwt": [
-              "ROLE_PRISONER_FINANCE__HOLDS__RO",
-              "ROLE_PRISONER_FINANCE__HOLDS__RW"
-            ]
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
+      }
+    },
+    "/hello" : {
+      "get" : {
+        "tags" : [ "Hello World Controller" ],
+        "summary" : "Hello World Endpoint",
+        "operationId" : "hello",
+        "responses" : {
+          "200" : {
+            "description" : "Hello World!",
+            "content" : {
+              "text/plain" : { }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
-        ]
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__HOLDS__RO", "ROLE_PRISONER_FINANCE__HOLDS__RW" ]
+        } ]
       }
     }
   },
-  "components": {
-    "schemas": {
-      "CreateHoldRequest": {
-        "type": "object",
-        "properties": {
-          "prisonNumber": {
-            "type": "string",
-            "description": "The prison number as seen in services like DPS",
-            "example": "A1999EC"
+  "components" : {
+    "schemas" : {
+      "CreateHoldMigrationRequest" : {
+        "type" : "object",
+        "properties" : {
+          "prisonNumber" : {
+            "type" : "string",
+            "description" : "The prison number as seen in services like DPS",
+            "example" : "A1999EC"
           },
-          "legacyHoldNumber": {
-            "type": "integer",
-            "format": "int64",
-            "description": "The hold number as seen in NOMIS",
-            "example": 12345789
+          "legacyHoldNumber" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The hold number as seen in NOMIS",
+            "example" : 12345789
           },
-          "subAccountRef": {
-            "type": "string",
-            "description": "The sub account reference as seen in Prisoner Finance",
-            "enum": [
-              "CASH",
-              "SPENDS",
-              "SAVINGS"
-            ],
-            "example": "CASH"
+          "subAccountRef" : {
+            "type" : "string",
+            "description" : "The sub account reference as seen in Prisoner Finance",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ],
+            "example" : "CASH"
           },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The time the Hold was created",
-            "example": "2026-08-21T15:05:29.426237729Z"
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The time the Hold was created",
+            "example" : "2026-08-21T15:05:29.426237729Z"
           },
-          "createdBy": {
-            "type": "string",
-            "description": "The person who created the Hold",
-            "example": "2026-08-21T15:05:29.426237729Z"
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The person who created the Hold",
+            "example" : "2026-08-21T15:05:29.426237729Z"
           },
-          "holdFromDate": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date that the hold is active from",
-            "example": "2026-08-21T15:05:29.426237729Z"
+          "holdFromDate" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date that the hold is active from",
+            "example" : "2026-08-21T15:05:29.426237729Z"
           },
-          "holdUntilDate": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time",
-            "description": "The date that the hold is expected to be removed",
-            "example": "2026-08-21T15:05:29.426237729Z"
+          "holdUntilDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "The date that the hold is expected to be removed",
+            "example" : "2026-08-21T15:05:29.426237729Z"
           },
-          "isReleased": {
-            "type": "boolean",
-            "description": "A boolean indicating whether the hold has been released",
-            "example": false
+          "isReleased" : {
+            "type" : "boolean",
+            "description" : "A boolean indicating whether the hold has been released",
+            "example" : false
           },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "A description of the reason for the hold",
-            "example": "Damages to cell"
+          "description" : {
+            "type" : [ "string", "null" ],
+            "description" : "A description of the reason for the hold",
+            "example" : "Damages to cell"
           },
-          "holdType": {
-            "type": "string",
-            "description": "The type of transaction that initiated the hold",
-            "enum": [
-              "HOA",
-              "WHF"
-            ],
-            "example": "WHF"
+          "holdType" : {
+            "type" : "string",
+            "description" : "The type of transaction that initiated the hold",
+            "enum" : [ "HOA", "WHF" ],
+            "example" : "WHF"
           },
-          "amount": {
-            "type": "integer",
-            "format": "int64",
-            "description": "The amount to hold from the sub account in pence",
-            "example": 1023
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount to hold from the sub account in pence",
+            "example" : 1023
           },
-          "holdLocation": {
-            "type": "string",
-            "description": "The location of the hold as a prison code",
-            "example": "LEI"
+          "holdLocation" : {
+            "type" : "string",
+            "description" : "The location of the hold as a prison code",
+            "example" : "LEI"
           },
-          "prisonerSubAccountId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "The prisoner sub account reference ID in GL"
+          "holdTransactionId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid",
+            "description" : "The General Ledger transaction ID",
+            "example" : "1234"
           },
-          "prisonSubAccountId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "The prison sub account reference ID in GL"
-          },
-          "holdLegacyTransactionId": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64",
-            "description": "The NOMIS legacy transaction ID",
-            "example": 1234
-          },
-          "releaseLegacyTransactionId": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64",
-            "description": "The NOMIS release legacy transaction ID",
-            "example": 1234
+          "releasedTransactionId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid",
+            "description" : "The General Ledger release transaction ID",
+            "example" : "1234"
           }
         },
-        "required": [
-          "amount",
-          "createdAt",
-          "createdBy",
-          "holdFromDate",
-          "holdLocation",
-          "holdType",
-          "isReleased",
-          "legacyHoldNumber",
-          "prisonNumber",
-          "prisonSubAccountId",
-          "prisonerSubAccountId",
-          "subAccountRef"
-        ]
+        "required" : [ "amount", "createdAt", "createdBy", "holdFromDate", "holdLocation", "holdType", "isReleased", "legacyHoldNumber", "prisonNumber", "subAccountRef" ]
       },
-      "HoldResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+      "HoldResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
           },
-          "prisonNumber": {
-            "type": "string"
+          "prisonNumber" : {
+            "type" : "string"
           },
-          "legacyHoldNumber": {
-            "type": "integer",
-            "format": "int64"
+          "legacyHoldNumber" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "subAccountRef": {
-            "type": "string",
-            "enum": [
-              "CASH",
-              "SPENDS",
-              "SAVINGS"
-            ]
+          "subAccountRef" : {
+            "type" : "string",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ]
           },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
           },
-          "createdBy": {
-            "type": "string"
+          "createdBy" : {
+            "type" : "string"
           },
-          "holdFromDate": {
-            "type": "string",
-            "format": "date-time"
+          "holdFromDate" : {
+            "type" : "string",
+            "format" : "date-time"
           },
-          "holdUntilDate": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
+          "holdUntilDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
           },
-          "isReleased": {
-            "type": "boolean"
+          "isReleased" : {
+            "type" : "boolean"
           },
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "description" : {
+            "type" : [ "string", "null" ]
           },
-          "holdType": {
-            "type": "string",
-            "enum": [
-              "HOA",
-              "WHF"
-            ]
+          "holdType" : {
+            "type" : "string",
+            "enum" : [ "HOA", "WHF" ]
           },
-          "amount": {
-            "type": "integer",
-            "format": "int64"
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "holdLocation": {
-            "type": "string"
+          "holdLocation" : {
+            "type" : "string"
+          },
+          "holdTransactionId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "releasedTransactionId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
           }
         },
-        "required": [
-          "amount",
-          "createdAt",
-          "createdBy",
-          "holdFromDate",
-          "holdLocation",
-          "holdType",
-          "id",
-          "isReleased",
-          "legacyHoldNumber",
-          "prisonNumber",
-          "subAccountRef"
-        ]
+        "required" : [ "amount", "createdAt", "createdBy", "holdFromDate", "holdLocation", "holdType", "id", "isReleased", "legacyHoldNumber", "prisonNumber", "subAccountRef" ]
       },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "integer",
-            "format": "int32"
+      "ErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "errorCode": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "errorCode" : {
+            "type" : [ "string", "null" ]
           },
-          "userMessage": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "userMessage" : {
+            "type" : [ "string", "null" ]
           },
-          "developerMessage": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "developerMessage" : {
+            "type" : [ "string", "null" ]
           },
-          "moreInfo": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "moreInfo" : {
+            "type" : [ "string", "null" ]
           }
         },
-        "required": [
-          "status"
-        ]
+        "required" : [ "status" ]
       },
-      "ReleaseHoldRequest": {
-        "type": "object",
-        "properties": {
-          "releaseDateTime": {
-            "type": "string",
-            "format": "date-time"
+      "CreateHoldRequest" : {
+        "type" : "object",
+        "properties" : {
+          "prisonNumber" : {
+            "type" : "string",
+            "description" : "The prison number as seen in services like DPS",
+            "example" : "A1999EC"
+          },
+          "legacyHoldNumber" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The hold number as seen in NOMIS",
+            "example" : 12345789
+          },
+          "subAccountRef" : {
+            "type" : "string",
+            "description" : "The sub account reference as seen in Prisoner Finance",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ],
+            "example" : "CASH"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The time the Hold was created",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The person who created the Hold",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "holdFromDate" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date that the hold is active from",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "holdUntilDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "The date that the hold is expected to be removed",
+            "example" : "2026-08-21T15:05:29.426237729Z"
+          },
+          "isReleased" : {
+            "type" : "boolean",
+            "description" : "A boolean indicating whether the hold has been released",
+            "example" : false
+          },
+          "description" : {
+            "type" : [ "string", "null" ],
+            "description" : "A description of the reason for the hold",
+            "example" : "Damages to cell"
+          },
+          "holdType" : {
+            "type" : "string",
+            "description" : "The type of transaction that initiated the hold",
+            "enum" : [ "HOA", "WHF" ],
+            "example" : "WHF"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount to hold from the sub account in pence",
+            "example" : 1023
+          },
+          "holdLocation" : {
+            "type" : "string",
+            "description" : "The location of the hold as a prison code",
+            "example" : "LEI"
+          },
+          "prisonerSubAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The prisoner sub account reference ID in GL"
+          },
+          "prisonSubAccountId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The prison sub account reference ID in GL"
+          },
+          "holdLegacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The NOMIS legacy transaction ID",
+            "example" : 1234
+          },
+          "releaseLegacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The NOMIS release legacy transaction ID",
+            "example" : 1234
           }
         },
-        "required": [
-          "releaseDateTime"
-        ]
+        "required" : [ "amount", "createdAt", "createdBy", "holdFromDate", "holdLocation", "holdType", "isReleased", "legacyHoldNumber", "prisonNumber", "prisonSubAccountId", "prisonerSubAccountId", "subAccountRef" ]
       },
-      "ReleasedHoldResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "prisonNumber": {
-            "type": "string"
-          },
-          "subAccountRef": {
-            "type": "string",
-            "enum": [
-              "CASH",
-              "SPENDS",
-              "SAVINGS"
-            ]
-          },
-          "amountReleased": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "releasedAt": {
-            "type": "string",
-            "format": "date-time"
+      "ReleaseHoldRequest" : {
+        "type" : "object",
+        "properties" : {
+          "releaseDateTime" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         },
-        "required": [
-          "amountReleased",
-          "id",
-          "prisonNumber",
-          "releasedAt",
-          "subAccountRef"
-        ]
+        "required" : [ "releaseDateTime" ]
       },
-      "PagedResponseHoldResponse": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HoldResponse"
+      "ReleasedHoldResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "prisonNumber" : {
+            "type" : "string"
+          },
+          "subAccountRef" : {
+            "type" : "string",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ]
+          },
+          "amountReleased" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "releasedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "amountReleased", "id", "prisonNumber", "releasedAt", "subAccountRef" ]
+      },
+      "PagedResponseHoldResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/HoldResponse"
             }
           },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
+          "pageNumber" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "isLastPage": {
-            "type": "boolean"
+          "isLastPage" : {
+            "type" : "boolean"
           }
         },
-        "required": [
-          "content",
-          "isLastPage",
-          "pageNumber",
-          "pageSize",
-          "totalElements",
-          "totalPages"
-        ]
+        "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
       },
-      "HoldBalanceResponse": {
-        "type": "object",
-        "properties": {
-          "balanceDateTime": {
-            "type": "string",
-            "format": "date-time"
+      "HoldBalanceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "balanceDateTime" : {
+            "type" : "string",
+            "format" : "date-time"
           },
-          "amount": {
-            "type": "integer",
-            "format": "int64"
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         },
-        "required": [
-          "amount",
-          "balanceDateTime"
-        ]
+        "required" : [ "amount", "balanceDateTime" ]
       }
     },
-    "securitySchemes": {
-      "bearer-jwt": {
-        "type": "http",
-        "description": "A HMPPS Auth access token with either role: `[ROLE_PRISONER_FINANCE__HOLDS__RO, ROLE_PRISONER_FINANCE__HOLDS__RW]`",
-        "name": "Authorization",
-        "in": "header",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
+    "securitySchemes" : {
+      "bearer-jwt" : {
+        "type" : "http",
+        "description" : "A HMPPS Auth access token with either role: `[ROLE_PRISONER_FINANCE__HOLDS__RO, ROLE_PRISONER_FINANCE__HOLDS__RW]`",
+        "name" : "Authorization",
+        "in" : "header",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
       }
     }
   }
