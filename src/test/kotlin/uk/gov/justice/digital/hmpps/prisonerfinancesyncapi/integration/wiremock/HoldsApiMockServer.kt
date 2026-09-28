@@ -163,6 +163,30 @@ class HoldsApiMockServer :
     )
   }
 
+  fun stubMigrateHoldReturnsError(
+    statusCode: Int = 500,
+  ) {
+    stubFor(
+      post(urlPathEqualTo("/migrate/holds"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(500)
+            .withBody(
+              """
+              {
+                      "status": $statusCode,
+                      "errorCode": "Error",
+                      "userMessage": "Error",
+                      "developerMessage": "Error",
+                      "moreInfo": "more info"
+                    }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   fun stubPostHoldReturnsError(holdRequest: CreateHoldRequest, statusCode: Int = 500) {
     stubFor(
       post(urlPathEqualTo("/holds"))

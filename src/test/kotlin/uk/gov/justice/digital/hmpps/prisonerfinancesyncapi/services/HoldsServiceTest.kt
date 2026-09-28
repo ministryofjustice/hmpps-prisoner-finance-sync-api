@@ -15,6 +15,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
@@ -458,6 +459,81 @@ class HoldsServiceTest {
       mockTransactionMapping(holdTransactionGLId = releasedTransactionGLId, legacyTransactionId = syncCreateHoldRequest.releaseTransactionId!!, transactionType = "WFR")
 
       whenever(holdsApiClient.migrateHold(createHoldRequest)).thenReturn(createHoldResponse)
+
+      val createdHold = holdsService.migrateHold(syncCreateHoldRequest)
+
+      assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
+      assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+    }
+
+    @Test
+    fun `should recover from dataIntegrity errors when saving the hold mapping`() {
+      // this is triggered during race conditions if a request is sent twice
+
+      val holdsCreatedAt = LocalDateTime.now()
+
+      val syncCreateHoldRequest = SyncCreateHoldRequest(
+        prisonNumber = prisonNumber,
+        subAccountCode = 2101,
+        holdNumber = 123456789,
+        createdAt = holdsCreatedAt,
+        createdBy = "USER",
+        holdFromDate = holdsCreatedAt,
+        holdUntilDate = null,
+        isReleased = false,
+        description = "Test Hold",
+        holdType = "WHF",
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99"),
+        holdTransactionId = 12345,
+      )
+
+      val holdsCreatedAtUTC = timeConversionService.toUtcInstant(holdsCreatedAt)
+
+      val createHoldRequest = CreateHoldMigrationRequest(
+        prisonNumber = syncCreateHoldRequest.prisonNumber,
+        legacyHoldNumber = syncCreateHoldRequest.holdNumber,
+        subAccountRef = CreateHoldMigrationRequest.SubAccountRef.CASH,
+        createdAt = timeConversionService.toUtcInstant(syncCreateHoldRequest.createdAt),
+        createdBy = syncCreateHoldRequest.createdBy,
+        holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
+        isReleased = syncCreateHoldRequest.isReleased,
+        holdType = CreateHoldMigrationRequest.HoldType.WHF,
+        amount = syncCreateHoldRequest.amount.toPence(),
+        holdLocation = syncCreateHoldRequest.holdLocation,
+        holdUntilDate = null,
+        description = syncCreateHoldRequest.description,
+        holdTransactionId = null,
+        releasedTransactionId = null,
+      )
+
+      val createHoldResponseId = UUID.randomUUID()
+
+      val createHoldResponse = HoldResponse(
+        id = createHoldResponseId,
+        prisonNumber = "AD23451",
+        subAccountRef = HoldResponse.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = holdsCreatedAtUTC,
+        createdBy = "USER",
+        holdFromDate = holdsCreatedAtUTC,
+        isReleased = false,
+        description = "Test Hold",
+        holdType = HoldResponse.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99").toPence(),
+      )
+
+      val syncCreateHoldResponse = SyncCreateHoldResponse(
+        holdNumber = createHoldRequest.legacyHoldNumber,
+        holdUuid = createHoldResponseId,
+      )
+
+      whenever(holdsApiClient.migrateHold(createHoldRequest))
+        .thenReturn(createHoldResponse)
+
+      whenever { holdsMappingRepository.save(any<HoldsMapping>()) }
+        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"uc_holds_mapping_holds_uuid\""))
 
       val createdHold = holdsService.migrateHold(syncCreateHoldRequest)
 

@@ -7,12 +7,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.HOLDS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
@@ -72,10 +74,48 @@ class HoldsController(var holdsService: HoldsService) {
     summary = "Migrate an historical hold record",
     description = "Migrates an historical hold record from the legacy system to the holds service",
   )
-  // TODO API RESPONSES
-  // TODO Secruity requirements
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "201",
+        description = "Hold record created.",
+        content = [Content(schema = Schema(implementation = SyncCreateHoldResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "Dependency Error - An unexpected error occurred in the hold service.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
+  @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
+  @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/migrate/holds")
   fun migrateHolds(@RequestBody migrateHoldRequest: SyncCreateHoldRequest): ResponseEntity<SyncCreateHoldResponse> {
+    if (migrateHoldRequest.isReleased && migrateHoldRequest.releaseTransactionId == null) {
+      throw CustomException("Release transaction id is required when the hold is released", status = HttpStatus.BAD_REQUEST)
+    }
+
     val syncCreateHoldResponse = holdsService.migrateHold(syncCreateHoldRequest = migrateHoldRequest)
     return ResponseEntity.status(201).body(syncCreateHoldResponse)
   }

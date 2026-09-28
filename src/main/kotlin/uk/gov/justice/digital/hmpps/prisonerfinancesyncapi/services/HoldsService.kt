@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
@@ -101,6 +102,17 @@ class HoldsService(
     return transaction.firstOrNull()?.glTransactionUuid
   }
 
+  private fun trySaveHoldMapping(holdsMapping: HoldsMapping) {
+    try {
+      holdsMappingRepository.save(holdsMapping)
+    } catch (e: DataIntegrityViolationException) {
+      // ignore the exception if the mapping already exists
+      if (e.message?.contains("duplicate key value violates unique constraint \"uc_holds_mapping_holds_uuid\"") != true) {
+        throw e
+      }
+    }
+  }
+
   fun migrateHold(syncCreateHoldRequest: SyncCreateHoldRequest): SyncCreateHoldResponse {
     val subAccountRef = accountMapping.mapPrisonerSubAccount(
       syncCreateHoldRequest.subAccountCode,
@@ -138,7 +150,7 @@ class HoldsService(
 
     val holdsMapping = HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = response.id)
 
-    holdsMappingRepository.save(holdsMapping)
+    trySaveHoldMapping(holdsMapping)
 
     val syncCreateHoldResponse = SyncCreateHoldResponse(createHoldMigrationRequest.legacyHoldNumber, response.id)
 
