@@ -34,7 +34,7 @@ class AdvancesService(
       createdOn = timeConversionService.toUtcInstant(syncCreateAdvanceRecordRequest.createdOn),
       repaymentStartDate = timeConversionService.toUtcInstant(syncCreateAdvanceRecordRequest.repaymentStartDate),
       repaymentAmount = syncCreateAdvanceRecordRequest.repaymentAmount.toPence(),
-      reference = syncCreateAdvanceRecordRequest.reference,
+      reference = syncCreateAdvanceRecordRequest.reference ?: "",
       createdBy = syncCreateAdvanceRecordRequest.createdBy,
       status = syncCreateAdvanceRecordRequest.status,
     )
