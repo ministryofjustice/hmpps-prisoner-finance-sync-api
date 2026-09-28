@@ -35,6 +35,9 @@ data class SyncCreateAdvanceRecordRequest(
   @field:Schema(description = "The reference from the payment profile ", example = "FNC", required = false)
   val reference: String? = null,
 
+  @field:Schema(description = "The comment from the payment profile ", example = "Repayment", required = false)
+  val comment: String? = null,
+
   @field:Schema(description = "The username that created this advance", example = "JOHN_USER", required = true)
   val createdBy: String,
 
