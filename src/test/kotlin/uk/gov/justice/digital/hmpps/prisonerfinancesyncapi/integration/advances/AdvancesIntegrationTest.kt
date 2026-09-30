@@ -57,6 +57,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         reference = "REF",
         createdBy = "USER",
         status = CreateAdvanceRecordRequest.Status.ACTIVE,
+        legacyTransactionId = 123,
       )
 
       val advanceUuid = UUID.randomUUID()
@@ -114,6 +115,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         reference = "REF",
         createdBy = "USER",
         status = CreateAdvanceRecordRequest.Status.ACTIVE,
+        legacyTransactionId = 123,
       )
 
       webTestClient
@@ -144,6 +146,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         reference = "REF",
         createdBy = "USER",
         status = CreateAdvanceRecordRequest.Status.ACTIVE,
+        legacyTransactionId = 123,
       )
 
       val advanceUuid = UUID.randomUUID()

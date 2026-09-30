@@ -8,6 +8,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.Creat
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.util.UUID
 
 @Service
 class AdvancesService(
@@ -25,6 +26,13 @@ class AdvancesService(
       )
     }
 
+    // todo resolve the subAccounts
+    val prisonSubAccountId = UUID.randomUUID()
+    val prisonerSubAccountId = UUID.randomUUID()
+
+    // todo get this from the idempotency service
+    val idempotencyKey = UUID.randomUUID()
+
     val createAdvanceRecordRequest = CreateAdvanceRecordRequest(
       legacyPaymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
       legacyInformationNumber = syncCreateAdvanceRecordRequest.legacyInformationNumber,
@@ -37,9 +45,13 @@ class AdvancesService(
       reference = syncCreateAdvanceRecordRequest.reference ?: "",
       createdBy = syncCreateAdvanceRecordRequest.createdBy,
       status = syncCreateAdvanceRecordRequest.status,
+      prisonerSubAccountId = prisonSubAccountId,
+      prisonSubAccountId = prisonerSubAccountId,
+      comment = syncCreateAdvanceRecordRequest.comment,
+      legacyTransactionId = syncCreateAdvanceRecordRequest.legacyTransactionId,
     )
 
-    val response = advancesApiClient.postAdvanceRecord(createAdvanceRecordRequest)
+    val response = advancesApiClient.postAdvanceRecord(createAdvanceRecordRequest, idempotencyKey)
 
     val advanceMapping = AdvanceMapping(
       legacyPaymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
