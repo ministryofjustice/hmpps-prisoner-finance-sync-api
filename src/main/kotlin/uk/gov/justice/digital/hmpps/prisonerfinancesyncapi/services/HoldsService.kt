@@ -38,19 +38,16 @@ class HoldsService(
       return SyncCreateHoldResponse(mapping.legacyHoldNumber, mapping.holdsUuid)
     }
 
-    val prisonSubAccountId = accountResolver.resolveSubAccount(
+    val prisonSubAccountId = accountResolver.resolvePrisonSubAccount(
       prisonId = syncCreateHoldRequest.holdLocation,
-      offenderId = "",
       accountCode = holdNOMISAccountCode,
       transactionType = syncCreateHoldRequest.holdType,
       parentCache = requestCache,
     )
 
-    val prisonerSubAccountId = accountResolver.resolveSubAccount(
-      prisonId = "",
+    val prisonerSubAccountId = accountResolver.resolvePrisonerSubAccount(
       offenderId = syncCreateHoldRequest.prisonNumber,
       accountCode = syncCreateHoldRequest.subAccountCode,
-      transactionType = syncCreateHoldRequest.holdType,
       parentCache = requestCache,
     )
 

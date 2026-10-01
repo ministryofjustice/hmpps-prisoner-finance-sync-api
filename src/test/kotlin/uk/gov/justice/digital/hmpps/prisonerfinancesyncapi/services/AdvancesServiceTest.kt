@@ -86,9 +86,8 @@ class AdvancesServiceTest {
     @BeforeEach
     fun setup() {
       whenever(
-        accountResolver.resolveSubAccount(
+        accountResolver.resolvePrisonSubAccount(
           prisonId = syncAdvanceRequest.prisonID,
-          offenderId = "",
           accountCode = 1502,
           transactionType = "ADV",
           parentCache = requestCache,
@@ -96,11 +95,9 @@ class AdvancesServiceTest {
       ).thenReturn(prisonSubAccount)
 
       whenever(
-        accountResolver.resolveSubAccount(
-          prisonId = "",
+        accountResolver.resolvePrisonerSubAccount(
           offenderId = syncAdvanceRequest.prisonNumber,
           accountCode = 2102,
-          transactionType = "ADV",
           parentCache = requestCache,
         ),
       ).thenReturn(prisonerSubAccount)

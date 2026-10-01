@@ -29,6 +29,8 @@ class AdvancesService(
   // we do not expect any advance to have more than one entry
   val advanceTransactionEntrySequence = 1
 
+  val advanceTransactionType = "ADV"
+
   fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
     val mapping = advancesMappingRepository.findAdvanceMappingByLegacyPaymentProfileId(syncCreateAdvanceRecordRequest.legacyPaymentProfileId)
 
@@ -39,19 +41,16 @@ class AdvancesService(
       )
     }
 
-    val prisonSubAccountId = accountResolver.resolveSubAccount(
+    val prisonSubAccountId = accountResolver.resolvePrisonSubAccount(
       prisonId = syncCreateAdvanceRecordRequest.prisonID,
-      offenderId = "",
       accountCode = advancesNOMISAccountCode,
-      transactionType = "ADV",
+      transactionType = advanceTransactionType,
       parentCache = requestCache,
     )
 
-    val prisonerSubAccountId = accountResolver.resolveSubAccount(
-      prisonId = "",
+    val prisonerSubAccountId = accountResolver.resolvePrisonerSubAccount(
       offenderId = syncCreateAdvanceRecordRequest.prisonNumber,
       accountCode = prisonerAdvanceAccountCode,
-      transactionType = "ADV",
       parentCache = requestCache,
     )
 
