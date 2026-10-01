@@ -92,9 +92,8 @@ class HoldsServiceTest {
       prisonerSubaccountUUID: UUID,
     ) {
       whenever(
-        accountResolver.resolveSubAccount(
+        accountResolver.resolvePrisonSubAccount(
           prisonId = eq(syncCreateHoldRequest.holdLocation),
-          offenderId = eq(""),
           accountCode = eq(2199),
           transactionType = eq(syncCreateHoldRequest.holdType),
           parentCache = any(),
@@ -104,11 +103,9 @@ class HoldsServiceTest {
       )
 
       whenever(
-        accountResolver.resolveSubAccount(
-          prisonId = eq(""),
+        accountResolver.resolvePrisonerSubAccount(
           offenderId = eq(syncCreateHoldRequest.prisonNumber),
           accountCode = eq(syncCreateHoldRequest.subAccountCode),
-          transactionType = eq(syncCreateHoldRequest.holdType),
           parentCache = any(),
         ),
       ).thenReturn(

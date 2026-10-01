@@ -44,4 +44,6 @@ data class SyncCreateAdvanceRecordRequest(
   @field:Schema(description = "The current status of this advance", example = "AdvanceStatus.ACTIVE", required = true)
   val status: CreateAdvanceRecordRequest.Status,
 
+  @field:Schema(description = "The legacy transaction ID from NOMIS that paid the advance to the prisoner", example = "123456", required = true)
+  val legacyTransactionId: Long,
 )

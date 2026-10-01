@@ -185,6 +185,121 @@ class IntegrationTestHelpers(
     return transactionReceipt
   }
 
+  fun stubGlAccountsAndSubAccountsForPrisonerAndPrison(
+    prisonParentAccount: UUID,
+    prisonSubAccount: UUID,
+    prisonSubAccountRef: String,
+    prisonParentAccountRef: String,
+    prisonerParentAccount: UUID,
+    prisonerSubAccount: UUID,
+    prisonerSubAccountRef: String,
+    prisonerParentAccountRef: String,
+  ) {
+    generalLedgerApi.stubGetAccount(
+      reference = prisonParentAccountRef,
+      returnUuid = prisonParentAccount,
+      subAccounts = listOf(
+        SubAccountResponse(
+          reference = prisonSubAccountRef,
+          parentAccountId = prisonParentAccount,
+          createdBy = "TEST",
+          id = prisonSubAccount,
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+
+    generalLedgerApi.stubGetAccount(
+      reference = prisonerParentAccountRef,
+      returnUuid = prisonerParentAccount,
+      subAccounts = listOf(
+        SubAccountResponse(
+          reference = prisonerSubAccountRef,
+          parentAccountId = prisonerParentAccount,
+          createdBy = "TEST",
+          id = prisonerSubAccount,
+          createdAt = Instant.now(),
+        ),
+      ),
+    )
+  }
+
+  fun stubCreateGlSubAccountsForPrisonerAndPrison(
+    prisonParentAccount: UUID,
+    prisonSubAccount: UUID,
+    prisonSubAccountRef: String,
+    prisonParentAccountRef: String,
+    prisonerParentAccount: UUID,
+    prisonerSubAccount: UUID,
+    prisonerSubAccountRef: String,
+    prisonerParentAccountRef: String,
+  ) {
+    generalLedgerApi.stubGetAccount(
+      reference = prisonParentAccountRef,
+      returnUuid = prisonParentAccount,
+      subAccounts = emptyList(),
+    )
+
+    generalLedgerApi.stubCreateSubAccount(
+      reference = prisonSubAccountRef,
+      returnUuid = prisonSubAccount.toString(),
+      parentId = prisonParentAccount,
+    )
+
+    generalLedgerApi.stubGetAccount(
+      reference = prisonerParentAccountRef,
+      returnUuid = prisonerParentAccount,
+      subAccounts = emptyList(),
+    )
+
+    generalLedgerApi.stubCreateSubAccount(
+      reference = prisonerSubAccountRef,
+      returnUuid = prisonerSubAccount.toString(),
+      parentId = prisonerParentAccount,
+    )
+  }
+
+  fun stubCreateGlParentAccountAndSubAccountForPrisonerAndPrison(
+    prisonParentAccount: UUID,
+    prisonSubAccount: UUID,
+    prisonSubAccountRef: String,
+    prisonParentAccountRef: String,
+    prisonerParentAccount: UUID,
+    prisonerSubAccount: UUID,
+    prisonerSubAccountRef: String,
+    prisonerParentAccountRef: String,
+  ) {
+    generalLedgerApi.stubGetAccountNotFound(
+      reference = prisonParentAccountRef,
+    )
+
+    generalLedgerApi.stubCreateAccount(
+      reference = prisonParentAccountRef,
+      returnUuid = prisonParentAccount,
+    )
+
+    generalLedgerApi.stubCreateSubAccount(
+      reference = prisonSubAccountRef,
+      returnUuid = prisonSubAccount.toString(),
+      parentId = prisonParentAccount,
+    )
+
+    generalLedgerApi.stubGetAccountNotFound(
+      reference = prisonerParentAccountRef,
+    )
+
+    generalLedgerApi.stubCreateAccount(
+      reference = prisonerParentAccountRef,
+      returnUuid = prisonerParentAccount,
+    )
+
+    generalLedgerApi.stubCreateSubAccount(
+      reference = prisonerSubAccountRef,
+      returnUuid = prisonerSubAccount.toString(),
+      parentId = prisonerParentAccount,
+    )
+  }
+
   fun clearDB() {
     generalLedgerTransactionMappingRepository.deleteAllInBatch()
     nomisSyncPayloadRepository.deleteAllInBatch()

@@ -24,7 +24,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
@@ -38,7 +37,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 import java.math.BigDecimal
-import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -73,98 +71,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
     val prisonHoldSubAccount = UUID.randomUUID()
     val prisonerParentAccount = UUID.randomUUID()
     val prisonerHoldSubAccount = UUID.randomUUID()
-
-    private fun stubGlAllAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest) {
-      generalLedgerApi.stubGetAccount(
-        reference = syncHoldRequest.holdLocation,
-        returnUuid = prisonParentAccount,
-        subAccounts = listOf(
-          SubAccountResponse(
-            reference = "2199:${syncHoldRequest.holdType}",
-            parentAccountId = prisonParentAccount,
-            createdBy = "TEST",
-            id = prisonHoldSubAccount,
-            createdAt = Instant.now(),
-          ),
-        ),
-      )
-
-      generalLedgerApi.stubGetAccount(
-        reference = syncHoldRequest.prisonNumber,
-        returnUuid = prisonerParentAccount,
-        subAccounts = listOf(
-          SubAccountResponse(
-            reference = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
-            parentAccountId = prisonerParentAccount,
-            createdBy = "TEST",
-            id = prisonerHoldSubAccount,
-            createdAt = Instant.now(),
-          ),
-        ),
-      )
-    }
-
-    private fun stubCreateGlSubAccountsForHolds(syncHoldRequest: SyncCreateHoldRequest) {
-      generalLedgerApi.stubGetAccount(
-        reference = syncHoldRequest.holdLocation,
-        returnUuid = prisonParentAccount,
-        subAccounts = emptyList(),
-      )
-
-      generalLedgerApi.stubCreateSubAccount(
-        reference = "2199:${syncHoldRequest.holdType}",
-        returnUuid = prisonHoldSubAccount.toString(),
-        parentId = prisonParentAccount,
-      )
-
-      generalLedgerApi.stubGetAccount(
-        reference = syncHoldRequest.prisonNumber,
-        returnUuid = prisonerParentAccount,
-        subAccounts = emptyList(),
-      )
-
-      generalLedgerApi.stubCreateSubAccount(
-        reference = accountMappingService.mapPrisonerSubAccount(
-          syncHoldRequest.subAccountCode,
-        ),
-        returnUuid = prisonerHoldSubAccount.toString(),
-        parentId = prisonerParentAccount,
-      )
-    }
-
-    private fun stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest: SyncCreateHoldRequest) {
-      generalLedgerApi.stubGetAccountNotFound(
-        reference = syncHoldRequest.holdLocation,
-      )
-
-      generalLedgerApi.stubCreateAccount(
-        reference = syncHoldRequest.holdLocation,
-        returnUuid = prisonParentAccount,
-      )
-
-      generalLedgerApi.stubCreateSubAccount(
-        reference = "2199:${syncHoldRequest.holdType}",
-        returnUuid = prisonHoldSubAccount.toString(),
-        parentId = prisonParentAccount,
-      )
-
-      generalLedgerApi.stubGetAccountNotFound(
-        reference = syncHoldRequest.prisonNumber,
-      )
-
-      generalLedgerApi.stubCreateAccount(
-        reference = syncHoldRequest.prisonNumber,
-        returnUuid = prisonerParentAccount,
-      )
-
-      generalLedgerApi.stubCreateSubAccount(
-        reference = accountMappingService.mapPrisonerSubAccount(
-          syncHoldRequest.subAccountCode,
-        ),
-        returnUuid = prisonerHoldSubAccount.toString(),
-        parentId = prisonerParentAccount,
-      )
-    }
 
     @Test
     fun `should return a 201 when a hold is created and create GL subAccounts if they do not exist`() {
@@ -201,7 +107,17 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      stubCreateGlSubAccountsForHolds(syncHoldRequest)
+      integrationTestHelpers.stubCreateGlSubAccountsForPrisonerAndPrison(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonSubaccountUUID,
+        prisonSubAccountRef = "2199:${syncHoldRequest.holdType}",
+        prisonParentAccountRef = syncHoldRequest.holdLocation,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerSubaccountUUID,
+        prisonerSubAccountRef = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
+        prisonerParentAccountRef = syncHoldRequest.prisonNumber,
+      )
+
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -258,7 +174,17 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      stubCreateGlParentAccountAndSubAccountForHolds(syncHoldRequest)
+      integrationTestHelpers.stubCreateGlParentAccountAndSubAccountForPrisonerAndPrison(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonSubaccountUUID,
+        prisonSubAccountRef = "2199:${syncHoldRequest.holdType}",
+        prisonParentAccountRef = syncHoldRequest.holdLocation,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerSubaccountUUID,
+        prisonerSubAccountRef = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
+        prisonerParentAccountRef = syncHoldRequest.prisonNumber,
+      )
+
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -315,7 +241,17 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      stubGlAllAccountsForHolds(syncHoldRequest)
+      integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonSubaccountUUID,
+        prisonSubAccountRef = "2199:${syncHoldRequest.holdType}",
+        prisonParentAccountRef = syncHoldRequest.holdLocation,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerSubaccountUUID,
+        prisonerSubAccountRef = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
+        prisonerParentAccountRef = syncHoldRequest.prisonNumber,
+      )
+
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -371,7 +307,16 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      stubGlAllAccountsForHolds(syncHoldRequest)
+      integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonSubaccountUUID,
+        prisonSubAccountRef = "2199:${syncHoldRequest.holdType}",
+        prisonParentAccountRef = syncHoldRequest.holdLocation,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerSubaccountUUID,
+        prisonerSubAccountRef = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
+        prisonerParentAccountRef = syncHoldRequest.prisonNumber,
+      )
       holdsApi.stubPostHold(expectedHoldRequest)
 
       webTestClient
@@ -432,7 +377,17 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      stubGlAllAccountsForHolds(syncHoldRequest)
+      integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonSubaccountUUID,
+        prisonSubAccountRef = "2199:${syncHoldRequest.holdType}",
+        prisonParentAccountRef = syncHoldRequest.holdLocation,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerSubaccountUUID,
+        prisonerSubAccountRef = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
+        prisonerParentAccountRef = syncHoldRequest.prisonNumber,
+      )
+
       holdsApi.stubPostHoldReturnsError(expectedHoldRequest)
 
       webTestClient
@@ -530,7 +485,16 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
-      stubGlAllAccountsForHolds(syncHoldRequest)
+      integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
+        prisonParentAccount = prisonParentAccount,
+        prisonSubAccount = prisonSubaccountUUID,
+        prisonSubAccountRef = "2199:${syncHoldRequest.holdType}",
+        prisonParentAccountRef = syncHoldRequest.holdLocation,
+        prisonerParentAccount = prisonerParentAccount,
+        prisonerSubAccount = prisonerSubaccountUUID,
+        prisonerSubAccountRef = accountMappingService.mapPrisonerSubAccount(syncHoldRequest.subAccountCode),
+        prisonerParentAccountRef = syncHoldRequest.prisonNumber,
+      )
       holdsApi.stubPostHoldReturnsError(expectedHoldRequest, statusCode = 400)
 
       webTestClient

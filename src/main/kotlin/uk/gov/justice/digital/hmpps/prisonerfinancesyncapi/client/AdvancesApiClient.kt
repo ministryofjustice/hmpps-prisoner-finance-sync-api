@@ -5,6 +5,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRecordControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
+import java.util.UUID
 
 @Component
 class AdvancesApiClient(
@@ -12,11 +13,11 @@ class AdvancesApiClient(
 ) : ApiClientBase("Advances API") {
 
   @Throws(WebClientResponseException::class)
-  fun postAdvanceRecord(request: CreateAdvanceRecordRequest): AdvanceRecordResponse {
+  fun postAdvanceRecord(request: CreateAdvanceRecordRequest, idempotencyKey: UUID): AdvanceRecordResponse {
     log.info("Creating advance for advance number ${request.legacyPaymentProfileId} for prison number ${request.prisonNumber}")
     val response = handleExceptions(
       block = {
-        advanceRecordControllerApi.postAdvanceRecord(request)
+        advanceRecordControllerApi.postAdvanceRecord(idempotencyKey, request)
           .block()
       },
     )

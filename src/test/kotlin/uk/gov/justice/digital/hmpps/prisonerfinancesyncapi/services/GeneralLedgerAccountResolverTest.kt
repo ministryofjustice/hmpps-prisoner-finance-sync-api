@@ -156,6 +156,113 @@ class GeneralLedgerAccountResolverTest {
   }
 
   @Nested
+  @DisplayName("resolvePrisonSubAccount")
+  inner class ResolvePrisonSubAccount {
+    val prisonId = "LEI"
+    val transactionType = "ADV"
+    val accountCode = 1501
+    val subAccountRef = "$accountCode:$transactionType"
+    val parentId = UUID.randomUUID()
+    val subId = UUID.randomUUID()
+
+    @Test
+    fun `should create sub account when sub account does not exist for prison`() {
+      val parent = AccountResponse(
+        id = parentId,
+        reference = prisonId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISON,
+      )
+
+      val createdSub = SubAccountResponse(
+        id = subId,
+        reference = "CASH",
+        parentAccountId = parentId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+      )
+
+      whenever(apiClient.createSubAccount(parentId, subAccountRef)).thenReturn(createdSub)
+
+      val cache = InMemoryAccountCache().apply {
+        put(prisonId, parent)
+      }
+
+      val result = accountResolver.resolvePrisonSubAccount(prisonId, accountCode, transactionType, cache)
+
+      assertEquals(subId, result)
+      verify(apiClient).createSubAccount(parentId, subAccountRef)
+    }
+
+    @Test
+    fun `should find existing parent account when not present in cache`() {
+      val parent = AccountResponse(
+        id = parentId,
+        reference = prisonId,
+        createdBy = "test-user",
+        createdAt = Instant.now(),
+        subAccounts = emptyList(),
+        type = AccountResponse.Type.PRISON,
+      )
+
+      whenever(apiClient.findAccountByReference(prisonId)).thenReturn(parent)
+      whenever(apiClient.createSubAccount(parentId, subAccountRef))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = "CASH",
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
+
+      val cache = InMemoryAccountCache()
+
+      accountResolver.resolvePrisonSubAccount(prisonId, accountCode, transactionType, cache)
+
+      verify(apiClient).findAccountByReference(prisonId)
+      verify(apiClient, never()).createAccount(any(), any())
+    }
+
+    @Test
+    fun `should create parent account when not found by reference`() {
+      whenever(apiClient.findAccountByReference(prisonId)).thenReturn(null)
+      whenever(apiClient.createAccount(prisonId, CreateAccountRequest.Type.PRISON))
+        .thenReturn(
+          AccountResponse(
+            id = parentId,
+            reference = prisonId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+            subAccounts = emptyList(),
+            type = AccountResponse.Type.PRISON,
+          ),
+        )
+
+      whenever(apiClient.createSubAccount(eq(parentId), any()))
+        .thenReturn(
+          SubAccountResponse(
+            id = UUID.randomUUID(),
+            reference = "CASH",
+            parentAccountId = parentId,
+            createdBy = "test-user",
+            createdAt = Instant.now(),
+          ),
+        )
+
+      val cache = InMemoryAccountCache()
+
+      accountResolver.resolvePrisonSubAccount(prisonId, accountCode, transactionType, cache)
+
+      verify(apiClient).findAccountByReference(prisonId)
+      verify(apiClient).createAccount(prisonId, CreateAccountRequest.Type.PRISON)
+    }
+  }
+
+  @Nested
   @DisplayName("resolveSubAccount")
   inner class ResolveSubAccount {
     @Test

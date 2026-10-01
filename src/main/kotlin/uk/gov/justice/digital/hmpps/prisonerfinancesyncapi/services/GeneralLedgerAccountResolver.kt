@@ -21,6 +21,12 @@ class GeneralLedgerAccountResolver(
     private val log = LoggerFactory.getLogger(GeneralLedgerAccountResolver::class.java)
   }
 
+  fun resolvePrisonSubAccount(prisonId: String, accountCode: Int, transactionType: String, parentCache: InMemoryAccountCache): UUID {
+    val subRef = mapping.mapPrisonSubAccount(accountCode, transactionType)
+
+    return getOrCreateSubAccount(prisonId, subRef, parentCache, isPrisoner = false)
+  }
+
   fun resolvePrisonerSubAccount(offenderId: String, accountCode: Int, parentCache: InMemoryAccountCache): UUID {
     val subRef = mapping.mapPrisonerSubAccount(accountCode)
 

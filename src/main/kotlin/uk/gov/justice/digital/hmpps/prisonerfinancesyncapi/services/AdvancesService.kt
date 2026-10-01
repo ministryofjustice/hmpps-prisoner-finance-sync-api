@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceMapping
@@ -11,10 +12,25 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 
 @Service
 class AdvancesService(
-  var advancesApiClient: AdvancesApiClient,
-  var timeConversionService: TimeConversionService,
-  var advancesMappingRepository: AdvancesMappingRepository,
+  @Autowired var advancesApiClient: AdvancesApiClient,
+  @Autowired var timeConversionService: TimeConversionService,
+  @Autowired var advancesMappingRepository: AdvancesMappingRepository,
+  @Autowired val idempotencyService: GeneralLedgerIdempotencyService,
+  @Autowired val accountResolver: GeneralLedgerAccountResolver,
+  @Autowired val requestCache: InMemoryAccountCache = InMemoryAccountCache(),
 ) {
+  // HARDCODED values based on NOMIS data
+  // the only advances account code used in NOMIS as far as we know
+  val advancesNOMISAccountCode = 1502
+
+  // we expect all advances to be sent to the Spends account
+  val prisonerAdvanceAccountCode = 2102
+
+  // we do not expect any advance to have more than one entry
+  val advanceTransactionEntrySequence = 1
+
+  val advanceTransactionType = "ADV"
+
   fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
     val mapping = advancesMappingRepository.findAdvanceMappingByLegacyPaymentProfileId(syncCreateAdvanceRecordRequest.legacyPaymentProfileId)
 
@@ -24,6 +40,24 @@ class AdvancesService(
         advanceUuid = mapping.advanceUuid,
       )
     }
+
+    val prisonSubAccountId = accountResolver.resolvePrisonSubAccount(
+      prisonId = syncCreateAdvanceRecordRequest.prisonID,
+      accountCode = advancesNOMISAccountCode,
+      transactionType = advanceTransactionType,
+      parentCache = requestCache,
+    )
+
+    val prisonerSubAccountId = accountResolver.resolvePrisonerSubAccount(
+      offenderId = syncCreateAdvanceRecordRequest.prisonNumber,
+      accountCode = prisonerAdvanceAccountCode,
+      parentCache = requestCache,
+    )
+
+    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(
+      syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
+      advanceTransactionEntrySequence,
+    )
 
     val createAdvanceRecordRequest = CreateAdvanceRecordRequest(
       legacyPaymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
@@ -37,9 +71,13 @@ class AdvancesService(
       reference = syncCreateAdvanceRecordRequest.reference ?: "",
       createdBy = syncCreateAdvanceRecordRequest.createdBy,
       status = syncCreateAdvanceRecordRequest.status,
+      prisonerSubAccountId = prisonerSubAccountId,
+      prisonSubAccountId = prisonSubAccountId,
+      comment = syncCreateAdvanceRecordRequest.comment,
+      legacyTransactionId = syncCreateAdvanceRecordRequest.legacyTransactionId,
     )
 
-    val response = advancesApiClient.postAdvanceRecord(createAdvanceRecordRequest)
+    val response = advancesApiClient.postAdvanceRecord(createAdvanceRecordRequest, idempotencyKey)
 
     val advanceMapping = AdvanceMapping(
       legacyPaymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,

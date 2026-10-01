@@ -85,4 +85,26 @@ class AdvancesApiMockServer :
         ),
     )
   }
+
+  fun stubPostAdvanceReturnsError(errorCode: Int) {
+    stubFor(
+      post("/advances")
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(errorCode)
+            .withBody(
+              """
+              {
+                  "status": $errorCode,
+                  "errorCode": null,
+                  "userMessage": "GL Server Error",
+                  "developerMessage": "GL Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
 }
