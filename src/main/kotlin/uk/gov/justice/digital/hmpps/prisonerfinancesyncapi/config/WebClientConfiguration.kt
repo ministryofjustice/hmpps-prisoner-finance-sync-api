@@ -43,7 +43,7 @@ class WebClientConfiguration(
     builder: WebClient.Builder,
   ): WebClient = builder.authorisedWebClient(
     authorizedClientManager = authorizedClientManager,
-    registrationId = "general-ledger-api",
+    registrationId = "sync-api",
     url = generalLedgerApiBaseUri,
     timeout = timeout,
   )
@@ -63,7 +63,7 @@ class WebClientConfiguration(
     builder: WebClient.Builder,
   ): WebClient = builder.authorisedWebClient(
     authorizedClientManager = authorizedClientManager,
-    registrationId = "holds-api",
+    registrationId = "sync-api",
     url = holdsApiBaseUri,
     timeout = timeout,
   )
@@ -74,7 +74,7 @@ class WebClientConfiguration(
     builder: WebClient.Builder,
   ): WebClient = builder.authorisedWebClient(
     authorizedClientManager = authorizedClientManager,
-    registrationId = "advances-api",
+    registrationId = "sync-api",
     url = advancesApiBaseUri,
     timeout = timeout,
   )

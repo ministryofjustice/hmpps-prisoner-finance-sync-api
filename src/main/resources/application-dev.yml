@@ -7,20 +7,16 @@ springdoc:
   swagger-ui:
     enabled: true
 
+sync-api:
+  client:
+    id: ${SYNC_API_CLIENT_ID:hmpps-prisoner-finance-sync-api-1}
+    secret: ${SYNC_CLIENT_SECRET:clientsecret}
+
 general-ledger-api:
   url: ${GENERAL_LEDGER_API_URL:http://localhost:8081}
-  client:
-    id: ${GENERAL_LEDGER_API_CLIENT_ID:hmpps-prisoner-finance-general-ledger-api}
-    secret: ${GENERAL_LEDGER_API_CLIENT_SECRET:clientsecret}
 
 holds-api:
   url: ${HOLDS_API_URL:http://localhost:8082}
-  client:
-    id: ${HOLDS_API_CLIENT_ID:hmpps-prisoner-finance-holds-api-1}
-    secret: ${HOLDS_API_CLIENT_SECRET:clientsecret}
 
 advances-api:
   url: ${ADVANCES_API_URL:http://localhost:8083}
-  client:
-    id: ${ADVANCES_API_CLIENT_ID:hmpps-prisoner-finance-advances-api-1}
-    secret: ${ADVANCES_API_CLIENT_SECRET:clientsecret}
