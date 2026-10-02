@@ -152,6 +152,8 @@ data class SyncCreateHoldRequest(
     holdUntilDate: Instant? = null,
     createdAt: Instant,
     holdFromDate: Instant,
+    prisonSubAccountId: UUID,
+    prisonerSubAccountId: UUID,
   ) = CreateHoldMigrationRequest(
     prisonNumber = this.prisonNumber,
     legacyHoldNumber = this.holdNumber,
@@ -167,5 +169,7 @@ data class SyncCreateHoldRequest(
     description = this.description,
     holdTransactionId = holdTransactionGlId,
     releasedTransactionId = releasedTransactionGlId,
+    prisonerSubAccountId = prisonerSubAccountId,
+    prisonSubAccountId = prisonSubAccountId,
   )
 }

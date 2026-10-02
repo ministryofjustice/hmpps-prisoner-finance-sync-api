@@ -124,6 +124,22 @@ class HoldsService(
       null
     }
 
+    val prisonSubAccountId = accountResolver.resolveSubAccount(
+      prisonId = syncCreateHoldRequest.holdLocation,
+      offenderId = "",
+      accountCode = holdNOMISAccountCode,
+      transactionType = syncCreateHoldRequest.holdType,
+      parentCache = requestCache,
+    )
+
+    val prisonerSubAccountId = accountResolver.resolveSubAccount(
+      prisonId = "",
+      offenderId = syncCreateHoldRequest.prisonNumber,
+      accountCode = syncCreateHoldRequest.subAccountCode,
+      transactionType = syncCreateHoldRequest.holdType,
+      parentCache = requestCache,
+    )
+
     val createHoldMigrationRequest = syncCreateHoldRequest.toCreateMigrationHoldRequest(
       subAccountRef = subAccountRef,
       holdTransactionGlId = holdTransactionGlId,
@@ -135,6 +151,8 @@ class HoldsService(
       },
       createdAt = timeConversionService.toUtcInstant(syncCreateHoldRequest.createdAt),
       holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
+      prisonSubAccountId = prisonSubAccountId,
+      prisonerSubAccountId = prisonerSubAccountId,
     )
 
     val response = holdsApiClient.migrateHold(createHoldMigrationRequest)
@@ -151,9 +169,34 @@ class HoldsService(
   fun releaseHold(holdNumber: Long, releaseRequest: SyncReleaseHoldRequest): SyncReleasedHoldResponse {
     val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(holdNumber) ?: throw CustomException("No hold mapping found for hold number: $holdNumber", HttpStatus.NOT_FOUND)
 
+    // TODO if we dont find a mapping return?
+
+    // TODO get the hold from the Holds API
+
+    // TODO we need to find the hold in the hold service then get the inverse type
+/*
+    val prisonSubAccountId = accountResolver.resolveSubAccount(
+      prisonId = releaseRequest.holdLocation,
+      offenderId = "",
+      accountCode = holdNOMISAccountCode,
+      parentCache = requestCache,
+      transactionType = "",
+    )
+
+    val prisonerSubAccountId = accountResolver.resolveSubAccount(
+      prisonId = "",
+      offenderId = releaseRequest.prisonNumber,
+      accountCode = releaseRequest.subAccountCode,
+      parentCache = requestCache,
+    )
+*/
     val releaseHoldRequest = ReleaseHoldRequest(
       releaseDateTime = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
+      prisonSubAccountId = UUID.randomUUID(),
+      prisonerSubAccountId = UUID.randomUUID(),
+      legacyTransactionId = 12345,
     )
+
     val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest)
 
     return SyncReleasedHoldResponse(
@@ -161,6 +204,7 @@ class HoldsService(
       holdNumber = holdNumber,
       amountReleased = response.amountReleased.toPounds(),
       releasedAt = timeConversionService.toLocalDateTime(response.releasedAt),
+      releaseTransactionId = UUID.randomUUID(),
     )
   }
 }

@@ -21,6 +21,7 @@ import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
@@ -221,8 +222,18 @@ class HoldsApiMockServer :
     )
   }
 
-  fun stubReleaseHold(prisonNumber: String, releasedAt: Instant, amount: Long, holdsUUID: UUID) = stubFor(
+  fun stubReleaseHold(
+    prisonNumber: String,
+    request: ReleaseHoldRequest,
+    amount: Long,
+    holdsUUID: UUID,
+    returnedTransactionId: UUID = UUID.randomUUID(),
+  ) = stubFor(
     post(urlPathEqualTo("/holds/$holdsUUID/release"))
+      .withRequestBody(matchingJsonPath("$.releaseDateTime", equalTo(request.releaseDateTime.toString())))
+      .withRequestBody(matchingJsonPath("$.prisonSubAccountId", equalTo(request.prisonSubAccountId.toString())))
+      .withRequestBody(matchingJsonPath("$.prisonerSubAccountId", equalTo(request.prisonerSubAccountId.toString())))
+      .withRequestBody(matchingJsonPath("$.legacyTransactionId", equalTo(request.legacyTransactionId.toString())))
       .willReturn(
         aResponse()
           .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
@@ -234,7 +245,8 @@ class HoldsApiMockServer :
                 prisonNumber = prisonNumber,
                 subAccountRef = ReleasedHoldResponse.SubAccountRef.CASH,
                 amountReleased = amount,
-                releasedAt = releasedAt,
+                releasedAt = request.releaseDateTime,
+                releasedTransactionId = returnedTransactionId,
               ),
             ),
           ),
