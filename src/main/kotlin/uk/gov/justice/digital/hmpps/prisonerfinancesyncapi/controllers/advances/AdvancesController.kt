@@ -105,6 +105,7 @@ class AdvancesController(private val advancesService: AdvancesService) {
       ),
     ],
   )
+  @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/sync/advances/{legacyInformationNumber}/write-off")
   fun postAdvanceWriteOff(
@@ -146,6 +147,7 @@ class AdvancesController(private val advancesService: AdvancesService) {
       ),
     ],
   )
+  @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/sync/advances/{legacyInformationNumber}/repay")
   fun postAdvanceRepay(
@@ -188,6 +190,7 @@ class AdvancesController(private val advancesService: AdvancesService) {
       ),
     ],
   )
+  @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/migrate/advances")
   fun migrateAdvance(
