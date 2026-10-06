@@ -23,6 +23,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AdvancesService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.util.UUID
@@ -77,6 +78,19 @@ class AdvancesController(private val advancesService: AdvancesService) {
     return ResponseEntity.status(201).body(syncCreateAdvanceRecordResponse)
   }
 
+  @Operation(
+    summary = "Write off an existing Advance record",
+    description = "Write off an existing Advance record",
+  )
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "501",
+        description = "Not implemented",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/sync/advances/{legacyInformationNumber}/write-off")
   fun postAdvanceWriteOff(
@@ -90,6 +104,19 @@ class AdvancesController(private val advancesService: AdvancesService) {
     return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceWriteOffResponse(advanceId = UUID.randomUUID()))
   }
 
+  @Operation(
+    summary = "Repay an existing advance",
+    description = "Repay an existing advance",
+  )
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "501",
+        description = "Not implemented",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/sync/advances/{legacyInformationNumber}/repay")
   fun postAdvanceRepay(
@@ -104,6 +131,19 @@ class AdvancesController(private val advancesService: AdvancesService) {
     return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceRepayResponse(advanceId = UUID.randomUUID()))
   }
 
+  @Operation(
+    summary = "Migrate advances",
+    description = "Migrate advances",
+  )
+  @ApiResponses(
+    value = [
+      ApiResponse(
+        responseCode = "501",
+        description = "Not implemented",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+    ],
+  )
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/migrate/advances")
   fun migrateAdvance(
