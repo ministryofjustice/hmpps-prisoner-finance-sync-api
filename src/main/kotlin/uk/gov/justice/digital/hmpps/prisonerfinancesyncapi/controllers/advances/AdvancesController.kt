@@ -23,7 +23,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AdvancesService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.util.UUID
