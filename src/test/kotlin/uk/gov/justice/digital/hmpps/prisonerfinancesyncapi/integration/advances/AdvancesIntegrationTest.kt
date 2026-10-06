@@ -317,14 +317,15 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 501 when the advance write-off endpoint is called and not implemented`() {
-      val advanceId = UUID.randomUUID()
+      val legacyInformationNumber = "12345678"
 
       val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
         writeOffDateTime = LocalDateTime.now(),
         writtenOffBy = "USER",
+        amount = 100L,
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
+      webTestClient.post().uri("/sync/advances/{legacyInformationNumber}/write-off", legacyInformationNumber)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceWriteOffRequest)
         .exchange()
@@ -336,14 +337,15 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 403 when when wrong role is provided`() {
-      val advanceId = UUID.randomUUID()
+      val legacyInformationNumber = "12345678"
 
       val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
         writeOffDateTime = LocalDateTime.now(),
         writtenOffBy = "USER",
+        amount = 100L,
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
+      webTestClient.post().uri("/sync/advances/{advanceId}/write-off", legacyInformationNumber)
         .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))
         .bodyValue(syncCreateAdvanceWriteOffRequest)
         .exchange()
@@ -365,7 +367,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 501 when the advance repay endpoint is called and not implemented`() {
-      val advanceId = UUID.randomUUID()
+      val legacyInformationNumber = "12345678"
 
       val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
         amount = 100L,
@@ -374,7 +376,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         createdBy = "USER",
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/repay", advanceId)
+      webTestClient.post().uri("/sync/advances/{advanceId}/repay", legacyInformationNumber)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRepayRequest)
         .exchange()
