@@ -7,17 +7,25 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.Valid
+import jakarta.validation.constraints.Pattern
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ADVANCES
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceWriteOffResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AdvancesService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
+import java.util.UUID
 
 @Tag(name = ADVANCES)
 @RestController
@@ -67,5 +75,43 @@ class AdvancesController(private val advancesService: AdvancesService) {
   fun postAdvance(@RequestBody createAdvanceRequest: SyncCreateAdvanceRecordRequest): ResponseEntity<SyncCreateAdvanceRecordResponse> {
     val syncCreateAdvanceRecordResponse = advancesService.createAdvance(createAdvanceRequest)
     return ResponseEntity.status(201).body(syncCreateAdvanceRecordResponse)
+  }
+
+  @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
+  @PostMapping("/sync/advances/{legacyInformationNumber}/write-off")
+  fun postAdvanceWriteOff(
+    @Pattern(regexp = "^\\d+$", message = "legacy information number must be a positive integer")
+    @PathVariable legacyInformationNumber: String,
+    @Suppress("UNUSED_PARAMETER")
+    @RequestBody createAdvanceWriteOffRequest: SyncCreateAdvanceWriteOffRequest,
+  ): ResponseEntity<SyncAdvanceWriteOffResponse> {
+    val notImplementedResponse = 501
+
+    return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceWriteOffResponse(advanceId = UUID.randomUUID()))
+  }
+
+  @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
+  @PostMapping("/sync/advances/{legacyInformationNumber}/repay")
+  fun postAdvanceRepay(
+    @Pattern(regexp = "^\\d+$", message = "legacy information number must be a positive integer")
+    @PathVariable legacyInformationNumber: String,
+    @Suppress("UNUSED_PARAMETER")
+    @Valid
+    @RequestBody createAdvanceRepayRequest: SyncCreateAdvanceRepayRequest,
+  ): ResponseEntity<SyncAdvanceRepayResponse> {
+    val notImplementedResponse = 501
+
+    return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceRepayResponse(advanceId = UUID.randomUUID()))
+  }
+
+  @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
+  @PostMapping("/migrate/advances")
+  fun migrateAdvance(
+    @Suppress("UNUSED_PARAMETER")
+    @RequestBody migrateAdvanceRequest: SyncCreateAdvanceRecordRequest,
+  ): ResponseEntity<SyncCreateAdvanceRecordResponse> {
+    val notImplementedResponse = 501
+
+    return ResponseEntity.status(notImplementedResponse).body(SyncCreateAdvanceRecordResponse(paymentProfileId = 123456, advanceUuid = UUID.randomUUID()))
   }
 }
