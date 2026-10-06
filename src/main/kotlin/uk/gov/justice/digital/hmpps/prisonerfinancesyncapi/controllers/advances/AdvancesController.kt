@@ -84,8 +84,23 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @ApiResponses(
     value = [
       ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "501",
-        description = "Not implemented",
+        description = "This endpoint is not yet implemented.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
@@ -110,8 +125,23 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @ApiResponses(
     value = [
       ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "501",
-        description = "Not implemented",
+        description = "This endpoint is not yet implemented.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
@@ -137,8 +167,23 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @ApiResponses(
     value = [
       ApiResponse(
+        responseCode = "400",
+        description = "Bad request - invalid input data.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized - requires a valid OAuth2 token",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "403",
+        description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "501",
-        description = "Not implemented",
+        description = "This endpoint is not yet implemented.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
