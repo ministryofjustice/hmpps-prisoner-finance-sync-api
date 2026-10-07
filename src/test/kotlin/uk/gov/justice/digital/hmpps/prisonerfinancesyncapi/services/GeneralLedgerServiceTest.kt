@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
+import org.mockito.Mockito.lenient
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
@@ -177,6 +178,37 @@ class GeneralLedgerServiceTest {
       assertThatThrownBy {
         generalLedgerService.getGLPrisonerBalances(prisonNumber)
       }.isInstanceOf(CustomException::class.java).hasMessageContaining("No General Ledger account found for prisoner")
+
+      verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
+      verifyNoMoreInteractions(generalLedgerApiClient)
+    }
+
+    @Test
+    fun `Should throw error if an exception is throw inside the async block`() {
+      val accountUUID = UUID.randomUUID()
+      val mockSubAccount = SubAccountResponse(
+        id = UUID.randomUUID(),
+        reference = "CASH",
+        parentAccountId = accountUUID,
+        createdBy = "TEST",
+        createdAt = Instant.now(),
+      )
+      val mockAccount = mockAccount(offenderDisplayId, subAccounts = listOf(mockSubAccount), accountUUID = accountUUID)
+
+      whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(mockAccount)
+
+      lenient().whenever(holdsApiClient.getSubAccountHoldBalance(prisonNumber, mockSubAccount.reference)).thenReturn(
+        HoldBalanceResponse(
+          balanceDateTime = Instant.now(),
+          amount = 77,
+        ),
+      )
+      whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(mockSubAccount.id))
+        .thenThrow(RuntimeException("Test Exception"))
+
+      assertThatThrownBy {
+        generalLedgerService.getGLPrisonerBalances(prisonNumber)
+      }.isInstanceOf(RuntimeException::class.java)
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
       verifyNoMoreInteractions(generalLedgerApiClient)

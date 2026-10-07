@@ -557,6 +557,29 @@ class GeneralLedgerApiMockServer :
     return response
   }
 
+  // GET /sub-accounts/$accountId/balance
+  fun stubGetSubAccountBalanceThrowsError(accountId: UUID, httpError: Int) {
+    stubFor(
+      get(urlPathEqualTo("/sub-accounts/$accountId/balance"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(httpError)
+            .withBody(
+              """
+              {
+                  "status": $httpError,
+                  "errorCode": "Error",
+                  "userMessage": "Error",
+                  "developerMessage": "Error",
+                  "moreInfo": "more info"
+                }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   // GET /transactions/transactionUUID
 
   fun stubGetTransactionByUUID(

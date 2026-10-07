@@ -34,6 +34,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Nomi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -1604,18 +1605,6 @@ class GeneralLedgerTest : IntegrationTestBase() {
     )
 
     @Test
-    fun `should return 404 when a parent account does not exist in general ledger`() {
-      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
-
-      webTestClient
-        .get()
-        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .exchange()
-        .expectStatus().isNotFound
-    }
-
-    @Test
     fun `should return an empty list if the parent account exists with no subaccounts`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
 
@@ -1641,17 +1630,17 @@ class GeneralLedgerTest : IntegrationTestBase() {
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, 1000)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[1].id, 2000)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[2].id, 0)
-      holdsApi.stubGetHoldForSubAccount(
+      holdsApi.stubGetHoldBalanceForSubAccount(
         testPrisonNumber,
         "CASH",
         1000,
       )
-      holdsApi.stubGetHoldForSubAccount(
+      holdsApi.stubGetHoldBalanceForSubAccount(
         testPrisonNumber,
         "SPENDS",
         0,
       )
-      holdsApi.stubGetHoldForSubAccount(
+      holdsApi.stubGetHoldBalanceForSubAccount(
         testPrisonNumber,
         "SAVINGS",
         2050,
@@ -1674,6 +1663,58 @@ class GeneralLedgerTest : IntegrationTestBase() {
       assertThat(body["2101"]?.holdBalance).isEqualTo(BigDecimal("10.00"))
       assertThat(body["2102"]?.holdBalance).isEqualTo(BigDecimal("0.00"))
       assertThat(body["2103"]?.holdBalance).isEqualTo(BigDecimal("20.50"))
+    }
+
+    @Test
+    fun `should return 404 when a parent account does not exist in general ledger`() {
+      generalLedgerApi.stubGetAccountNotFound(testPrisonNumber)
+
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isNotFound
+    }
+
+    @Test
+    fun `should return 502 if general ledger service returns an error response`() {
+      val subaccounts = listOf(
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "CASH"),
+      )
+      generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
+      generalLedgerApi.stubGetSubAccountBalanceThrowsError(subaccounts[0].id, 500)
+      holdsApi.stubGetHoldBalanceForSubAccount(
+        testPrisonNumber,
+        "CASH",
+        1000,
+      )
+
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isEqualTo(502)
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
+    }
+
+    @Test
+    fun `should return 502 if holds service returns an error response`() {
+      val subaccounts = listOf(
+        createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "CASH"),
+      )
+      generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
+      generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, amount = 1000)
+      holdsApi.stubGetHoldBalanceForSubAccountReturnError(testPrisonNumber, "CASH", 500)
+
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isEqualTo(502)
+        .expectBody<ErrorResponse>().returnResult().responseBody!!
     }
   }
 }
