@@ -8,5 +8,5 @@ class SyncCreateAdvanceRecordResponse(
   val paymentProfileId: Long,
 
   @field:Schema(description = "The advance id from Prisoner Finance", example = "de2bc56c-ea73-4f3c-8a37-5a46fdb2d79a", required = true)
-  val advanceUuid: UUID,
+  val advanceId: UUID,
 )

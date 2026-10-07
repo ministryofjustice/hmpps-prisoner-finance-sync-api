@@ -1,12 +1,13 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 
 import io.swagger.v3.oas.annotations.media.Schema
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 data class SyncCreateAdvanceRepayRequest(
 
-  @field:Schema(description = "The amount paid towards the advance", example = "500", required = true)
-  val amount: Long,
+  @field:Schema(description = "The amount paid towards the advance", example = "5.00", required = true)
+  val amount: BigDecimal,
 
   @field:Schema(description = "The transaction id that paid the amount to the advance", example = "123456", required = true)
   val transactionId: Long,

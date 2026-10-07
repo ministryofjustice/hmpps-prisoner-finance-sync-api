@@ -37,7 +37,7 @@ class AdvancesService(
     if (mapping != null) {
       return SyncCreateAdvanceRecordResponse(
         paymentProfileId = mapping.legacyPaymentProfileId,
-        advanceUuid = mapping.advanceUuid,
+        advanceId = mapping.advanceUuid,
       )
     }
 
@@ -88,7 +88,7 @@ class AdvancesService(
 
     val syncCreateAdvanceRecordResponse = SyncCreateAdvanceRecordResponse(
       paymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
-      advanceUuid = advanceMapping.advanceUuid,
+      advanceId = advanceMapping.advanceUuid,
     )
 
     return syncCreateAdvanceRecordResponse

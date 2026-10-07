@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
-import jakarta.validation.constraints.Pattern
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.PathVariable
@@ -107,16 +106,15 @@ class AdvancesController(private val advancesService: AdvancesService) {
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  @PostMapping("/sync/advances/{legacyInformationNumber}/write-off")
+  @PostMapping("/sync/advances/{advanceId}/write-off")
   fun postAdvanceWriteOff(
-    @Pattern(regexp = "^\\d+$", message = "legacy information number must be a positive integer")
-    @PathVariable legacyInformationNumber: String,
+    @PathVariable advanceId: UUID,
     @Suppress("UNUSED_PARAMETER")
     @RequestBody createAdvanceWriteOffRequest: SyncCreateAdvanceWriteOffRequest,
   ): ResponseEntity<SyncAdvanceWriteOffResponse> {
     val notImplementedResponse = 501
 
-    return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceWriteOffResponse(advanceId = UUID.randomUUID()))
+    return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceWriteOffResponse(advanceId))
   }
 
   @Operation(
@@ -149,10 +147,9 @@ class AdvancesController(private val advancesService: AdvancesService) {
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
-  @PostMapping("/sync/advances/{legacyInformationNumber}/repay")
+  @PostMapping("/sync/advances/{advanceId}/repay")
   fun postAdvanceRepay(
-    @Pattern(regexp = "^\\d+$", message = "legacy information number must be a positive integer")
-    @PathVariable legacyInformationNumber: String,
+    @PathVariable advanceId: UUID,
     @Suppress("UNUSED_PARAMETER")
     @Valid
     @RequestBody createAdvanceRepayRequest: SyncCreateAdvanceRepayRequest,
@@ -199,6 +196,6 @@ class AdvancesController(private val advancesService: AdvancesService) {
   ): ResponseEntity<SyncCreateAdvanceRecordResponse> {
     val notImplementedResponse = 501
 
-    return ResponseEntity.status(notImplementedResponse).body(SyncCreateAdvanceRecordResponse(paymentProfileId = 123456, advanceUuid = UUID.randomUUID()))
+    return ResponseEntity.status(notImplementedResponse).body(SyncCreateAdvanceRecordResponse(paymentProfileId = 0, advanceId = UUID.randomUUID()))
   }
 }

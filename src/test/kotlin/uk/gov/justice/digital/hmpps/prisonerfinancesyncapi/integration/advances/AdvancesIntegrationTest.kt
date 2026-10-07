@@ -85,7 +85,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       val advanceUuid = UUID.randomUUID()
       val stubbedSyncCreateAdvanceRecordResponse = SyncCreateAdvanceRecordResponse(
         paymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
-        advanceUuid = advanceUuid,
+        advanceId = advanceUuid,
       )
 
       @BeforeEach
@@ -134,7 +134,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         val responseBody = postAdvance()
 
         assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceUuid).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceUuid)
+        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
 
         generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
         generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
@@ -161,7 +161,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         val responseBody = postAdvance()
 
         assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceUuid).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceUuid)
+        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
 
         generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
         generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
@@ -188,7 +188,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         val responseBody = postAdvance()
 
         assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceUuid).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceUuid)
+        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
 
         generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
         generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
@@ -317,15 +317,15 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 501 when the advance write-off endpoint is called and not implemented`() {
-      val legacyInformationNumber = "12345678"
+      val advanceId = UUID.randomUUID()
 
       val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
         writeOffDateTime = LocalDateTime.now(),
         writtenOffBy = "USER",
-        amount = 100L,
+        amount = BigDecimal(10.0),
       )
 
-      webTestClient.post().uri("/sync/advances/{legacyInformationNumber}/write-off", legacyInformationNumber)
+      webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceWriteOffRequest)
         .exchange()
@@ -337,15 +337,15 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 403 when when wrong role is provided`() {
-      val legacyInformationNumber = "12345678"
+      val advanceId = UUID.randomUUID()
 
       val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
         writeOffDateTime = LocalDateTime.now(),
         writtenOffBy = "USER",
-        amount = 100L,
+        amount = BigDecimal(10.0),
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/write-off", legacyInformationNumber)
+      webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
         .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))
         .bodyValue(syncCreateAdvanceWriteOffRequest)
         .exchange()
@@ -367,21 +367,62 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 501 when the advance repay endpoint is called and not implemented`() {
-      val legacyInformationNumber = "12345678"
+      val advanceId = UUID.randomUUID()
 
       val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
-        amount = 100L,
+        amount = BigDecimal(10.0),
         transactionId = 123456,
         createdAt = LocalDateTime.now(),
         createdBy = "USER",
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/repay", legacyInformationNumber)
+      webTestClient.post().uri("/sync/advances/{advanceId}/repay", advanceId)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRepayRequest)
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
         .expectBody<SyncAdvanceRepayResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+  }
+
+  @Nested
+  inner class MigrateAdvance {
+
+    @BeforeEach
+    fun setup() {
+      integrationTestHelpers.clearDB()
+      hmppsAuth.stubGrantToken()
+      generalLedgerApi.resetAll()
+      advancesApi.resetAll()
+      requestCache.clear()
+    }
+
+    @Test
+    fun `should return a 501 when the advance migrate endpoint is called and not implemented`() {
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRecordRequest(
+        legacyPaymentProfileId = 1,
+        legacyInformationNumber = "1-1",
+        prisonNumber = "A1234AA",
+        prisonID = "LEI",
+        createdOn = LocalDateTime.now(),
+        createdBy = "USER",
+        repaymentStartDate = LocalDateTime.now(),
+        repaymentAmount = BigDecimal(10.0),
+        reference = "SPENDS",
+        comment = "You owe me money",
+        status = CreateAdvanceRecordRequest.Status.ACTIVE,
+        legacyTransactionId = 12345L,
+        amount = BigDecimal(10.0),
+      )
+
+      webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+        .expectBody<SyncCreateAdvanceRecordResponse>()
         .returnResult()
         .responseBody!!
     }
