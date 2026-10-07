@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.Digits
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -21,6 +22,7 @@ data class SyncCreateAdvanceRecordRequest(
   val prisonID: String,
 
   @field:Schema(description = "The amount issued in the advance", example = "5.32", required = true)
+  @field:Digits(integer = 19, fraction = 2)
   val amount: BigDecimal,
 
   @field:Schema(description = "The date time when the advance was created with the time set to midnight", example = "2024-06-18T00:00:00.000000", required = true)
@@ -30,6 +32,7 @@ data class SyncCreateAdvanceRecordRequest(
   val repaymentStartDate: LocalDateTime,
 
   @field:Schema(description = "The amount to be repaid weekly", example = "0.50", required = true)
+  @field:Digits(integer = 19, fraction = 2)
   val repaymentAmount: BigDecimal,
 
   @field:Schema(description = "The reference from the payment profile ", example = "FNC", required = false)
