@@ -249,7 +249,8 @@ class HoldsApiMockServer :
           .withStatus(404),
       ),
   )
-  fun stubGetHoldForSubAccount(prisonNumber: String, subAccountReference: String, amount: Long) {
+
+  fun stubGetHoldBalanceForSubAccount(prisonNumber: String, subAccountReference: String, amount: Long) {
     val holdBalanceResponse = HoldBalanceResponse(
       balanceDateTime = Instant.now(),
       amount = amount,
@@ -261,6 +262,28 @@ class HoldsApiMockServer :
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
             .withStatus(200)
             .withBody(mapper.writeValueAsString(holdBalanceResponse)),
+        ),
+    )
+  }
+
+  fun stubGetHoldBalanceForSubAccountReturnError(prisonNumber: String, subAccountReference: String, httpError: Int) {
+    stubFor(
+      get(urlPathEqualTo("/holds/$prisonNumber/balance/$subAccountReference"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(httpError)
+            .withBody(
+              """
+                      {
+                      "status": $httpError,
+                      "errorCode": "Error",
+                      "userMessage": "Error",
+                      "developerMessage": "Error",
+                      "moreInfo": "more info"
+                    }
+              """.trimIndent(),
+            ),
         ),
     )
   }

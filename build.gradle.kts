@@ -44,6 +44,8 @@ dependencies {
   implementation("jakarta.validation:jakarta.validation-api:3.1.1")
   implementation("jakarta.annotation:jakarta.annotation-api:3.0.0")
 
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+
   runtimeOnly("org.postgresql:postgresql:42.7.13")
   runtimeOnly("org.flywaydb:flyway-core")
   runtimeOnly("org.flywaydb:flyway-database-postgresql")
