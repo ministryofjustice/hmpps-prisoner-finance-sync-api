@@ -1,6 +1,11 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import com.microsoft.applicationinsights.TelemetryClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
@@ -193,30 +198,38 @@ class GeneralLedgerService(
     }
   }
 
-  fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> {
+  private suspend fun asyncGetGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> = coroutineScope {
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
+      ?: throw CustomException("No General Ledger account found for prisoner $prisonNumber", status = HttpStatus.NOT_FOUND)
 
-    if (parentAccount == null) {
-      throw CustomException("No General Ledger account found for prisoner $prisonNumber", status = HttpStatus.NOT_FOUND)
-    }
+    return@coroutineScope parentAccount.subAccounts
+      .map { account ->
+        async(Dispatchers.IO) {
+          val balanceDeferred = async { generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id) }
+          val holdBalanceDeferred = async { holdsApiClient.getSubAccountHoldBalance(prisonNumber, account.reference) }
 
-    val subAccounts = mutableMapOf<String, SubAccountBalanceForReconciliation>()
-    for (account in parentAccount.subAccounts) {
-      val subAccountBalance = generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id)
-      if (subAccountBalance == null) {
-        log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
-        continue
+          val subAccountBalance = balanceDeferred.await()
+          if (subAccountBalance == null) {
+            log.error("No balance found for account ${account.id} but it was in the parent subaccounts list")
+            return@async null
+          }
+
+          val subAccountHoldBalance = holdBalanceDeferred.await()
+          val accountCode = accountMapping.mapSubAccountPrisonerReferenceToNOMIS(account.reference).toString()
+
+          accountCode to SubAccountBalanceForReconciliation.fromSubAccountBalanceResponse(
+            subAccountBalanceResponse = subAccountBalance,
+            subAccountBalanceHoldResponse = subAccountHoldBalance,
+          )
+        }
       }
-      val subAccountHoldBalance = holdsApiClient.getSubAccountHoldBalance(prisonNumber, account.reference)
+      .awaitAll()
+      .filterNotNull()
+      .toMap()
+  }
 
-      val accountCode = accountMapping.mapSubAccountPrisonerReferenceToNOMIS(account.reference).toString()
-      subAccounts[accountCode] = SubAccountBalanceForReconciliation.fromSubAccountBalanceResponse(
-        subAccountBalanceResponse = subAccountBalance,
-        subAccountBalanceHoldResponse = subAccountHoldBalance,
-      )
-    }
-
-    return subAccounts
+  fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> = runBlocking {
+    asyncGetGLPrisonerBalances(prisonNumber)
   }
 
   private fun isSubAccountTransfer(glTransaction: SearchTransactionResponse): Boolean = glTransaction.postings.all { it.accountType == SearchPostingResponse.AccountType.PRISONER }
