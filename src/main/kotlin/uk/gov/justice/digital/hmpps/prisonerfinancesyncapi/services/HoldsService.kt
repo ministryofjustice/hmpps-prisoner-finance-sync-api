@@ -150,14 +150,12 @@ class HoldsService(
 
     val releaseHoldRequest = ReleaseHoldRequest(
       releaseDateTime = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
+      legacyTransactionId = releaseRequest.releaseTransactionId,
     )
 
-    // do we get legacyTransactionId from Syscon or can we retrieve the HoldEntity from holds service and use the
-    // legacyTransactionId (that create the hold) just to generate the unique idempotency?
+    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 2)
 
-    // generate idempotency here
-
-    val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest)
+    val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest, idempotencyKey)
 
     return SyncReleasedHoldResponse(
       prisonNumber = response.prisonNumber,
