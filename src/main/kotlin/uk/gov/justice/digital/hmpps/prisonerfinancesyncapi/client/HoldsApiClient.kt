@@ -52,6 +52,7 @@ class HoldsApiClient(
         holdsControllerApi.releaseHoldById(
           id = holdsUUID,
           releaseHoldRequest = request,
+          idempotencyKey = UUID.randomUUID(),
         )
           .block()
       },

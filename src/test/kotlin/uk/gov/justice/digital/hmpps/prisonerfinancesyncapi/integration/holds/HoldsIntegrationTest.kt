@@ -602,6 +602,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       val releaseRequest = SyncReleaseHoldRequest(
         releaseDateTime = LocalDateTime.now(),
+        releaseTransactionId = 12345,
       )
 
       val prisonNumber = "AD23451"
@@ -637,6 +638,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       val releaseRequest = SyncReleaseHoldRequest(
         releaseDateTime = LocalDateTime.now(),
+        releaseTransactionId = 12345,
       )
 
       webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
@@ -669,6 +671,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       val releaseRequest = SyncReleaseHoldRequest(
         releaseDateTime = LocalDateTime.now(),
+        releaseTransactionId = 12345,
       )
 
       webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
@@ -686,6 +689,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       val releaseRequest = SyncReleaseHoldRequest(
         releaseDateTime = LocalDateTime.now(),
+        releaseTransactionId = 12345,
       )
 
       webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
@@ -706,6 +710,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       val releaseRequest = SyncReleaseHoldRequest(
         releaseDateTime = LocalDateTime.now(),
+        releaseTransactionId = 12345,
       )
 
       holdsApi.stubReleaseHoldNotFound(holdsUUID)
