@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.Spy
@@ -16,8 +17,10 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.HttpStatus
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -25,9 +28,14 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Hold
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleaseHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 import java.math.BigDecimal
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -504,6 +512,87 @@ class HoldsServiceTest {
 
       assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
       assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+    }
+  }
+
+  @Nested
+  @DisplayName("Release Holds")
+  inner class ReleaseHolds {
+    @Test
+    fun `should send the release hold request to the hold service and return the released hold`() {
+      val legacyHoldNumber = 12345L
+      val legacyTransactionNumber = 5432L
+      val holdNumber = UUID.randomUUID()
+
+      val holdMapping = HoldsMapping(
+        id = 1L,
+        legacyHoldNumber = legacyHoldNumber,
+        holdsUuid = holdNumber,
+      )
+
+      val releaseHoldRequest = ReleaseHoldRequest(
+        releaseDateTime = Instant.now(),
+        legacyTransactionId = legacyTransactionNumber,
+      )
+
+      val syncReleaseHoldRequest = SyncReleaseHoldRequest(
+        releaseDateTime = timeConversionService.toLocalDateTime(releaseHoldRequest.releaseDateTime),
+        releaseTransactionId = legacyTransactionNumber,
+      )
+
+      val releasedHoldResponse = ReleasedHoldResponse(
+        id = holdNumber,
+        prisonNumber = "PRISONER_1",
+        subAccountRef = ReleasedHoldResponse.SubAccountRef.CASH,
+        amountReleased = 50L,
+        releasedAt = releaseHoldRequest.releaseDateTime,
+        releasedTransactionId = UUID.randomUUID(),
+      )
+
+      val expectedSyncHoldResponse = SyncReleasedHoldResponse(
+        prisonNumber = releasedHoldResponse.prisonNumber,
+        holdNumber = legacyHoldNumber,
+        amountReleased = releasedHoldResponse.amountReleased.toPounds(),
+        releasedAt = syncReleaseHoldRequest.releaseDateTime,
+      )
+
+      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(legacyTransactionNumber, 1)
+
+      whenever(
+        holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(legacyHoldNumber),
+      ).thenReturn(holdMapping)
+
+      whenever(
+        holdsApiClient.postHoldRelease(
+          holdsUUID = holdNumber,
+          request = releaseHoldRequest,
+          idempotencyKey = expectedIdempotencyKey,
+        ),
+      ).thenReturn(releasedHoldResponse)
+
+      val actualResponse = holdsService.releaseHold(
+        holdNumber = legacyHoldNumber,
+        releaseRequest = syncReleaseHoldRequest,
+      )
+
+      assertThat(actualResponse).isEqualTo(expectedSyncHoldResponse)
+    }
+
+    @Test
+    fun `should return 404 if no hold exists`() {
+      whenever(holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(any())).thenReturn(null)
+
+      val exception = assertThrows<CustomException> {
+        holdsService.releaseHold(
+          holdNumber = 12456L,
+          releaseRequest = SyncReleaseHoldRequest(
+            releaseDateTime = LocalDateTime.now(),
+            releaseTransactionId = 56789L,
+          ),
+        )
+      }
+
+      assertThat(exception.status).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }
 }

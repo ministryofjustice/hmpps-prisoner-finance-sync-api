@@ -150,8 +150,12 @@ class HoldsService(
 
     val releaseHoldRequest = ReleaseHoldRequest(
       releaseDateTime = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
+      legacyTransactionId = releaseRequest.releaseTransactionId,
     )
-    val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest)
+
+    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 1)
+
+    val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest, idempotencyKey)
 
     return SyncReleasedHoldResponse(
       prisonNumber = response.prisonNumber,

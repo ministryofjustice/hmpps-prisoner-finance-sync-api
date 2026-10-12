@@ -7,6 +7,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.absent
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.github.tomakehurst.wiremock.client.WireMock.matching
 import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
 import com.github.tomakehurst.wiremock.client.WireMock.post
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
@@ -223,6 +224,7 @@ class HoldsApiMockServer :
 
   fun stubReleaseHold(prisonNumber: String, releasedAt: Instant, amount: Long, holdsUUID: UUID) = stubFor(
     post(urlPathEqualTo("/holds/$holdsUUID/release"))
+      .withHeader("Idempotency-Key", matching(".*"))
       .willReturn(
         aResponse()
           .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
@@ -235,6 +237,7 @@ class HoldsApiMockServer :
                 subAccountRef = ReleasedHoldResponse.SubAccountRef.CASH,
                 amountReleased = amount,
                 releasedAt = releasedAt,
+                releasedTransactionId = UUID.randomUUID(),
               ),
             ),
           ),
