@@ -10,7 +10,7 @@ plugins {
   id("uk.gov.justice.hmpps.gradle-spring-boot") version "11.0.11"
   kotlin("plugin.spring") version "2.4.20"
   id("org.jetbrains.kotlin.plugin.noarg") version "2.4.20"
-  id("org.openapi.generator") version "7.25.0"
+  id("org.openapi.generator") version "7.26.0"
   id("jacoco")
 }
 
