@@ -72,33 +72,6 @@ class HoldsServiceTest {
 
   private lateinit var holdsService: HoldsService
 
-  fun mockAccountResolver(
-    syncCreateHoldRequest: SyncCreateHoldRequest,
-    prisonSubaccountUUID: UUID,
-    prisonerSubaccountUUID: UUID,
-  ) {
-    whenever(
-      accountResolver.resolvePrisonSubAccount(
-        prisonId = eq(syncCreateHoldRequest.holdLocation),
-        accountCode = eq(2199),
-        transactionType = eq(syncCreateHoldRequest.holdType),
-        parentCache = any(),
-      ),
-    ).thenReturn(
-      prisonSubaccountUUID,
-    )
-
-    whenever(
-      accountResolver.resolvePrisonerSubAccount(
-        offenderId = eq(syncCreateHoldRequest.prisonNumber),
-        accountCode = eq(syncCreateHoldRequest.subAccountCode),
-        parentCache = any(),
-      ),
-    ).thenReturn(
-      prisonerSubaccountUUID,
-    )
-  }
-
   @BeforeEach
   fun setup() {
     // InjectMocks does not work for some reason
@@ -120,6 +93,33 @@ class HoldsServiceTest {
   @Nested
   @DisplayName("Create Hold")
   inner class CreateHold {
+
+    fun mockAccountResolver(
+      syncCreateHoldRequest: SyncCreateHoldRequest,
+      prisonSubaccountUUID: UUID,
+      prisonerSubaccountUUID: UUID,
+    ) {
+      whenever(
+        accountResolver.resolvePrisonSubAccount(
+          prisonId = eq(syncCreateHoldRequest.holdLocation),
+          accountCode = eq(2199),
+          transactionType = eq(syncCreateHoldRequest.holdType),
+          parentCache = any(),
+        ),
+      ).thenReturn(
+        prisonSubaccountUUID,
+      )
+
+      whenever(
+        accountResolver.resolvePrisonerSubAccount(
+          offenderId = eq(syncCreateHoldRequest.prisonNumber),
+          accountCode = eq(syncCreateHoldRequest.subAccountCode),
+          parentCache = any(),
+        ),
+      ).thenReturn(
+        prisonerSubaccountUUID,
+      )
+    }
 
     @Test
     fun `should send the hold request to the hold service, store the mapping and return the created hold`() {
@@ -556,7 +556,7 @@ class HoldsServiceTest {
         releasedAt = syncReleaseHoldRequest.releaseDateTime,
       )
 
-      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(legacyTransactionNumber, 2)
+      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(legacyTransactionNumber, 1)
 
       whenever(
         holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(legacyHoldNumber),

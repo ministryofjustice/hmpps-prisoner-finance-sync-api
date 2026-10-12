@@ -153,7 +153,7 @@ class HoldsService(
       legacyTransactionId = releaseRequest.releaseTransactionId,
     )
 
-    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 2)
+    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 1)
 
     val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest, idempotencyKey)
 
