@@ -38,24 +38,15 @@ class AdvancesServiceTest {
   @Spy
   lateinit var idempotencyService: GeneralLedgerIdempotencyService
 
-  @Mock
-  lateinit var accountResolver: GeneralLedgerAccountResolver
-
-  @Spy
-  lateinit var requestCache: InMemoryAccountCache
-
   private lateinit var advancesService: AdvancesService
 
   @BeforeEach
   fun setup() {
-    requestCache.clear()
     advancesService = AdvancesService(
       advancesApiClient = advancesApiClient,
       timeConversionService = timeConversionService,
       advancesMappingRepository = advancesMappingRepository,
       idempotencyService = idempotencyService,
-      accountResolver = accountResolver,
-      requestCache = requestCache,
     )
   }
 
@@ -85,23 +76,6 @@ class AdvancesServiceTest {
 
     @BeforeEach
     fun setup() {
-      whenever(
-        accountResolver.resolvePrisonSubAccount(
-          prisonId = syncAdvanceRequest.prisonID,
-          accountCode = 1502,
-          transactionType = "ADV",
-          parentCache = requestCache,
-        ),
-      ).thenReturn(prisonSubAccount)
-
-      whenever(
-        accountResolver.resolvePrisonerSubAccount(
-          offenderId = syncAdvanceRequest.prisonNumber,
-          accountCode = 2102,
-          parentCache = requestCache,
-        ),
-      ).thenReturn(prisonerSubAccount)
-
       val advanceRecordResponse = AdvanceRecordResponse(
         id = UUID.randomUUID(),
         legacyPaymentProfileId = syncAdvanceRequest.legacyPaymentProfileId,
@@ -116,6 +90,7 @@ class AdvancesServiceTest {
         status = AdvanceRecordResponse.Status.valueOf(syncAdvanceRequest.status.name),
         reference = syncAdvanceRequest.reference,
         comment = syncAdvanceRequest.comment,
+        updatedAt = null,
       )
 
       whenever(advancesApiClient.postAdvanceRecord(requestCapture.capture(), any()))
@@ -141,8 +116,6 @@ class AdvancesServiceTest {
       assertThat(capturedReq.amount).isEqualTo(syncAdvanceRequest.amount.toPence())
       assertThat(capturedReq.prisonID).isEqualTo(syncAdvanceRequest.prisonID)
       assertThat(capturedReq.status).isEqualTo(syncAdvanceRequest.status)
-      assertThat(capturedReq.prisonSubAccountId).isEqualTo(prisonSubAccount)
-      assertThat(capturedReq.prisonerSubAccountId).isEqualTo(prisonerSubAccount)
     }
   }
 }

@@ -1,8 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.advances
 
-import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
-import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -103,6 +101,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
           reference = "REF",
           createdBy = "USER",
           status = AdvanceRecordResponse.Status.ACTIVE,
+          updatedAt = null,
         )
 
         advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedAdvanceResponse)
@@ -119,84 +118,10 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .responseBody!!
 
       @Test
-      fun `should return a 201, resolve the GL accounts and then created advance`() {
-        integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
-          prisonParentAccount = prisonAccountId,
-          prisonSubAccount = prisonAdvanceAccount,
-          prisonSubAccountRef = "1502:ADV",
-          prisonParentAccountRef = syncCreateAdvanceRecordRequest.prisonID,
-          prisonerParentAccount = prisonerAccountId,
-          prisonerSubAccount = prisonerSpendsAccount,
-          prisonerSubAccountRef = "SPENDS",
-          prisonerParentAccountRef = syncCreateAdvanceRecordRequest.prisonNumber,
-        )
-
+      fun `should return a 201 and then created advance`() {
         val responseBody = postAdvance()
-
         assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
         assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
-
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
-      }
-
-      @Test
-      fun `should return a 201, create the GL sub accounts and then created advance`() {
-        integrationTestHelpers.stubCreateGlSubAccountsForPrisonerAndPrison(
-          prisonParentAccount = prisonAccountId,
-          prisonSubAccount = prisonAdvanceAccount,
-          prisonSubAccountRef = "1502:ADV",
-          prisonParentAccountRef = syncCreateAdvanceRecordRequest.prisonID,
-          prisonerParentAccount = prisonerAccountId,
-          prisonerSubAccount = prisonerSpendsAccount,
-          prisonerSubAccountRef = "SPENDS",
-          prisonerParentAccountRef = syncCreateAdvanceRecordRequest.prisonNumber,
-        )
-
-        val responseBody = postAdvance()
-
-        assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
-
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
-      }
-
-      @Test
-      fun `should return a 201, create the GL sub accounts, parent accounts, and then created advance`() {
-        integrationTestHelpers.stubCreateGlParentAccountAndSubAccountForPrisonerAndPrison(
-          prisonParentAccount = prisonAccountId,
-          prisonSubAccount = prisonAdvanceAccount,
-          prisonSubAccountRef = "1502:ADV",
-          prisonParentAccountRef = syncCreateAdvanceRecordRequest.prisonID,
-          prisonerParentAccount = prisonerAccountId,
-          prisonerSubAccount = prisonerSpendsAccount,
-          prisonerSubAccountRef = "SPENDS",
-          prisonerParentAccountRef = syncCreateAdvanceRecordRequest.prisonNumber,
-        )
-
-        val responseBody = postAdvance()
-
-        assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
-
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
       }
 
       @Test
@@ -216,13 +141,6 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         postAdvance()
 
         advancesApi.verify(1, postRequestedFor(urlPathMatching("/advances")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
       }
     }
 
@@ -255,23 +173,6 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .bodyValue(syncCreateAdvanceRecordRequest)
         .exchange()
         .expectStatus().isForbidden
-        .expectBody<ErrorResponse>()
-    }
-
-    @Test
-    fun `should return a 502 when GL service returns a 5XX error`() {
-      generalLedgerApi.stubGetAccountReturnsError(syncCreateAdvanceRecordRequest.prisonID)
-      generalLedgerApi.stubGetAccountReturnsError(syncCreateAdvanceRecordRequest.prisonNumber)
-
-      webTestClient
-        .post()
-        .uri("/sync/advances")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(syncCreateAdvanceRecordRequest)
-        .exchange()
-        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
         .expectBody<ErrorResponse>()
     }
 
