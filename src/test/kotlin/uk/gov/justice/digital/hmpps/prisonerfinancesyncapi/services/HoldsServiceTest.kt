@@ -3,10 +3,10 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.Spy
@@ -17,8 +17,10 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.HttpStatus
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -576,10 +578,21 @@ class HoldsServiceTest {
       assertThat(actualResponse).isEqualTo(expectedSyncHoldResponse)
     }
 
-    @Disabled
     @Test
     fun `should return 404 if no hold exists`() {
+      whenever(holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(any())).thenReturn(null)
 
+      val exception = assertThrows<CustomException> {
+        holdsService.releaseHold(
+          holdNumber = 12456L,
+          releaseRequest = SyncReleaseHoldRequest(
+            releaseDateTime = LocalDateTime.now(),
+            releaseTransactionId = 56789L,
+          ),
+        )
+      }
+
+      assertThat(exception.status).isEqualTo(HttpStatus.NOT_FOUND)
     }
   }
 }
