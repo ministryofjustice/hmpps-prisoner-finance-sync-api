@@ -1,5 +1,8 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -16,6 +19,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -34,6 +38,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCrea
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleasedHoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.migration.GeneralLedgerMigrationService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 import java.math.BigDecimal
@@ -72,6 +77,9 @@ class HoldsServiceTest {
 
   private lateinit var holdsService: HoldsService
 
+  private lateinit var listAppender: ListAppender<ILoggingEvent>
+  private val logger = LoggerFactory.getLogger(HoldsService::class.java) as Logger
+
   @BeforeEach
   fun setup() {
     // InjectMocks does not work for some reason
@@ -85,6 +93,9 @@ class HoldsServiceTest {
       accountMapping,
       generalLedgerTransactionMappingRepository,
     )
+
+    listAppender = ListAppender<ILoggingEvent>().apply { start() }
+    logger.addAppender(listAppender)
   }
 
   val prisonSubaccountUUID = UUID.randomUUID()
@@ -119,6 +130,9 @@ class HoldsServiceTest {
       ).thenReturn(
         prisonerSubaccountUUID,
       )
+
+
+
     }
 
     @Test
@@ -208,6 +222,11 @@ class HoldsServiceTest {
 
       assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
       assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      assertThat(logs.size).isEqualTo(1)
+      assertThat(logs).contains("CREATE HOLD REQUEST: $syncCreateHoldRequest")
     }
 
     @Test

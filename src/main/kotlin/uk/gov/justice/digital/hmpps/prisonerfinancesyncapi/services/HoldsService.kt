@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -28,6 +29,11 @@ class HoldsService(
   val accountMapping: LedgerAccountMappingService,
   val generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
 ) {
+
+  private companion object {
+    private val log = LoggerFactory.getLogger(this::class.java)
+  }
+
   // HARDCODED, the only hold account code used in NOMIS as far as we know
   val holdNOMISAccountCode = 2199
 
@@ -67,6 +73,8 @@ class HoldsService(
       prisonSubAccountId = prisonSubAccountId,
       prisonerSubAccountId = prisonerSubAccountId,
     )
+
+    log.info("CREATE HOLD REQUEST: {}", syncCreateHoldRequest)
 
     val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(
       transactionId = syncCreateHoldRequest.holdTransactionId,
