@@ -1,5 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -28,13 +29,21 @@ class HoldsService(
   val accountMapping: LedgerAccountMappingService,
   val generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
 ) {
+
+  private companion object {
+    private val log = LoggerFactory.getLogger(this::class.java)
+  }
+
   // HARDCODED, the only hold account code used in NOMIS as far as we know
   val holdNOMISAccountCode = 2199
 
   fun createHold(syncCreateHoldRequest: SyncCreateHoldRequest): SyncCreateHoldResponse {
+    log.info("CREATE HOLD REQUEST: {}", syncCreateHoldRequest.toLog())
+
     val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(syncCreateHoldRequest.holdNumber)
 
     if (mapping != null) {
+      log.info("CREATE HOLD MAPPING ALREADY EXISTS: {}", syncCreateHoldRequest.holdNumber)
       return SyncCreateHoldResponse(mapping.legacyHoldNumber, mapping.holdsUuid)
     }
 
@@ -82,6 +91,8 @@ class HoldsService(
 
     val syncCreateHoldResponse = SyncCreateHoldResponse(createHoldRequest.legacyHoldNumber, response.id)
 
+    log.info("CREATE HOLD REQUEST PROCESSED: {}", syncCreateHoldRequest.holdTransactionId)
+
     return syncCreateHoldResponse
   }
 
@@ -110,6 +121,8 @@ class HoldsService(
   }
 
   fun migrateHold(syncCreateHoldRequest: SyncCreateHoldRequest): SyncCreateHoldResponse {
+    log.info("MIGRATE HOLD REQUEST: {}", syncCreateHoldRequest.toLog())
+
     val subAccountRef = accountMapping.mapPrisonerSubAccount(
       syncCreateHoldRequest.subAccountCode,
     )
@@ -141,11 +154,14 @@ class HoldsService(
     tryToSaveHoldMapping(holdsMapping)
 
     val syncCreateHoldResponse = SyncCreateHoldResponse(createHoldMigrationRequest.legacyHoldNumber, response.id)
+    log.info("MIGRATE HOLD REQUEST PROCESSED: {}", syncCreateHoldRequest.holdTransactionId)
 
     return syncCreateHoldResponse
   }
 
   fun releaseHold(holdNumber: Long, releaseRequest: SyncReleaseHoldRequest): SyncReleasedHoldResponse {
+    log.info("RELEASE HOLD REQUEST: {} time: {} transactionId: {}", holdNumber, releaseRequest.releaseDateTime, releaseRequest.releaseTransactionId)
+
     val mapping = holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(holdNumber) ?: throw CustomException("No hold mapping found for hold number: $holdNumber", HttpStatus.NOT_FOUND)
 
     val releaseHoldRequest = ReleaseHoldRequest(
@@ -156,6 +172,8 @@ class HoldsService(
     val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 1)
 
     val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest, idempotencyKey)
+
+    log.info("RELEASE HOLD PROCESSED: {}", holdNumber)
 
     return SyncReleasedHoldResponse(
       prisonNumber = response.prisonNumber,

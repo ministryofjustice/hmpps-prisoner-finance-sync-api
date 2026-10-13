@@ -1,7 +1,9 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -13,12 +15,10 @@ import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.times
-import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
-import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
@@ -37,7 +37,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncRele
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 import java.math.BigDecimal
-import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
@@ -72,6 +71,9 @@ class HoldsServiceTest {
 
   private lateinit var holdsService: HoldsService
 
+  private lateinit var listAppender: ListAppender<ILoggingEvent>
+  private val logger = LoggerFactory.getLogger(HoldsService::class.java) as Logger
+
   @BeforeEach
   fun setup() {
     // InjectMocks does not work for some reason
@@ -85,6 +87,9 @@ class HoldsServiceTest {
       accountMapping,
       generalLedgerTransactionMappingRepository,
     )
+
+    listAppender = ListAppender<ILoggingEvent>().apply { start() }
+    logger.addAppender(listAppender)
   }
 
   val prisonSubaccountUUID = UUID.randomUUID()
@@ -181,11 +186,6 @@ class HoldsServiceTest {
         amount = BigDecimal("99.99").toPence(),
       )
 
-      val syncCreateHoldResponse = SyncCreateHoldResponse(
-        holdNumber = createHoldRequest.legacyHoldNumber,
-        holdUuid = createHoldResponseId,
-      )
-
       mockAccountResolver(syncCreateHoldRequest, prisonSubaccountUUID, prisonerSubaccountUUID)
 
       whenever(
@@ -206,12 +206,17 @@ class HoldsServiceTest {
 
       val createdHold = holdsService.createHold(syncCreateHoldRequest)
 
-      assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
-      assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+      assertThat(createdHold.holdUuid).isEqualTo(createHoldResponseId)
+      assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldRequest.holdNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+
+      assertThat(logs[0]).contains("CREATE HOLD REQUEST: ${syncCreateHoldRequest.toLog()}")
+      assertThat(logs[1]).contains("CREATE HOLD REQUEST PROCESSED: ${syncCreateHoldRequest.holdTransactionId}")
     }
 
     @Test
-    fun `should not write the mapping to the repository if the holds api responds with 409`() {
+    fun `should return the existing mapping if it already exists`() {
       val holdsCreatedAt = LocalDateTime.now()
       val holdsUntilDate = LocalDateTime.now().plusDays(1)
 
@@ -252,48 +257,24 @@ class HoldsServiceTest {
         holdLegacyTransactionId = syncCreateHoldRequest.holdTransactionId,
       )
 
-      val createHoldResponse = HoldResponse(
-        id = UUID.randomUUID(),
-        prisonNumber = "AD23451",
-        subAccountRef = HoldResponse.SubAccountRef.CASH,
-        legacyHoldNumber = 123456789,
-        createdAt = holdsCreatedAtUTC,
-        createdBy = "USER",
-        holdFromDate = holdsCreatedAtUTC,
-        holdUntilDate = holdsUntilDateUTC,
-        isReleased = false,
-        description = "Test Hold",
-        holdType = HoldResponse.HoldType.WHF,
-        holdLocation = "LEI",
-        amount = BigDecimal("99.99").toPence(),
-      )
+      val createHoldResponseId = UUID.randomUUID()
+      whenever(holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(syncCreateHoldRequest.holdNumber))
+        .thenReturn(
+          HoldsMapping(
+            legacyHoldNumber = syncCreateHoldRequest.holdNumber,
+            holdsUuid = createHoldResponseId,
+          ),
+        )
 
-      val responseBytes = createHoldResponse.id.toString().toByteArray(StandardCharsets.UTF_8)
+      val createdHold = holdsService.createHold(syncCreateHoldRequest)
 
-      mockAccountResolver(syncCreateHoldRequest, prisonSubaccountUUID, prisonerSubaccountUUID)
+      assertThat(createdHold.holdUuid).isEqualTo(createHoldResponseId)
+      assertThat(createdHold.holdNumber).isEqualTo(createHoldRequest.legacyHoldNumber)
 
-      whenever(
-        holdsApiClient.postHold(
-          request = eq(createHoldRequest),
-          idempotencyKey = any(),
-        ),
-      ).thenThrow(
-        WebClientResponseException(
-          409,
-          "Conflict",
-          null,
-          responseBytes,
-          StandardCharsets.UTF_8,
-        ),
-      )
+      val logs = listAppender.list.map { it.formattedMessage }
 
-      assertThatThrownBy { holdsService.createHold(syncCreateHoldRequest) }
-        .isInstanceOf(WebClientResponseException::class.java)
-        .hasMessageContaining("Conflict")
-        .extracting { (it as WebClientResponseException).statusCode.value() }
-        .isEqualTo(409)
-
-      verify(holdsMappingRepository, times(0)).save(any())
+      assertThat(logs[0]).contains("CREATE HOLD REQUEST: ${syncCreateHoldRequest.toLog()}")
+      assertThat(logs[1]).contains("CREATE HOLD MAPPING ALREADY EXISTS: ${syncCreateHoldRequest.holdNumber}")
     }
   }
 
@@ -408,6 +389,10 @@ class HoldsServiceTest {
 
       assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
       assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs[0]).contains("MIGRATE HOLD REQUEST: ${syncNotReleasedCreateHoldRequest.toLog()}")
+      assertThat(logs[1]).contains("MIGRATE HOLD REQUEST PROCESSED: ${syncNotReleasedCreateHoldRequest.holdTransactionId}")
     }
 
     @Test
@@ -460,6 +445,10 @@ class HoldsServiceTest {
 
       assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
       assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs[0]).contains("MIGRATE HOLD REQUEST: ${syncReleasedCreateHoldRequest.toLog()}")
+      assertThat(logs[1]).contains("MIGRATE HOLD REQUEST PROCESSED: ${syncReleasedCreateHoldRequest.holdTransactionId}")
     }
 
     @Test
@@ -512,6 +501,10 @@ class HoldsServiceTest {
 
       assertThat(createdHold.holdUuid).isEqualTo(syncCreateHoldResponse.holdUuid)
       assertThat(createdHold.holdNumber).isEqualTo(syncCreateHoldResponse.holdNumber)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs[0]).contains("MIGRATE HOLD REQUEST: ${syncNotReleasedCreateHoldRequest.toLog()}")
+      assertThat(logs[1]).contains("MIGRATE HOLD REQUEST PROCESSED: ${syncNotReleasedCreateHoldRequest.holdTransactionId}")
     }
   }
 
@@ -576,23 +569,34 @@ class HoldsServiceTest {
       )
 
       assertThat(actualResponse).isEqualTo(expectedSyncHoldResponse)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs[0]).contains("RELEASE HOLD REQUEST: $legacyHoldNumber time: ${syncReleaseHoldRequest.releaseDateTime} transactionId: ${syncReleaseHoldRequest.releaseTransactionId}")
+      assertThat(logs[1]).contains("RELEASE HOLD PROCESSED: $legacyHoldNumber")
     }
 
     @Test
     fun `should return 404 if no hold exists`() {
       whenever(holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(any())).thenReturn(null)
 
+      val syncReleaseHoldRequest = SyncReleaseHoldRequest(
+        releaseDateTime = LocalDateTime.now(),
+        releaseTransactionId = 56789L,
+      )
+
+      val legacyHoldNumber = 12345L
       val exception = assertThrows<CustomException> {
         holdsService.releaseHold(
-          holdNumber = 12456L,
-          releaseRequest = SyncReleaseHoldRequest(
-            releaseDateTime = LocalDateTime.now(),
-            releaseTransactionId = 56789L,
-          ),
+          holdNumber = legacyHoldNumber,
+          releaseRequest = syncReleaseHoldRequest,
         )
       }
 
       assertThat(exception.status).isEqualTo(HttpStatus.NOT_FOUND)
+
+      val logs = listAppender.list.map { it.formattedMessage }
+      assertThat(logs).hasSize(1)
+      assertThat(logs[0]).contains("RELEASE HOLD REQUEST: $legacyHoldNumber time: ${syncReleaseHoldRequest.releaseDateTime} transactionId: ${syncReleaseHoldRequest.releaseTransactionId}")
     }
   }
 }

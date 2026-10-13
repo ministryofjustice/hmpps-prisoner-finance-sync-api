@@ -168,4 +168,6 @@ data class SyncCreateHoldRequest(
     holdTransactionId = holdTransactionGlId,
     releasedTransactionId = releasedTransactionGlId,
   )
+
+  fun toLog() = "SyncCreateHoldRequest - PrisonNumber: ${this.prisonNumber} holdNumber: ${this.holdNumber} createdBy: ${this.createdBy} holdType: ${this.holdType} amount: ${this.amount} holdLocation: ${this.holdLocation} description: ${this.description}"
 }
