@@ -113,7 +113,9 @@ class HoldsService(
       holdsMappingRepository.save(holdsMapping)
     } catch (e: DataIntegrityViolationException) {
       // ignore the exception if the mapping already exists
-      if (e.message?.contains("duplicate key value violates unique constraint \"uc_holds_mapping_holds_uuid\"") == true) {
+      if (e.message?.contains("duplicate key value violates unique constraint \"uc_holds_mapping_holds_uuid\"") == true ||
+        e.message?.contains("duplicate key value violates unique constraint \"uc_holds_mapping_legacy_hold_number\"") == true
+      ) {
         return
       }
       throw e

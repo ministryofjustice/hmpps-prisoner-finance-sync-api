@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
@@ -451,8 +453,12 @@ class HoldsServiceTest {
       assertThat(logs[1]).contains("MIGRATE HOLD REQUEST PROCESSED: ${syncReleasedCreateHoldRequest.holdTransactionId}")
     }
 
-    @Test
-    fun `should recover from dataIntegrity errors when saving the hold mapping`() {
+    @CsvSource(
+      "uc_holds_mapping_holds_uuid",
+      "uc_holds_mapping_legacy_hold_number",
+    )
+    @ParameterizedTest
+    fun `should recover from dataIntegrity errors when saving the hold mapping`(constraint: String) {
       // this is triggered during race conditions if a request is sent twice
       val createHoldRequest = CreateHoldMigrationRequest(
         prisonNumber = syncNotReleasedCreateHoldRequest.prisonNumber,
@@ -495,7 +501,7 @@ class HoldsServiceTest {
         .thenReturn(createHoldResponse)
 
       whenever { holdsMappingRepository.save(any<HoldsMapping>()) }
-        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"uc_holds_mapping_holds_uuid\""))
+        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"$constraint\""))
 
       val createdHold = holdsService.migrateHold(syncNotReleasedCreateHoldRequest)
 
