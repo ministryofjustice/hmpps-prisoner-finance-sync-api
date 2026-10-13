@@ -153,11 +153,7 @@ class AdvancesController(private val advancesService: AdvancesService) {
     @Suppress("UNUSED_PARAMETER")
     @Valid
     @RequestBody createAdvanceRepayRequest: SyncCreateAdvanceRepayRequest,
-  ): ResponseEntity<SyncAdvanceRepayResponse> {
-    val notImplementedResponse = 501
-
-    return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceRepayResponse(advanceId = UUID.randomUUID()))
-  }
+  ): ResponseEntity<SyncAdvanceRepayResponse> = ResponseEntity.status(notImplementedResponse).body(SyncAdvanceRepayResponse(repaymentTransactionId = UUID.randomUUID()))
 
   @Operation(
     summary = "Migrate advances",

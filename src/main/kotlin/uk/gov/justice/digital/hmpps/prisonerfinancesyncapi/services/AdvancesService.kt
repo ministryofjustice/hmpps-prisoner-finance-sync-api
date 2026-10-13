@@ -8,7 +8,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Adva
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.util.UUID
 
 @Service
 class AdvancesService(
@@ -66,5 +68,8 @@ class AdvancesService(
     )
 
     return syncCreateAdvanceRecordResponse
+  }
+
+  fun createAdvanceRepayment(advanceId: UUID, syncAdvanceRepayRequest: SyncCreateAdvanceRepayRequest) {
   }
 }

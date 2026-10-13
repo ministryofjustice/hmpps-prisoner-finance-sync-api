@@ -267,65 +267,75 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a 501 when the advance repay endpoint is called and not implemented`() {
+    fun `should return a 201 and the general ledger UUID when the advance repay endpoint is called`() {
       val advanceId = UUID.randomUUID()
+      val generalLedgerUUID = UUID.randomUUID()
 
       val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
         amount = BigDecimal(10.0),
         transactionId = 123456,
         createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
         createdBy = "USER",
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/repay", advanceId)
+      advancesApi.stubPostAdvanceRepayment(
+        syncCreateAdvanceRepayRequest = syncCreateAdvanceRepayRequest,
+        generalLedgerUUID = generalLedgerUUID,
+        advanceUUID = advanceId,
+      )
+
+      val advanceRepaymentResponse = webTestClient.post().uri("/sync/advances/{advanceId}/repay", advanceId)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRepayRequest)
         .exchange()
-        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+        .expectStatus().isEqualTo(HttpStatus.CREATED)
         .expectBody<SyncAdvanceRepayResponse>()
         .returnResult()
         .responseBody!!
-    }
-  }
 
-  @Nested
-  inner class MigrateAdvance {
-
-    @BeforeEach
-    fun setup() {
-      integrationTestHelpers.clearDB()
-      hmppsAuth.stubGrantToken()
-      generalLedgerApi.resetAll()
-      advancesApi.resetAll()
-      requestCache.clear()
+      assertThat(advanceRepaymentResponse.repaymentTransactionId).isEqualTo(generalLedgerUUID)
     }
 
-    @Test
-    fun `should return a 501 when the advance migrate endpoint is called and not implemented`() {
-      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRecordRequest(
-        legacyPaymentProfileId = 1,
-        legacyInformationNumber = "1-1",
-        prisonNumber = "A1234AA",
-        prisonID = "LEI",
-        createdOn = LocalDateTime.now(),
-        createdBy = "USER",
-        repaymentStartDate = LocalDateTime.now(),
-        repaymentAmount = BigDecimal(10.0),
-        reference = "SPENDS",
-        comment = "You owe me money",
-        status = CreateAdvanceRecordRequest.Status.ACTIVE,
-        legacyTransactionId = 12345L,
-        amount = BigDecimal(10.0),
-      )
+    @Nested
+    inner class MigrateAdvance {
 
-      webTestClient.post().uri("/migrate/advances")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(syncCreateAdvanceRepayRequest)
-        .exchange()
-        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
-        .expectBody<SyncCreateAdvanceRecordResponse>()
-        .returnResult()
-        .responseBody!!
+      @BeforeEach
+      fun setup() {
+        integrationTestHelpers.clearDB()
+        hmppsAuth.stubGrantToken()
+        generalLedgerApi.resetAll()
+        advancesApi.resetAll()
+        requestCache.clear()
+      }
+
+      @Test
+      fun `should return a 501 when the advance migrate endpoint is called and not implemented`() {
+        val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRecordRequest(
+          legacyPaymentProfileId = 1,
+          legacyInformationNumber = "1-1",
+          prisonNumber = "A1234AA",
+          prisonID = "LEI",
+          createdOn = LocalDateTime.now(),
+          createdBy = "USER",
+          repaymentStartDate = LocalDateTime.now(),
+          repaymentAmount = BigDecimal(10.0),
+          reference = "SPENDS",
+          comment = "You owe me money",
+          status = CreateAdvanceRecordRequest.Status.ACTIVE,
+          legacyTransactionId = 12345L,
+          amount = BigDecimal(10.0),
+        )
+
+        webTestClient.post().uri("/migrate/advances")
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(syncCreateAdvanceRepayRequest)
+          .exchange()
+          .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+          .expectBody<SyncCreateAdvanceRecordResponse>()
+          .returnResult()
+          .responseBody!!
+      }
     }
   }
 }

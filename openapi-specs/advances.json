@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-13.107.578bdea"
+    "version" : "2026-10-13.109.0acd4df"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
@@ -158,7 +158,11 @@
           "201" : {
             "description" : "Advance Repayment Created",
             "content" : {
-              "application/json" : { }
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdvanceRepaymentResponse"
+                }
+              }
             }
           },
           "400" : {
@@ -577,6 +581,55 @@
           }
         },
         "required" : [ "amount", "createdAt", "createdBy", "description" ]
+      },
+      "AdvanceRepaymentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "ID of the repayment"
+          },
+          "advanceId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "ID of the advance linked to this repayment"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount repaid in pence",
+            "example" : 50
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date time when the advance repayment was sent",
+            "example" : "2024-06-18T00:00:00.000000"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The username that created this repayment",
+            "example" : "JOHN_USER"
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS",
+            "example" : 12345
+          },
+          "transactionId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The transaction ID from GL"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "The description of the repayment transaction",
+            "example" : "A description about this repayment"
+          }
+        },
+        "required" : [ "advanceId", "amount", "createdAt", "createdBy", "description", "id", "transactionId" ]
       }
     },
     "securitySchemes" : {

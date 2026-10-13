@@ -19,4 +19,7 @@ data class SyncCreateAdvanceRepayRequest(
 
   @field:Schema(description = "The username that created this advance repayment", example = "JOHN_USER", required = true)
   val createdBy: String,
+
+  @field:Schema(description = "The description on the advance repayment transaction", example = "Deduction-ADV-08052026 D D", required = true)
+  val description: String,
 )

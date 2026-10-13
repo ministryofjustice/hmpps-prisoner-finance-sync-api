@@ -16,8 +16,11 @@ import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -116,6 +119,64 @@ class AdvancesServiceTest {
       assertThat(capturedReq.amount).isEqualTo(syncAdvanceRequest.amount.toPence())
       assertThat(capturedReq.prisonID).isEqualTo(syncAdvanceRequest.prisonID)
       assertThat(capturedReq.status).isEqualTo(syncAdvanceRequest.status)
+    }
+  }
+
+  @Nested
+  inner class CreateAdvanceRepayment {
+
+    val advanceId = UUID.randomUUID()
+    val capturedAdvanceRepaymentRequest = argumentCaptor<CreateAdvanceRepaymentRequest>()
+    val capturedIdempotencyKey = argumentCaptor<UUID>()
+
+    val syncRepaymentRequest = SyncCreateAdvanceRepayRequest(
+      amount = BigDecimal("0.50"),
+      transactionId = 123456,
+      createdAt = LocalDateTime.now(),
+      createdBy = "Test",
+      description = "Test Description",
+    )
+
+    val timeConversionService = TimeConversionService()
+
+    @BeforeEach
+    fun setup() {
+      whenever(
+        advancesApiClient.postAdvanceRepayment(
+          advanceId = advanceId,
+          idempotencyKey = capturedIdempotencyKey.capture(),
+          request = capturedAdvanceRepaymentRequest.capture(),
+        ),
+      )
+        .thenReturn(
+          AdvanceRepaymentResponse(
+            id = UUID.randomUUID(),
+            advanceId = advanceId,
+            amount = syncRepaymentRequest.amount.toPence(),
+            createdAt = timeConversionService.toUtcInstant(syncRepaymentRequest.createdAt),
+            createdBy = syncRepaymentRequest.createdBy,
+            transactionId = UUID.randomUUID(),
+            description = syncRepaymentRequest.description,
+            legacyTransactionId = syncRepaymentRequest.transactionId,
+          ),
+        )
+
+      advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
+    }
+
+    fun `should send the advance repayment request`() {
+      verify(advancesApiClient, times(1))
+        .postAdvanceRepayment(any(), any(), any())
+
+      val capturedReq = capturedAdvanceRepaymentRequest.firstValue
+      val usedIdempotencyKey = capturedIdempotencyKey.firstValue
+
+      assertThat(capturedReq.legacyTransactionId).isEqualTo(syncRepaymentRequest.transactionId)
+      assertThat(capturedReq.amount).isEqualTo(syncRepaymentRequest.amount.toPence())
+      assertThat(capturedReq.description).isEqualTo(syncRepaymentRequest.description)
+      assertThat(capturedReq.createdBy).isEqualTo(syncRepaymentRequest.createdBy)
+      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(syncRepaymentRequest.transactionId, 1)
+      assertThat(expectedIdempotencyKey).isEqualTo(usedIdempotencyKey)
     }
   }
 }
