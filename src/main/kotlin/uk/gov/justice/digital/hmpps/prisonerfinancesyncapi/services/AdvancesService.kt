@@ -4,8 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
@@ -18,6 +22,7 @@ class AdvancesService(
   @Autowired var timeConversionService: TimeConversionService,
   @Autowired var advancesMappingRepository: AdvancesMappingRepository,
   @Autowired val idempotencyService: GeneralLedgerIdempotencyService,
+  @Autowired val advanceRepaymentMappingRepository: AdvanceRepaymentMappingRepository,
 ) {
   // we do not expect any advance to have more than one entry
   val advanceTransactionEntrySequence = 1
@@ -70,6 +75,38 @@ class AdvancesService(
     return syncCreateAdvanceRecordResponse
   }
 
-  fun createAdvanceRepayment(advanceId: UUID, syncAdvanceRepayRequest: SyncCreateAdvanceRepayRequest) {
+  fun createAdvanceRepayment(advanceId: UUID, syncAdvanceRepayRequest: SyncCreateAdvanceRepayRequest): SyncAdvanceRepayResponse {
+    val generatedIdempotency = idempotencyService.genTransactionIdempotencyKey(
+      transactionId = syncAdvanceRepayRequest.transactionId,
+      entrySequence = syncAdvanceRepayRequest.entrySequence,
+    )
+
+    val createAdvanceRepayRequest = CreateAdvanceRepaymentRequest(
+      amount = syncAdvanceRepayRequest.amount.toPence(),
+      createdAt = timeConversionService.toUtcInstant(syncAdvanceRepayRequest.createdAt),
+      createdBy = syncAdvanceRepayRequest.createdBy,
+      description = syncAdvanceRepayRequest.description,
+      legacyTransactionId = syncAdvanceRepayRequest.transactionId,
+    )
+
+    val advanceRepayResponse = advancesApiClient.postAdvanceRepayment(
+      advanceId = advanceId,
+      idempotencyKey = generatedIdempotency,
+      request = createAdvanceRepayRequest,
+    )
+
+    val advanceRepaymentMapping = AdvanceRepaymentMapping(
+      legacyTransactionId = syncAdvanceRepayRequest.transactionId,
+      entrySequence = syncAdvanceRepayRequest.entrySequence,
+      generalLedgerTransactionUuid = advanceRepayResponse.transactionId,
+    )
+
+    advanceRepaymentMappingRepository.saveAndFlush(advanceRepaymentMapping)
+
+    val syncAdvanceRepayResponse = SyncAdvanceRepayResponse(
+      repaymentTransactionId = advanceRepayResponse.transactionId,
+    )
+
+    return syncAdvanceRepayResponse
   }
 }

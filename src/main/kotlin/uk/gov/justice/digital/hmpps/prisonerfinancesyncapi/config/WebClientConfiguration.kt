@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager
 import org.springframework.web.reactive.function.client.WebClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRecordControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRepaymentControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.AccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.SubAccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
@@ -87,4 +88,7 @@ class WebClientConfiguration(
 
   @Bean
   fun advanceRecordApi(@Qualifier("advancesApiWebClient") webClient: WebClient): AdvanceRecordControllerApi = AdvanceRecordControllerApi(webClient)
+
+  @Bean
+  fun advanceRepaymentApi(@Qualifier("advancesApiWebClient") webClient: WebClient): AdvanceRepaymentControllerApi = AdvanceRepaymentControllerApi(webClient)
 }

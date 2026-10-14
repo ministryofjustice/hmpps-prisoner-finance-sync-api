@@ -277,6 +277,8 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         createdAt = LocalDateTime.now(),
         description = "Deduction-ADV-08052026 D D",
         createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
       )
 
       advancesApi.stubPostAdvanceRepayment(

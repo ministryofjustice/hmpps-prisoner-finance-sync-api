@@ -14,11 +14,14 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
@@ -38,6 +41,9 @@ class AdvancesServiceTest {
   @Mock
   lateinit var advancesMappingRepository: AdvancesMappingRepository
 
+  @Mock
+  lateinit var advanceRepaymentMappingRepository: AdvanceRepaymentMappingRepository
+
   @Spy
   lateinit var idempotencyService: GeneralLedgerIdempotencyService
 
@@ -50,6 +56,7 @@ class AdvancesServiceTest {
       timeConversionService = timeConversionService,
       advancesMappingRepository = advancesMappingRepository,
       idempotencyService = idempotencyService,
+      advanceRepaymentMappingRepository = advanceRepaymentMappingRepository,
     )
   }
 
@@ -128,6 +135,8 @@ class AdvancesServiceTest {
     val advanceId = UUID.randomUUID()
     val capturedAdvanceRepaymentRequest = argumentCaptor<CreateAdvanceRepaymentRequest>()
     val capturedIdempotencyKey = argumentCaptor<UUID>()
+    val capturedAdvanceId = argumentCaptor<UUID>()
+    val capturedAdvanceRepaymentMapping = argumentCaptor<AdvanceRepaymentMapping>()
 
     val syncRepaymentRequest = SyncCreateAdvanceRepayRequest(
       amount = BigDecimal("0.50"),
@@ -135,17 +144,23 @@ class AdvancesServiceTest {
       createdAt = LocalDateTime.now(),
       createdBy = "Test",
       description = "Test Description",
+      entrySequence = 2,
+      caseloadId = "LEI",
     )
 
     val timeConversionService = TimeConversionService()
+
+    val glUIID = UUID.randomUUID()
+
+    lateinit var repaymentResponse: SyncAdvanceRepayResponse
 
     @BeforeEach
     fun setup() {
       whenever(
         advancesApiClient.postAdvanceRepayment(
-          advanceId = advanceId,
-          idempotencyKey = capturedIdempotencyKey.capture(),
-          request = capturedAdvanceRepaymentRequest.capture(),
+          any(),
+          any(),
+          any(),
         ),
       )
         .thenReturn(
@@ -155,28 +170,53 @@ class AdvancesServiceTest {
             amount = syncRepaymentRequest.amount.toPence(),
             createdAt = timeConversionService.toUtcInstant(syncRepaymentRequest.createdAt),
             createdBy = syncRepaymentRequest.createdBy,
-            transactionId = UUID.randomUUID(),
+            transactionId = glUIID,
             description = syncRepaymentRequest.description,
             legacyTransactionId = syncRepaymentRequest.transactionId,
           ),
         )
 
-      advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
+      repaymentResponse = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
     }
 
+    @Test
     fun `should send the advance repayment request`() {
       verify(advancesApiClient, times(1))
-        .postAdvanceRepayment(any(), any(), any())
+        .postAdvanceRepayment(
+          advanceId = capturedAdvanceId.capture(),
+          idempotencyKey = capturedIdempotencyKey.capture(),
+          request = capturedAdvanceRepaymentRequest.capture(),
+        )
 
       val capturedReq = capturedAdvanceRepaymentRequest.firstValue
       val usedIdempotencyKey = capturedIdempotencyKey.firstValue
+      val capturedAdvanceId = capturedAdvanceId.firstValue
 
+      assertThat(capturedAdvanceId).isEqualTo(advanceId)
       assertThat(capturedReq.legacyTransactionId).isEqualTo(syncRepaymentRequest.transactionId)
       assertThat(capturedReq.amount).isEqualTo(syncRepaymentRequest.amount.toPence())
       assertThat(capturedReq.description).isEqualTo(syncRepaymentRequest.description)
       assertThat(capturedReq.createdBy).isEqualTo(syncRepaymentRequest.createdBy)
-      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(syncRepaymentRequest.transactionId, 1)
+
+      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(
+        syncRepaymentRequest.transactionId,
+        entrySequence = syncRepaymentRequest.entrySequence,
+      )
       assertThat(expectedIdempotencyKey).isEqualTo(usedIdempotencyKey)
+
+      assertThat(repaymentResponse.repaymentTransactionId).isEqualTo(glUIID)
+    }
+
+    @Test
+    fun `should save to advance repayment mapping table`() {
+      verify(advanceRepaymentMappingRepository, times(1))
+        .saveAndFlush(capturedAdvanceRepaymentMapping.capture())
+
+      val savedMapping = capturedAdvanceRepaymentMapping.firstValue
+
+      assertThat(savedMapping.generalLedgerTransactionUuid).isEqualTo(glUIID)
+      assertThat(savedMapping.entrySequence).isEqualTo(syncRepaymentRequest.entrySequence)
+      assertThat(savedMapping.legacyTransactionId).isEqualTo(syncRepaymentRequest.transactionId)
     }
   }
 }

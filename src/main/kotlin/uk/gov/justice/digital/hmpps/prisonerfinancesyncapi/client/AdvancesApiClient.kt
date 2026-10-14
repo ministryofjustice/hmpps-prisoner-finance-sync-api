@@ -30,7 +30,7 @@ class AdvancesApiClient(
   }
 
   @Throws(WebClientResponseException::class, IllegalStateException::class)
-  fun postAdvanceRepayment(advanceId: UUID, request: CreateAdvanceRepaymentRequest, idempotencyKey: UUID): AdvanceRepaymentResponse {
+  fun postAdvanceRepayment(advanceId: UUID, idempotencyKey: UUID, request: CreateAdvanceRepaymentRequest): AdvanceRepaymentResponse {
     log.info("Creating advance repayment for advance UUID $advanceId for amount ${request.amount}")
     val response = handleExceptions(
       block = {
