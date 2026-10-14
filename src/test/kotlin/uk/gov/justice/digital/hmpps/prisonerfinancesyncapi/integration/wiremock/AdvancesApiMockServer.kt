@@ -142,6 +142,7 @@ class AdvancesApiMockServer :
       createdBy = syncCreateAdvanceRepayRequest.createdBy,
       description = syncCreateAdvanceRepayRequest.description,
       legacyTransactionId = syncCreateAdvanceRepayRequest.transactionId,
+      entrySequence = syncCreateAdvanceRepayRequest.entrySequence,
     )
 
     val advanceRecordResponse = AdvanceRepaymentResponse(
@@ -153,6 +154,7 @@ class AdvancesApiMockServer :
       transactionId = generalLedgerUUID,
       description = advanceRepayRequest.description,
       legacyTransactionId = advanceRepayRequest.legacyTransactionId,
+      entrySequence = advanceRepayRequest.entrySequence,
     )
 
     stubFor(

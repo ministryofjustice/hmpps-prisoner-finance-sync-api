@@ -13,6 +13,7 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
@@ -173,6 +174,7 @@ class AdvancesServiceTest {
             transactionId = glUIID,
             description = syncRepaymentRequest.description,
             legacyTransactionId = syncRepaymentRequest.transactionId,
+            entrySequence = 2,
           ),
         )
 
@@ -197,6 +199,7 @@ class AdvancesServiceTest {
       assertThat(capturedReq.amount).isEqualTo(syncRepaymentRequest.amount.toPence())
       assertThat(capturedReq.description).isEqualTo(syncRepaymentRequest.description)
       assertThat(capturedReq.createdBy).isEqualTo(syncRepaymentRequest.createdBy)
+      assertThat(capturedReq.entrySequence).isEqualTo(syncRepaymentRequest.entrySequence)
 
       val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(
         syncRepaymentRequest.transactionId,
@@ -217,6 +220,25 @@ class AdvancesServiceTest {
       assertThat(savedMapping.generalLedgerTransactionUuid).isEqualTo(glUIID)
       assertThat(savedMapping.entrySequence).isEqualTo(syncRepaymentRequest.entrySequence)
       assertThat(savedMapping.legacyTransactionId).isEqualTo(syncRepaymentRequest.transactionId)
+    }
+
+    @Test
+    fun `should return the mapping if it already exists when saving`() {
+      whenever { advanceRepaymentMappingRepository.saveAndFlush(any()) }
+        .thenThrow(DataIntegrityViolationException("uc_legacy_transaction_id_and_entry_sequence"))
+
+      val expectedMapping = AdvanceRepaymentMapping(
+        id = 1,
+        legacyTransactionId = 123456L,
+        entrySequence = 3,
+        generalLedgerTransactionUuid = UUID.randomUUID(),
+      )
+
+      whenever { advanceRepaymentMappingRepository.getAdvanceRepaymentMappingByGeneralLedgerTransactionUuid(any()) }.thenReturn(expectedMapping)
+
+      val actualMapping = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
+
+      assertThat(actualMapping).isEqualTo(expectedMapping)
     }
   }
 }

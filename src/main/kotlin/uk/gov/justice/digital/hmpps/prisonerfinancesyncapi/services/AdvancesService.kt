@@ -87,6 +87,7 @@ class AdvancesService(
       createdBy = syncAdvanceRepayRequest.createdBy,
       description = syncAdvanceRepayRequest.description,
       legacyTransactionId = syncAdvanceRepayRequest.transactionId,
+      entrySequence = syncAdvanceRepayRequest.entrySequence,
     )
 
     val advanceRepayResponse = advancesApiClient.postAdvanceRepayment(

@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-13.109.0acd4df"
+    "version" : "2026-10-14.116.d3e8d5a"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
@@ -578,9 +578,15 @@
             "type" : "string",
             "description" : "The description of the repayment transaction",
             "example" : "A description about this repayment"
+          },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The entry sequence of the transaction",
+            "example" : 1
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "description" ]
+        "required" : [ "amount", "createdAt", "createdBy", "description", "entrySequence" ]
       },
       "AdvanceRepaymentResponse" : {
         "type" : "object",
@@ -627,9 +633,15 @@
             "type" : "string",
             "description" : "The description of the repayment transaction",
             "example" : "A description about this repayment"
+          },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The entry sequence of the transaction",
+            "example" : 2
           }
         },
-        "required" : [ "advanceId", "amount", "createdAt", "createdBy", "description", "id", "transactionId" ]
+        "required" : [ "advanceId", "amount", "createdAt", "createdBy", "description", "entrySequence", "id", "transactionId" ]
       }
     },
     "securitySchemes" : {
