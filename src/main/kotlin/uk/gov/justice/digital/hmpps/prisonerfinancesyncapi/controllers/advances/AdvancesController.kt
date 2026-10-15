@@ -124,6 +124,11 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @ApiResponses(
     value = [
       ApiResponse(
+        responseCode = "201",
+        description = "Advance repayment created.",
+        content = [Content(schema = Schema(implementation = SyncAdvanceRepayResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "400",
         description = "Bad request - invalid input data.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -136,6 +141,11 @@ class AdvancesController(private val advancesService: AdvancesService) {
       ApiResponse(
         responseCode = "403",
         description = "Forbidden - requires an appropriate role",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "404",
+        description = "Not found - advance Id not found",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(

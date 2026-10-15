@@ -54,6 +54,7 @@ class AdvancesApiMockServer :
       .notifier(ConsoleNotifier(true)),
   ) {
   private val mapper = ObjectMapper().registerModule(JavaTimeModule())
+  private val timeConversionService = TimeConversionService()
 
   fun stubHealthPing(status: Int) {
     stubFor(
@@ -67,8 +68,6 @@ class AdvancesApiMockServer :
   }
 
   fun stubPostAdvance(advanceRequest: SyncCreateAdvanceRecordRequest, advanceRecordResponse: AdvanceRecordResponse) {
-    val timeConversionService = TimeConversionService()
-
     stubFor(
       post("/advances")
         .withRequestBody(
@@ -134,8 +133,6 @@ class AdvancesApiMockServer :
   }
 
   fun stubPostAdvanceRepayment(syncCreateAdvanceRepayRequest: SyncCreateAdvanceRepayRequest, generalLedgerUUID: UUID, advanceUUID: UUID) {
-    val timeConversionService = TimeConversionService()
-
     val advanceRepayRequest = CreateAdvanceRepaymentRequest(
       amount = syncCreateAdvanceRepayRequest.amount.toPence(),
       createdAt = timeConversionService.toUtcInstant(syncCreateAdvanceRepayRequest.createdAt),
