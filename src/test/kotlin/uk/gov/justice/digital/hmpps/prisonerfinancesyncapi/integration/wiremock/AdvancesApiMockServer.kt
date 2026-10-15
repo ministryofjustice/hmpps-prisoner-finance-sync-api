@@ -5,10 +5,10 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
-import com.github.tomakehurst.wiremock.client.WireMock.equalToJson
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
 import com.github.tomakehurst.wiremock.client.WireMock.post
+import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import org.junit.jupiter.api.extension.AfterAllCallback
@@ -113,7 +113,7 @@ class AdvancesApiMockServer :
 
   fun stubPostAdvanceReturnsError(errorCode: Int) {
     stubFor(
-      post("/advances")
+      post(urlPathMatching("^/advances.*"))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
@@ -159,7 +159,12 @@ class AdvancesApiMockServer :
 
     stubFor(
       post("/advances/$advanceUUID/repay")
-        .withRequestBody(equalToJson(mapper.writeValueAsString(advanceRepayRequest)))
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(advanceRepayRequest.amount.toString())))
+        .withRequestBody(matchingJsonPath("$.createdAt", equalTo(advanceRepayRequest.createdAt.toString())))
+        .withRequestBody(matchingJsonPath("$.createdBy", equalTo(advanceRepayRequest.createdBy)))
+        .withRequestBody(matchingJsonPath("$.description", equalTo(advanceRepayRequest.description)))
+        .withRequestBody(matchingJsonPath("$.entrySequence", equalTo(advanceRepayRequest.entrySequence.toString())))
+        .withRequestBody(matchingJsonPath("$.legacyTransactionId", equalTo(advanceRepayRequest.legacyTransactionId.toString())))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)

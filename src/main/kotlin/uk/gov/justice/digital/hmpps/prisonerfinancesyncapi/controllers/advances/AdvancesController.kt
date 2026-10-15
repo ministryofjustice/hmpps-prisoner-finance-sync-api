@@ -150,15 +150,14 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @PostMapping("/sync/advances/{advanceId}/repay")
   fun postAdvanceRepay(
     @PathVariable advanceId: UUID,
-    @Suppress("UNUSED_PARAMETER")
     @Valid
     @RequestBody createAdvanceRepayRequest: SyncCreateAdvanceRepayRequest,
   ): ResponseEntity<SyncAdvanceRepayResponse> {
-    val notImplementedResponse = 501
+    val response = advancesService.createAdvanceRepayment(advanceId, createAdvanceRepayRequest)
 
-    return ResponseEntity.status(notImplementedResponse).body(
+    return ResponseEntity.status(201).body(
       SyncAdvanceRepayResponse(
-        repaymentTransactionId = UUID.randomUUID(),
+        repaymentTransactionId = response.repaymentTransactionId,
       ),
     )
   }

@@ -210,7 +210,7 @@ class AdvancesServiceTest {
     @Test
     fun `should save to advance repayment mapping table`() {
       verify(advanceRepaymentMappingRepository, times(1))
-        .saveAndFlush(capturedAdvanceRepaymentMapping.capture())
+        .save(capturedAdvanceRepaymentMapping.capture())
 
       val savedMapping = capturedAdvanceRepaymentMapping.firstValue
 

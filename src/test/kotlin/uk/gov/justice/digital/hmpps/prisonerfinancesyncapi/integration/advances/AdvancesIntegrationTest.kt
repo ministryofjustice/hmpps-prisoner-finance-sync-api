@@ -259,11 +259,9 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @BeforeEach
     fun setup() {
-      integrationTestHelpers.clearDB()
       hmppsAuth.stubGrantToken()
       generalLedgerApi.resetAll()
       advancesApi.resetAll()
-      requestCache.clear()
     }
 
     @Test
@@ -287,7 +285,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         advanceUUID = advanceId,
       )
 
-      val advanceRepaymentResponse = webTestClient.post().uri("/sync/advances/{advanceId}/repay", advanceId)
+      val advanceRepaymentResponse = webTestClient.post().uri("/sync/advances/$advanceId/repay", advanceId)
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRepayRequest)
         .exchange()
@@ -299,45 +297,155 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       assertThat(advanceRepaymentResponse.repaymentTransactionId).isEqualTo(generalLedgerUUID)
     }
 
-    @Nested
-    inner class MigrateAdvance {
+    @Test
+    fun `should return a 400 if advance ID is not UUID`() {
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
 
-      @BeforeEach
-      fun setup() {
-        integrationTestHelpers.clearDB()
-        hmppsAuth.stubGrantToken()
-        generalLedgerApi.resetAll()
-        advancesApi.resetAll()
-        requestCache.clear()
-      }
+      webTestClient.post().uri("/sync/advances/NOT_A_UUID/repay")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
 
-      @Test
-      fun `should return a 501 when the advance migrate endpoint is called and not implemented`() {
-        val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRecordRequest(
-          legacyPaymentProfileId = 1,
-          legacyInformationNumber = "1-1",
-          prisonNumber = "A1234AA",
-          prisonID = "LEI",
-          createdOn = LocalDateTime.now(),
-          createdBy = "USER",
-          repaymentStartDate = LocalDateTime.now(),
-          repaymentAmount = BigDecimal(10.0),
-          reference = "SPENDS",
-          comment = "You owe me money",
-          status = CreateAdvanceRecordRequest.Status.ACTIVE,
-          legacyTransactionId = 12345L,
-          amount = BigDecimal(10.0),
-        )
+    @Test
+    fun `should return a 400 if request body is malformed`() {
+      webTestClient.post().uri("/sync/advances/NOT_A_UUID/repay")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue("{\"Invalid\" : \"JSON\"}")
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
 
-        webTestClient.post().uri("/migrate/advances")
-          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-          .bodyValue(syncCreateAdvanceRepayRequest)
-          .exchange()
-          .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
-          .expectBody<SyncCreateAdvanceRecordResponse>()
-          .returnResult()
-          .responseBody!!
-      }
+    @Test
+    fun `should return a 404 if advance does not exist`() {
+      val advanceId = UUID.randomUUID()
+
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
+
+      advancesApi.stubPostAdvanceReturnsError(404)
+
+      webTestClient.post().uri("/sync/advances/$advanceId/repay")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.NOT_FOUND)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 403 if passed role is incorrect`() {
+      val advanceId = UUID.randomUUID()
+
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
+
+      webTestClient.post().uri("/sync/advances/$advanceId/repay")
+        .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.FORBIDDEN)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 502 if advance service returns a 5XX error`() {
+      val advanceId = UUID.randomUUID()
+
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
+
+      advancesApi.stubPostAdvanceReturnsError(500)
+
+      webTestClient.post().uri("/sync/advances/$advanceId/repay")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+  }
+
+  @Nested
+  inner class MigrateAdvance {
+
+    @BeforeEach
+    fun setup() {
+      integrationTestHelpers.clearDB()
+      hmppsAuth.stubGrantToken()
+      generalLedgerApi.resetAll()
+      advancesApi.resetAll()
+      requestCache.clear()
+    }
+
+    @Test
+    fun `should return a 501 when the advance migrate endpoint is called and not implemented`() {
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRecordRequest(
+        legacyPaymentProfileId = 1,
+        legacyInformationNumber = "1-1",
+        prisonNumber = "A1234AA",
+        prisonID = "LEI",
+        createdOn = LocalDateTime.now(),
+        createdBy = "USER",
+        repaymentStartDate = LocalDateTime.now(),
+        repaymentAmount = BigDecimal(10.0),
+        reference = "SPENDS",
+        comment = "You owe me money",
+        status = CreateAdvanceRecordRequest.Status.ACTIVE,
+        legacyTransactionId = 12345L,
+        amount = BigDecimal(10.0),
+      )
+
+      webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+        .expectBody<SyncCreateAdvanceRecordResponse>()
+        .returnResult()
+        .responseBody!!
     }
   }
 }
