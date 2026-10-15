@@ -80,9 +80,6 @@ class AdvancesServiceTest {
       legacyTransactionId = 123,
     )
 
-    val prisonSubAccount = UUID.randomUUID()
-    val prisonerSubAccount = UUID.randomUUID()
-
     val requestCapture = argumentCaptor<CreateAdvanceRecordRequest>()
 
     @BeforeEach
@@ -223,22 +220,13 @@ class AdvancesServiceTest {
     }
 
     @Test
-    fun `should return the mapping if it already exists when saving`() {
-      whenever { advanceRepaymentMappingRepository.saveAndFlush(any()) }
-        .thenThrow(DataIntegrityViolationException("uc_legacy_transaction_id_and_entry_sequence"))
+    fun `should not throw an error if the mapping already exists when saving`() {
+      whenever { advanceRepaymentMappingRepository.save(any<AdvanceRepaymentMapping>()) }
+        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"uc_legacy_transaction_id_and_entry_sequence\""))
 
-      val expectedMapping = AdvanceRepaymentMapping(
-        id = 1,
-        legacyTransactionId = 123456L,
-        entrySequence = 3,
-        generalLedgerTransactionUuid = UUID.randomUUID(),
-      )
+      val actualResponse = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
 
-      whenever { advanceRepaymentMappingRepository.getAdvanceRepaymentMappingByGeneralLedgerTransactionUuid(any()) }.thenReturn(expectedMapping)
-
-      val actualMapping = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
-
-      assertThat(actualMapping).isEqualTo(expectedMapping)
+      assertThat(actualResponse.repaymentTransactionId).isEqualTo(glUIID)
     }
   }
 }

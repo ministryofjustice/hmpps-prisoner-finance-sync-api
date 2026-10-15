@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceMapping
@@ -102,12 +103,22 @@ class AdvancesService(
       generalLedgerTransactionUuid = advanceRepayResponse.transactionId,
     )
 
-    advanceRepaymentMappingRepository.saveAndFlush(advanceRepaymentMapping)
+    tryToSaveAdvanceRepaymentMapping(advanceRepaymentMapping)
 
-    val syncAdvanceRepayResponse = SyncAdvanceRepayResponse(
+    return SyncAdvanceRepayResponse(
       repaymentTransactionId = advanceRepayResponse.transactionId,
     )
+  }
 
-    return syncAdvanceRepayResponse
+  private fun tryToSaveAdvanceRepaymentMapping(advanceRepaymentMapping: AdvanceRepaymentMapping) {
+    try {
+      advanceRepaymentMappingRepository.save(advanceRepaymentMapping)
+    } catch (e: DataIntegrityViolationException) {
+      // ignore the exception if the mapping already exists
+      if (e.message?.contains("duplicate key value violates unique constraint \"uc_legacy_transaction_id_and_entry_sequence\"") == true) {
+        return
+      }
+      throw e
+    }
   }
 }
