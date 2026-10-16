@@ -7,6 +7,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -211,6 +213,12 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
   @Nested
   inner class WriteOffAdvance {
 
+    val advanceId = UUID.randomUUID()
+    val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
+      writeOffDateTime = LocalDateTime.now(),
+      writtenOffBy = "USER",
+    )
+
     @BeforeEach
     fun setup() {
       integrationTestHelpers.clearDB()
@@ -221,40 +229,102 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a 501 when the advance write-off endpoint is called and not implemented`() {
-      val advanceId = UUID.randomUUID()
-
-      val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
-        writeOffDateTime = LocalDateTime.now(),
-        writtenOffBy = "USER",
-        amount = BigDecimal(10.0),
+    fun `should return a 201 when a write off is made`() {
+      advancesApi.stubPostAdvanceWriteOff(
+        syncCreateAdvanceWriteOff = syncCreateAdvanceWriteOffRequest,
+        advanceUUID = advanceId,
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+      val response = webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
+        .headers(setAuthorisation(roles = listOf("ROLE_PRISONER_FINANCE_SYNC__RW")))
         .bodyValue(syncCreateAdvanceWriteOffRequest)
         .exchange()
-        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+        .expectStatus().isEqualTo(HttpStatus.CREATED)
         .expectBody<SyncAdvanceWriteOffResponse>()
         .returnResult()
         .responseBody!!
+
+      assertThat(response.advanceId).isEqualTo(advanceId)
     }
 
     @Test
-    fun `should return a 403 when when wrong role is provided`() {
-      val advanceId = UUID.randomUUID()
+    fun `should return a 400 if the advance is not a UUID`() {
+      val error = webTestClient.post().uri("/sync/advances/INVALID/write-off")
+        .headers(setAuthorisation(roles = listOf("ROLE_PRISONER_FINANCE_SYNC__RW")))
+        .bodyValue(syncCreateAdvanceWriteOffRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
 
-      val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
-        writeOffDateTime = LocalDateTime.now(),
-        writtenOffBy = "USER",
-        amount = BigDecimal(10.0),
-      )
+      assertThat(error.userMessage).contains("Parameter 'advanceId' must be of type UUID")
+    }
 
+    @Test
+    fun `should return a 400 if the body is invalid`() {
+      val error = webTestClient.post().uri("/sync/advances/${UUID.randomUUID()}/write-off")
+        .headers(setAuthorisation(roles = listOf("ROLE_PRISONER_FINANCE_SYNC__RW")))
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"hello\": \"world\"}")
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(error.userMessage).contains("Invalid request body: ")
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+      "WRONG_ROLE",
+      "ROLE_PRISONER_FINANCE_SYNC__RO",
+    )
+    fun `should return a 403 when when wrong role is provided`(role: String) {
       webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
-        .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))
+        .headers(setAuthorisation(roles = listOf(role)))
         .bodyValue(syncCreateAdvanceWriteOffRequest)
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.FORBIDDEN)
+    }
+
+    @Test
+    fun `should return a 404 when advance service responds with 404`() {
+      advancesApi.stubPostAdvanceWriteOffReturnsStatusCode(
+        advanceUUID = advanceId,
+        statusCode = 404,
+      )
+
+      val response = webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
+        .headers(setAuthorisation(roles = listOf("ROLE_PRISONER_FINANCE_SYNC__RW")))
+        .bodyValue(syncCreateAdvanceWriteOffRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.NOT_FOUND)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.userMessage).isEqualTo("Not found")
+    }
+
+    @Test
+    fun `should return a 502 when advance service responds with 500`() {
+      advancesApi.stubPostAdvanceWriteOffReturnsStatusCode(
+        advanceUUID = advanceId,
+        statusCode = 500,
+      )
+
+      val response = webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
+        .headers(setAuthorisation(roles = listOf("ROLE_PRISONER_FINANCE_SYNC__RW")))
+        .bodyValue(syncCreateAdvanceWriteOffRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.userMessage).isEqualTo("Bad Gateway - Advances API Unreachable or throwing an error")
     }
   }
 

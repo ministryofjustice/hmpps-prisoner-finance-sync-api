@@ -109,12 +109,13 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @PostMapping("/sync/advances/{advanceId}/write-off")
   fun postAdvanceWriteOff(
     @PathVariable advanceId: UUID,
-    @Suppress("UNUSED_PARAMETER")
-    @RequestBody createAdvanceWriteOffRequest: SyncCreateAdvanceWriteOffRequest,
+    @RequestBody advanceWriteOffRequest: SyncCreateAdvanceWriteOffRequest,
   ): ResponseEntity<SyncAdvanceWriteOffResponse> {
-    val notImplementedResponse = 501
-
-    return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceWriteOffResponse(advanceId))
+    val response = advancesService.writeOffAdvance(
+      advanceId = advanceId,
+      syncAdvanceWriteOffRequest = advanceWriteOffRequest,
+    )
+    return ResponseEntity.status(201).body(response)
   }
 
   @Operation(
