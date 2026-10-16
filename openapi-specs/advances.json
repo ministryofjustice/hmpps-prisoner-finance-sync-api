@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-14.116.d3e8d5a"
+    "version" : "2026-10-16.131.001feb2"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
@@ -522,6 +522,11 @@
             "type" : [ "string", "null" ],
             "format" : "date-time",
             "description" : "Last time this advance record was changed"
+          },
+          "generalLedgerUUID" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid",
+            "description" : "The transaction UUID from General Ledger if one was created"
           }
         },
         "required" : [ "amount", "createdBy", "createdOn", "id", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "repaymentAmount", "repaymentStartDate", "status" ]
