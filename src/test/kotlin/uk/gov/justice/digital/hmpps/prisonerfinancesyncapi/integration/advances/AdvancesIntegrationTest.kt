@@ -80,11 +80,8 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Nested
     inner class CreateAdvance {
-      val advanceUuid = UUID.randomUUID()
-      val stubbedSyncCreateAdvanceRecordResponse = SyncCreateAdvanceRecordResponse(
-        paymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
-        advanceId = advanceUuid,
-      )
+      val advanceUuid: UUID = UUID.randomUUID()
+      val glUUID: UUID = UUID.randomUUID()
 
       @BeforeEach
       fun setup() {
@@ -102,6 +99,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
           createdBy = "USER",
           status = AdvanceRecordResponse.Status.ACTIVE,
           updatedAt = null,
+          generalLedgerUUID = glUUID,
         )
 
         advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedAdvanceResponse)
@@ -118,10 +116,16 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .responseBody!!
 
       @Test
-      fun `should return a 201 and then created advance`() {
+      fun `should return a 201 and the created advance`() {
+        val expectedSyncCreateAdvanceRecordResponse = SyncCreateAdvanceRecordResponse(
+          paymentProfileId = syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
+          advanceId = advanceUuid,
+        )
+
         val responseBody = postAdvance()
-        assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
+
+        assertThat(responseBody.paymentProfileId).isEqualTo(expectedSyncCreateAdvanceRecordResponse.paymentProfileId)
+        assertThat(responseBody.advanceId).isEqualTo(expectedSyncCreateAdvanceRecordResponse.advanceId)
       }
 
       @Test
