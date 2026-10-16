@@ -149,8 +149,13 @@ class AdvancesController(private val advancesService: AdvancesService) {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "501",
-        description = "This endpoint is not yet implemented.",
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "A dependency error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
