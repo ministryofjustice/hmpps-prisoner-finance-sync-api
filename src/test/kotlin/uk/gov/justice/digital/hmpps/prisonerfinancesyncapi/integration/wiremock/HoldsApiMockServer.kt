@@ -133,7 +133,7 @@ class HoldsApiMockServer :
       createdBy = holdRequest.createdBy,
       holdFromDate = Instant.now(),
       isReleased = holdRequest.isReleased,
-      holdType = HoldResponse.HoldType.valueOf(holdRequest.holdType.toString()),
+      holdType = HoldResponse.HoldType.valueOf(holdRequest.holdType),
       amount = holdRequest.amount.toPence(),
       holdLocation = holdRequest.holdLocation,
       holdUntilDate = Instant.now(),

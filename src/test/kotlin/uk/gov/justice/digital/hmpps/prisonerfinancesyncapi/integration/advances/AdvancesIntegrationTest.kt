@@ -1,8 +1,6 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.advances
 
-import com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor
 import com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor
-import com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -103,6 +101,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
           reference = "REF",
           createdBy = "USER",
           status = AdvanceRecordResponse.Status.ACTIVE,
+          updatedAt = null,
         )
 
         advancesApi.stubPostAdvance(syncCreateAdvanceRecordRequest, stubbedAdvanceResponse)
@@ -119,84 +118,10 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .responseBody!!
 
       @Test
-      fun `should return a 201, resolve the GL accounts and then created advance`() {
-        integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
-          prisonParentAccount = prisonAccountId,
-          prisonSubAccount = prisonAdvanceAccount,
-          prisonSubAccountRef = "1502:ADV",
-          prisonParentAccountRef = syncCreateAdvanceRecordRequest.prisonID,
-          prisonerParentAccount = prisonerAccountId,
-          prisonerSubAccount = prisonerSpendsAccount,
-          prisonerSubAccountRef = "SPENDS",
-          prisonerParentAccountRef = syncCreateAdvanceRecordRequest.prisonNumber,
-        )
-
+      fun `should return a 201 and then created advance`() {
         val responseBody = postAdvance()
-
         assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
         assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
-
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
-      }
-
-      @Test
-      fun `should return a 201, create the GL sub accounts and then created advance`() {
-        integrationTestHelpers.stubCreateGlSubAccountsForPrisonerAndPrison(
-          prisonParentAccount = prisonAccountId,
-          prisonSubAccount = prisonAdvanceAccount,
-          prisonSubAccountRef = "1502:ADV",
-          prisonParentAccountRef = syncCreateAdvanceRecordRequest.prisonID,
-          prisonerParentAccount = prisonerAccountId,
-          prisonerSubAccount = prisonerSpendsAccount,
-          prisonerSubAccountRef = "SPENDS",
-          prisonerParentAccountRef = syncCreateAdvanceRecordRequest.prisonNumber,
-        )
-
-        val responseBody = postAdvance()
-
-        assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
-
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
-      }
-
-      @Test
-      fun `should return a 201, create the GL sub accounts, parent accounts, and then created advance`() {
-        integrationTestHelpers.stubCreateGlParentAccountAndSubAccountForPrisonerAndPrison(
-          prisonParentAccount = prisonAccountId,
-          prisonSubAccount = prisonAdvanceAccount,
-          prisonSubAccountRef = "1502:ADV",
-          prisonParentAccountRef = syncCreateAdvanceRecordRequest.prisonID,
-          prisonerParentAccount = prisonerAccountId,
-          prisonerSubAccount = prisonerSpendsAccount,
-          prisonerSubAccountRef = "SPENDS",
-          prisonerParentAccountRef = syncCreateAdvanceRecordRequest.prisonNumber,
-        )
-
-        val responseBody = postAdvance()
-
-        assertThat(responseBody.paymentProfileId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.paymentProfileId)
-        assertThat(responseBody.advanceId).isEqualTo(stubbedSyncCreateAdvanceRecordResponse.advanceId)
-
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(2, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
       }
 
       @Test
@@ -216,13 +141,6 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         postAdvance()
 
         advancesApi.verify(1, postRequestedFor(urlPathMatching("/advances")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonID}")))
-        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${syncCreateAdvanceRecordRequest.prisonNumber}")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlPathMatching("/accounts")))
-
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
-        generalLedgerApi.verify(0, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
       }
     }
 
@@ -255,23 +173,6 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .bodyValue(syncCreateAdvanceRecordRequest)
         .exchange()
         .expectStatus().isForbidden
-        .expectBody<ErrorResponse>()
-    }
-
-    @Test
-    fun `should return a 502 when GL service returns a 5XX error`() {
-      generalLedgerApi.stubGetAccountReturnsError(syncCreateAdvanceRecordRequest.prisonID)
-      generalLedgerApi.stubGetAccountReturnsError(syncCreateAdvanceRecordRequest.prisonNumber)
-
-      webTestClient
-        .post()
-        .uri("/sync/advances")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(syncCreateAdvanceRecordRequest)
-        .exchange()
-        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
         .expectBody<ErrorResponse>()
     }
 
@@ -358,30 +259,150 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @BeforeEach
     fun setup() {
-      integrationTestHelpers.clearDB()
       hmppsAuth.stubGrantToken()
       generalLedgerApi.resetAll()
       advancesApi.resetAll()
-      requestCache.clear()
     }
 
     @Test
-    fun `should return a 501 when the advance repay endpoint is called and not implemented`() {
+    fun `should return a 201 and the general ledger UUID when the advance repay endpoint is called`() {
+      val advanceId = UUID.randomUUID()
+      val generalLedgerUUID = UUID.randomUUID()
+
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
+
+      advancesApi.stubPostAdvanceRepayment(
+        syncCreateAdvanceRepayRequest = syncCreateAdvanceRepayRequest,
+        generalLedgerUUID = generalLedgerUUID,
+        advanceUUID = advanceId,
+      )
+
+      val advanceRepaymentResponse = webTestClient.post().uri("/sync/advances/$advanceId/repay", advanceId)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.CREATED)
+        .expectBody<SyncAdvanceRepayResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(advanceRepaymentResponse.repaymentTransactionId).isEqualTo(generalLedgerUUID)
+    }
+
+    @Test
+    fun `should return a 400 if advance ID is not UUID`() {
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
+
+      webTestClient.post().uri("/sync/advances/NOT_A_UUID/repay")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 400 if request body is malformed`() {
+      webTestClient.post().uri("/sync/advances/NOT_A_UUID/repay")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue("{\"Invalid\" : \"JSON\"}")
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 404 if advance does not exist`() {
       val advanceId = UUID.randomUUID()
 
       val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
         amount = BigDecimal(10.0),
         transactionId = 123456,
         createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
         createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
       )
 
-      webTestClient.post().uri("/sync/advances/{advanceId}/repay", advanceId)
+      advancesApi.stubPostAdvanceReturnsError(404)
+
+      webTestClient.post().uri("/sync/advances/$advanceId/repay")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRepayRequest)
         .exchange()
-        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
-        .expectBody<SyncAdvanceRepayResponse>()
+        .expectStatus().isEqualTo(HttpStatus.NOT_FOUND)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 403 if passed role is incorrect`() {
+      val advanceId = UUID.randomUUID()
+
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
+
+      webTestClient.post().uri("/sync/advances/$advanceId/repay")
+        .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.FORBIDDEN)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 502 if advance service returns a 5XX error`() {
+      val advanceId = UUID.randomUUID()
+
+      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRepayRequest(
+        amount = BigDecimal(10.0),
+        transactionId = 123456,
+        createdAt = LocalDateTime.now(),
+        description = "Deduction-ADV-08052026 D D",
+        createdBy = "USER",
+        entrySequence = 2,
+        caseloadId = "LEI",
+      )
+
+      advancesApi.stubPostAdvanceReturnsError(500)
+
+      webTestClient.post().uri("/sync/advances/$advanceId/repay")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+        .expectBody<ErrorResponse>()
         .returnResult()
         .responseBody!!
     }

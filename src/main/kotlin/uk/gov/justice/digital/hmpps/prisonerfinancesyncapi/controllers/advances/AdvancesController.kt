@@ -124,6 +124,11 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @ApiResponses(
     value = [
       ApiResponse(
+        responseCode = "201",
+        description = "Advance repayment created.",
+        content = [Content(schema = Schema(implementation = SyncAdvanceRepayResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "400",
         description = "Bad request - invalid input data.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -139,8 +144,18 @@ class AdvancesController(private val advancesService: AdvancesService) {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "501",
-        description = "This endpoint is not yet implemented.",
+        responseCode = "404",
+        description = "Not found - advance Id not found",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "A dependency error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
@@ -150,13 +165,16 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @PostMapping("/sync/advances/{advanceId}/repay")
   fun postAdvanceRepay(
     @PathVariable advanceId: UUID,
-    @Suppress("UNUSED_PARAMETER")
     @Valid
     @RequestBody createAdvanceRepayRequest: SyncCreateAdvanceRepayRequest,
   ): ResponseEntity<SyncAdvanceRepayResponse> {
-    val notImplementedResponse = 501
+    val response = advancesService.createAdvanceRepayment(advanceId, createAdvanceRepayRequest)
 
-    return ResponseEntity.status(notImplementedResponse).body(SyncAdvanceRepayResponse(advanceId = UUID.randomUUID()))
+    return ResponseEntity.status(201).body(
+      SyncAdvanceRepayResponse(
+        repaymentTransactionId = response.repaymentTransactionId,
+      ),
+    )
   }
 
   @Operation(

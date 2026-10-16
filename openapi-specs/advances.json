@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-05.72.ae492c2"
+    "version" : "2026-10-14.116.d3e8d5a"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
@@ -108,6 +108,115 @@
           },
           "502" : {
             "description" : "Dependency Error - General Ledger Unreachable or throwing an error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
+        } ]
+      }
+    },
+    "/advances/{advanceId}/repay" : {
+      "post" : {
+        "tags" : [ "Advance Repayment Controller" ],
+        "operationId" : "repayAdvance",
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "description" : "An Idempotency Key to ensure that transactions are not repeated",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "advanceId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAdvanceRepaymentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Advance Repayment Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdvanceRepaymentResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not found - Advance not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502" : {
+            "description" : "Bad Gateway - A dependency returned an unexpected error",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -326,18 +435,6 @@
             "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ],
             "example" : "AdvanceStatus.ACTIVE"
           },
-          "prisonerSubAccountId" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "The subAccount of the prisoner",
-            "example" : "b3bf7141-1392-4ce8-b324-d929a14b4663"
-          },
-          "prisonSubAccountId" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "The subAccount of the prison",
-            "example" : "b3bf7141-1392-4ce8-b324-d929a14b4663"
-          },
           "legacyTransactionId" : {
             "type" : [ "integer", "null" ],
             "format" : "int64",
@@ -345,56 +442,86 @@
             "example" : 12345
           }
         },
-        "required" : [ "amount", "createdBy", "createdOn", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "prisonSubAccountId", "prisonerSubAccountId", "repaymentAmount", "repaymentStartDate", "status" ]
+        "required" : [ "amount", "createdBy", "createdOn", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "repaymentAmount", "repaymentStartDate", "status" ]
       },
       "AdvanceRecordResponse" : {
         "type" : "object",
         "properties" : {
           "id" : {
             "type" : "string",
-            "format" : "uuid"
+            "format" : "uuid",
+            "description" : "ID of the repayment"
           },
           "legacyPaymentProfileId" : {
             "type" : "integer",
-            "format" : "int64"
+            "format" : "int64",
+            "description" : "The payment profile id from NOMIS",
+            "example" : 123456789
           },
           "legacyInformationNumber" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "The information number for the advance from NOMIS",
+            "example" : "12345678-1"
           },
           "prisonNumber" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "The prison number of the offender this advance was for",
+            "example" : "A9917EC"
           },
           "prisonID" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "The prison ID that issued this advance",
+            "example" : "LEI"
           },
           "amount" : {
             "type" : "integer",
-            "format" : "int64"
+            "format" : "int64",
+            "description" : "The amount in pence issued in the advance",
+            "example" : 500
           },
           "createdOn" : {
             "type" : "string",
-            "format" : "date-time"
+            "format" : "date-time",
+            "description" : "The date time when the advance was created with the time set to midnight",
+            "example" : "2024-06-18T00:00:00.000000"
           },
           "repaymentStartDate" : {
             "type" : "string",
-            "format" : "date-time"
+            "format" : "date-time",
+            "description" : "The date time when the payments are intended to begin",
+            "example" : "2024-06-18T00:00:00.000000"
           },
           "repaymentAmount" : {
             "type" : "integer",
-            "format" : "int64"
+            "format" : "int64",
+            "description" : "The amount in pence to be repaid weekly",
+            "example" : 50
           },
           "reference" : {
-            "type" : [ "string", "null" ]
+            "type" : [ "string", "null" ],
+            "description" : "The reference from the payment profile ",
+            "example" : "FNC"
           },
           "comment" : {
-            "type" : [ "string", "null" ]
+            "type" : [ "string", "null" ],
+            "description" : "The comment from the payment profile ",
+            "example" : "A comment about this advance"
           },
           "createdBy" : {
-            "type" : "string"
+            "type" : "string",
+            "description" : "The username that created this advance",
+            "example" : "JOHN_USER"
           },
           "status" : {
             "type" : "string",
-            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ]
+            "description" : "The current status of this advance",
+            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ],
+            "example" : "AdvanceStatus.ACTIVE"
+          },
+          "updatedAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time",
+            "description" : "Last time this advance record was changed"
           }
         },
         "required" : [ "amount", "createdBy", "createdOn", "id", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "repaymentAmount", "repaymentStartDate", "status" ]
@@ -420,6 +547,101 @@
           }
         },
         "required" : [ "status" ]
+      },
+      "CreateAdvanceRepaymentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount repaid in pence ",
+            "example" : 50
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS",
+            "example" : 12345
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date time when the advance repayment was sent",
+            "example" : "2024-06-18T00:00:00.000000"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The username that created this repayment",
+            "example" : "JOHN_USER"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "The description of the repayment transaction",
+            "example" : "A description about this repayment"
+          },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The entry sequence of the transaction",
+            "example" : 1
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "description", "entrySequence" ]
+      },
+      "AdvanceRepaymentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "ID of the repayment"
+          },
+          "advanceId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "ID of the advance linked to this repayment"
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount repaid in pence",
+            "example" : 50
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The date time when the advance repayment was sent",
+            "example" : "2024-06-18T00:00:00.000000"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The username that created this repayment",
+            "example" : "JOHN_USER"
+          },
+          "legacyTransactionId" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int64",
+            "description" : "The legacy transaction ID from NOMIS",
+            "example" : 12345
+          },
+          "transactionId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The transaction ID from GL"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "The description of the repayment transaction",
+            "example" : "A description about this repayment"
+          },
+          "entrySequence" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The entry sequence of the transaction",
+            "example" : 2
+          }
+        },
+        "required" : [ "advanceId", "amount", "createdAt", "createdBy", "description", "entrySequence", "id", "transactionId" ]
       }
     },
     "securitySchemes" : {

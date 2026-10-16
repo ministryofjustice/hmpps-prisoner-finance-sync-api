@@ -8,6 +8,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
 import com.github.tomakehurst.wiremock.client.WireMock.post
+import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import org.junit.jupiter.api.extension.AfterAllCallback
@@ -16,9 +17,12 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.util.UUID
 
 class AdvancesApiExtension :
   BeforeAllCallback,
@@ -49,6 +53,7 @@ class AdvancesApiMockServer :
       .notifier(ConsoleNotifier(true)),
   ) {
   private val mapper = ObjectMapper().registerModule(JavaTimeModule())
+  private val timeConversionService = TimeConversionService()
 
   fun stubHealthPing(status: Int) {
     stubFor(
@@ -62,18 +67,36 @@ class AdvancesApiMockServer :
   }
 
   fun stubPostAdvance(advanceRequest: SyncCreateAdvanceRecordRequest, advanceRecordResponse: AdvanceRecordResponse) {
-    val timeConversionService = TimeConversionService()
-
     stubFor(
       post("/advances")
-        .withRequestBody(matchingJsonPath("$.legacyPaymentProfileId", equalTo(advanceRequest.legacyPaymentProfileId.toString())))
+        .withRequestBody(
+          matchingJsonPath(
+            "$.legacyPaymentProfileId",
+            equalTo(advanceRequest.legacyPaymentProfileId.toString()),
+          ),
+        )
         .withRequestBody(matchingJsonPath("$.legacyInformationNumber", equalTo(advanceRequest.legacyInformationNumber)))
         .withRequestBody(matchingJsonPath("$.prisonNumber", equalTo(advanceRequest.prisonNumber)))
         .withRequestBody(matchingJsonPath("$.prisonID", equalTo(advanceRequest.prisonID)))
         .withRequestBody(matchingJsonPath("$.amount", equalTo(advanceRequest.amount.toPence().toString())))
-        .withRequestBody(matchingJsonPath("$.createdOn", equalTo(timeConversionService.toUtcInstant(advanceRequest.createdOn).toString())))
-        .withRequestBody(matchingJsonPath("$.repaymentStartDate", equalTo(timeConversionService.toUtcInstant(advanceRequest.repaymentStartDate).toString())))
-        .withRequestBody(matchingJsonPath("$.repaymentAmount", equalTo(advanceRequest.repaymentAmount.toPence().toString())))
+        .withRequestBody(
+          matchingJsonPath(
+            "$.createdOn",
+            equalTo(timeConversionService.toUtcInstant(advanceRequest.createdOn).toString()),
+          ),
+        )
+        .withRequestBody(
+          matchingJsonPath(
+            "$.repaymentStartDate",
+            equalTo(timeConversionService.toUtcInstant(advanceRequest.repaymentStartDate).toString()),
+          ),
+        )
+        .withRequestBody(
+          matchingJsonPath(
+            "$.repaymentAmount",
+            equalTo(advanceRequest.repaymentAmount.toPence().toString()),
+          ),
+        )
         .withRequestBody(matchingJsonPath("$.reference", equalTo(advanceRequest.reference)))
         .withRequestBody(matchingJsonPath("$.createdBy", equalTo(advanceRequest.createdBy)))
         .withRequestBody(matchingJsonPath("$.status", equalTo(advanceRequest.status.toString())))
@@ -88,7 +111,7 @@ class AdvancesApiMockServer :
 
   fun stubPostAdvanceReturnsError(errorCode: Int) {
     stubFor(
-      post("/advances")
+      post(urlPathMatching("^/advances.*"))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
@@ -104,6 +127,36 @@ class AdvancesApiMockServer :
               }
               """.trimIndent(),
             ),
+        ),
+    )
+  }
+
+  fun stubPostAdvanceRepayment(syncCreateAdvanceRepayRequest: SyncCreateAdvanceRepayRequest, generalLedgerUUID: UUID, advanceUUID: UUID) {
+    val advanceRecordResponse = AdvanceRepaymentResponse(
+      id = UUID.randomUUID(),
+      advanceId = advanceUUID,
+      amount = syncCreateAdvanceRepayRequest.amount.toPence(),
+      createdAt = timeConversionService.toUtcInstant(syncCreateAdvanceRepayRequest.createdAt),
+      createdBy = syncCreateAdvanceRepayRequest.createdBy,
+      transactionId = generalLedgerUUID,
+      description = syncCreateAdvanceRepayRequest.description,
+      legacyTransactionId = syncCreateAdvanceRepayRequest.transactionId,
+      entrySequence = syncCreateAdvanceRepayRequest.entrySequence,
+    )
+
+    stubFor(
+      post("/advances/$advanceUUID/repay")
+        .withRequestBody(matchingJsonPath("$.amount", equalTo(syncCreateAdvanceRepayRequest.amount.toPence().toString())))
+        .withRequestBody(matchingJsonPath("$.createdAt", equalTo(timeConversionService.toUtcInstant(syncCreateAdvanceRepayRequest.createdAt).toString())))
+        .withRequestBody(matchingJsonPath("$.createdBy", equalTo(syncCreateAdvanceRepayRequest.createdBy)))
+        .withRequestBody(matchingJsonPath("$.description", equalTo(syncCreateAdvanceRepayRequest.description)))
+        .withRequestBody(matchingJsonPath("$.entrySequence", equalTo(syncCreateAdvanceRepayRequest.entrySequence.toString())))
+        .withRequestBody(matchingJsonPath("$.legacyTransactionId", equalTo(syncCreateAdvanceRepayRequest.transactionId.toString())))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(mapper.writeValueAsString(advanceRecordResponse)),
         ),
     )
   }

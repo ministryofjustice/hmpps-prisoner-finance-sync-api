@@ -13,11 +13,18 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -35,27 +42,22 @@ class AdvancesServiceTest {
   @Mock
   lateinit var advancesMappingRepository: AdvancesMappingRepository
 
+  @Mock
+  lateinit var advanceRepaymentMappingRepository: AdvanceRepaymentMappingRepository
+
   @Spy
   lateinit var idempotencyService: GeneralLedgerIdempotencyService
-
-  @Mock
-  lateinit var accountResolver: GeneralLedgerAccountResolver
-
-  @Spy
-  lateinit var requestCache: InMemoryAccountCache
 
   private lateinit var advancesService: AdvancesService
 
   @BeforeEach
   fun setup() {
-    requestCache.clear()
     advancesService = AdvancesService(
       advancesApiClient = advancesApiClient,
       timeConversionService = timeConversionService,
       advancesMappingRepository = advancesMappingRepository,
       idempotencyService = idempotencyService,
-      accountResolver = accountResolver,
-      requestCache = requestCache,
+      advanceRepaymentMappingRepository = advanceRepaymentMappingRepository,
     )
   }
 
@@ -78,30 +80,10 @@ class AdvancesServiceTest {
       legacyTransactionId = 123,
     )
 
-    val prisonSubAccount = UUID.randomUUID()
-    val prisonerSubAccount = UUID.randomUUID()
-
     val requestCapture = argumentCaptor<CreateAdvanceRecordRequest>()
 
     @BeforeEach
     fun setup() {
-      whenever(
-        accountResolver.resolvePrisonSubAccount(
-          prisonId = syncAdvanceRequest.prisonID,
-          accountCode = 1502,
-          transactionType = "ADV",
-          parentCache = requestCache,
-        ),
-      ).thenReturn(prisonSubAccount)
-
-      whenever(
-        accountResolver.resolvePrisonerSubAccount(
-          offenderId = syncAdvanceRequest.prisonNumber,
-          accountCode = 2102,
-          parentCache = requestCache,
-        ),
-      ).thenReturn(prisonerSubAccount)
-
       val advanceRecordResponse = AdvanceRecordResponse(
         id = UUID.randomUUID(),
         legacyPaymentProfileId = syncAdvanceRequest.legacyPaymentProfileId,
@@ -116,6 +98,7 @@ class AdvancesServiceTest {
         status = AdvanceRecordResponse.Status.valueOf(syncAdvanceRequest.status.name),
         reference = syncAdvanceRequest.reference,
         comment = syncAdvanceRequest.comment,
+        updatedAt = null,
       )
 
       whenever(advancesApiClient.postAdvanceRecord(requestCapture.capture(), any()))
@@ -141,8 +124,109 @@ class AdvancesServiceTest {
       assertThat(capturedReq.amount).isEqualTo(syncAdvanceRequest.amount.toPence())
       assertThat(capturedReq.prisonID).isEqualTo(syncAdvanceRequest.prisonID)
       assertThat(capturedReq.status).isEqualTo(syncAdvanceRequest.status)
-      assertThat(capturedReq.prisonSubAccountId).isEqualTo(prisonSubAccount)
-      assertThat(capturedReq.prisonerSubAccountId).isEqualTo(prisonerSubAccount)
+    }
+  }
+
+  @Nested
+  inner class CreateAdvanceRepayment {
+
+    val advanceId = UUID.randomUUID()
+    val capturedAdvanceRepaymentRequest = argumentCaptor<CreateAdvanceRepaymentRequest>()
+    val capturedIdempotencyKey = argumentCaptor<UUID>()
+    val capturedAdvanceId = argumentCaptor<UUID>()
+    val capturedAdvanceRepaymentMapping = argumentCaptor<AdvanceRepaymentMapping>()
+
+    val syncRepaymentRequest = SyncCreateAdvanceRepayRequest(
+      amount = BigDecimal("0.50"),
+      transactionId = 123456,
+      createdAt = LocalDateTime.now(),
+      createdBy = "Test",
+      description = "Test Description",
+      entrySequence = 2,
+      caseloadId = "LEI",
+    )
+
+    val timeConversionService = TimeConversionService()
+
+    val glUIID = UUID.randomUUID()
+
+    lateinit var repaymentResponse: SyncAdvanceRepayResponse
+
+    @BeforeEach
+    fun setup() {
+      whenever(
+        advancesApiClient.postAdvanceRepayment(
+          any(),
+          any(),
+          any(),
+        ),
+      )
+        .thenReturn(
+          AdvanceRepaymentResponse(
+            id = UUID.randomUUID(),
+            advanceId = advanceId,
+            amount = syncRepaymentRequest.amount.toPence(),
+            createdAt = timeConversionService.toUtcInstant(syncRepaymentRequest.createdAt),
+            createdBy = syncRepaymentRequest.createdBy,
+            transactionId = glUIID,
+            description = syncRepaymentRequest.description,
+            legacyTransactionId = syncRepaymentRequest.transactionId,
+            entrySequence = 2,
+          ),
+        )
+
+      repaymentResponse = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
+    }
+
+    @Test
+    fun `should send the advance repayment request`() {
+      verify(advancesApiClient, times(1))
+        .postAdvanceRepayment(
+          advanceId = capturedAdvanceId.capture(),
+          idempotencyKey = capturedIdempotencyKey.capture(),
+          request = capturedAdvanceRepaymentRequest.capture(),
+        )
+
+      val capturedReq = capturedAdvanceRepaymentRequest.firstValue
+      val usedIdempotencyKey = capturedIdempotencyKey.firstValue
+      val capturedAdvanceId = capturedAdvanceId.firstValue
+
+      assertThat(capturedAdvanceId).isEqualTo(advanceId)
+      assertThat(capturedReq.legacyTransactionId).isEqualTo(syncRepaymentRequest.transactionId)
+      assertThat(capturedReq.amount).isEqualTo(syncRepaymentRequest.amount.toPence())
+      assertThat(capturedReq.description).isEqualTo(syncRepaymentRequest.description)
+      assertThat(capturedReq.createdBy).isEqualTo(syncRepaymentRequest.createdBy)
+      assertThat(capturedReq.entrySequence).isEqualTo(syncRepaymentRequest.entrySequence)
+
+      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(
+        syncRepaymentRequest.transactionId,
+        entrySequence = syncRepaymentRequest.entrySequence,
+      )
+      assertThat(expectedIdempotencyKey).isEqualTo(usedIdempotencyKey)
+
+      assertThat(repaymentResponse.repaymentTransactionId).isEqualTo(glUIID)
+    }
+
+    @Test
+    fun `should save to advance repayment mapping table`() {
+      verify(advanceRepaymentMappingRepository, times(1))
+        .save(capturedAdvanceRepaymentMapping.capture())
+
+      val savedMapping = capturedAdvanceRepaymentMapping.firstValue
+
+      assertThat(savedMapping.generalLedgerTransactionUuid).isEqualTo(glUIID)
+      assertThat(savedMapping.entrySequence).isEqualTo(syncRepaymentRequest.entrySequence)
+      assertThat(savedMapping.legacyTransactionId).isEqualTo(syncRepaymentRequest.transactionId)
+    }
+
+    @Test
+    fun `should not throw an error if the mapping already exists when saving`() {
+      whenever { advanceRepaymentMappingRepository.save(any<AdvanceRepaymentMapping>()) }
+        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"uc_legacy_transaction_id_and_entry_sequence\""))
+
+      val actualResponse = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
+
+      assertThat(actualResponse.repaymentTransactionId).isEqualTo(glUIID)
     }
   }
 }
