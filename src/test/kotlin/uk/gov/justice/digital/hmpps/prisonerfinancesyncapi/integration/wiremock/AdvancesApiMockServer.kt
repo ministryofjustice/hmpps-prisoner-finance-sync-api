@@ -20,8 +20,10 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.Advan
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.time.Instant
 import java.util.UUID
 
 class AdvancesApiExtension :
@@ -157,6 +159,59 @@ class AdvancesApiMockServer :
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
             .withStatus(201)
             .withBody(mapper.writeValueAsString(advanceRecordResponse)),
+        ),
+    )
+  }
+
+  fun stubPostAdvanceWriteOff(syncCreateAdvanceWriteOff: SyncCreateAdvanceWriteOffRequest, advanceUUID: UUID) {
+    val advanceRecordResponse = AdvanceRecordResponse(
+      id = advanceUUID,
+      legacyPaymentProfileId = 123,
+      legacyInformationNumber = "1233",
+      prisonNumber = "A123XS",
+      prisonID = "LWI",
+      amount = 1,
+      createdOn = Instant.now(),
+      repaymentStartDate = Instant.now(),
+      repaymentAmount = 123,
+      createdBy = "TEST",
+      status = AdvanceRecordResponse.Status.WRITTEN_OFF,
+      reference = "",
+      comment = "",
+      updatedAt = null,
+      generalLedgerUUID = UUID.randomUUID(),
+    )
+
+    stubFor(
+      post("/advances/$advanceUUID/write-off")
+        .withRequestBody(matchingJsonPath("$.writtenOffBy", equalTo(syncCreateAdvanceWriteOff.writtenOffBy)))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(mapper.writeValueAsString(advanceRecordResponse)),
+        ),
+    )
+  }
+
+  fun stubPostAdvanceWriteOffReturnsStatusCode(advanceUUID: UUID, statusCode: Int) {
+    stubFor(
+      post("/advances/$advanceUUID/write-off")
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(statusCode)
+            .withBody(
+              """
+               {
+                  "status": $statusCode,
+                  "errorCode": null,
+                  "userMessage": "GL Server Error",
+                  "developerMessage": "GL Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
         ),
     )
   }

@@ -10,6 +10,7 @@ import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -20,14 +21,18 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Adva
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
@@ -227,6 +232,61 @@ class AdvancesServiceTest {
       val actualResponse = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
 
       assertThat(actualResponse.repaymentTransactionId).isEqualTo(glUIID)
+    }
+  }
+
+  @Nested
+  inner class WriteOffAdvanceTest {
+    @Test
+    fun `should call the advance service`() {
+      val advanceId = UUID.randomUUID()
+      val requestCaptor = argumentCaptor<AdvanceWriteOffRequest>()
+
+      whenever(
+        advancesApiClient.postWriteOffAdvance(
+          advanceId = eq(advanceId),
+          request = requestCaptor.capture(),
+        ),
+      ).thenReturn(
+        AdvanceRecordResponse(
+          id = advanceId,
+          legacyPaymentProfileId = 123,
+          legacyInformationNumber = "23113",
+          prisonNumber = "A1234AB",
+          prisonID = "LEI",
+          amount = 123,
+          createdOn = Instant.now(),
+          repaymentStartDate = Instant.now(),
+          repaymentAmount = 1,
+          createdBy = "TEST",
+          status = AdvanceRecordResponse.Status.WRITTEN_OFF,
+          reference = "",
+          comment = "",
+          updatedAt = null,
+          generalLedgerUUID = UUID.randomUUID(),
+        ),
+      )
+
+      val syncAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
+        writeOffDateTime = LocalDateTime.now(),
+        writtenOffBy = "TEST",
+      )
+
+      val response = advancesService.writeOffAdvance(advanceId, syncAdvanceWriteOffRequest)
+
+      assertThat(response.advanceId).isEqualTo(advanceId)
+      assertThat(response.advanceStatus).isEqualTo(AdvanceRecordResponse.Status.WRITTEN_OFF)
+
+      val request = requestCaptor.firstValue
+
+      assertThat(request.writtenOffBy).isEqualTo(syncAdvanceWriteOffRequest.writtenOffBy)
+      assertThat(request.writeOffDateTime.truncatedTo(ChronoUnit.MILLIS)).isEqualTo(
+        timeConversionService.toUtcInstant(syncAdvanceWriteOffRequest.writeOffDateTime)
+          .truncatedTo(ChronoUnit.MILLIS),
+      )
+
+      verify(advancesApiClient, times(1))
+        .postWriteOffAdvance(eq(advanceId), any<AdvanceWriteOffRequest>())
     }
   }
 }
