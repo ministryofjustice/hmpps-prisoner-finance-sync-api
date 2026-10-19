@@ -24,6 +24,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.HoldsMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
@@ -37,6 +38,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPounds
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -68,9 +70,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
   @DisplayName("postHolds")
   inner class PostHolds {
     val prisonParentAccount = UUID.randomUUID()
-    val prisonHoldSubAccount = UUID.randomUUID()
     val prisonerParentAccount = UUID.randomUUID()
-    val prisonerHoldSubAccount = UUID.randomUUID()
 
     @Test
     fun `should return a 201 when a hold is created and create GL subAccounts if they do not exist`() {
@@ -419,23 +419,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdTransactionId = 12345,
       )
 
-      val expectedHoldRequest = CreateHoldRequest(
-        prisonNumber = "AD23451",
-        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
-        legacyHoldNumber = 123456789,
-        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
-        createdBy = "USER",
-        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
-        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
-        isReleased = false,
-        description = "Test Hold",
-        holdType = CreateHoldRequest.HoldType.WHF,
-        holdLocation = "LEI",
-        amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
-      )
-
       generalLedgerApi.stubGetAccountReturnsError(syncHoldRequest.holdLocation)
       generalLedgerApi.stubGetAccountReturnsError(syncHoldRequest.prisonNumber)
 
@@ -524,23 +507,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdLocation = "LEI",
         amount = BigDecimal("99.99"),
         holdTransactionId = 12345,
-      )
-
-      val expectedHoldRequest = CreateHoldRequest(
-        prisonNumber = "AD23451",
-        subAccountRef = CreateHoldRequest.SubAccountRef.CASH,
-        legacyHoldNumber = 123456789,
-        createdAt = timeConversionService.toUtcInstant(syncHoldRequest.createdAt),
-        createdBy = "USER",
-        holdFromDate = timeConversionService.toUtcInstant(syncHoldRequest.holdFromDate),
-        holdUntilDate = timeConversionService.toUtcInstant(syncHoldRequest.holdUntilDate as LocalDateTime),
-        isReleased = false,
-        description = "Test Hold",
-        holdType = CreateHoldRequest.HoldType.WHF,
-        holdLocation = "LEI",
-        amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
       generalLedgerApi.stubGetAccountReturnsError(syncHoldRequest.holdLocation, errorCode = 400)
@@ -729,15 +695,16 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
   @DisplayName("migrateHolds")
   inner class MigrateHolds {
     val responseHoldUUID: UUID = UUID.randomUUID()
-    val responseHoldReleaseTransactionGLUUID: UUID = UUID.randomUUID()
     val responseHoldTransactionGLUUID: UUID = UUID.randomUUID()
+    val prisonNumber = "A1234XZ"
 
+    val prisonHoldAccountNumber = 2199
     val hold = SyncCreateHoldRequest(
       subAccountCode = 2101,
       holdNumber = 12345,
       holdTransactionId = 1234567,
       releaseTransactionId = 1111,
-      prisonNumber = "A1234XZ",
+      prisonNumber = prisonNumber,
       createdAt = LocalDateTime.now(),
       createdBy = "",
       holdFromDate = LocalDateTime.now(),
@@ -749,64 +716,296 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
       amount = BigDecimal.valueOf(100),
     )
 
-    @Test
-    fun `should return 201 when a hold is migrated, sending null for transactionId fields if there are no mappings`() {
-      holdsApi.stubMigrateHold(
-        holdRequest = hold,
-        responseHoldId = responseHoldUUID,
-        subAccountRef = HoldResponse.SubAccountRef.CASH,
-        holdTransactionId = null,
-        releaseTransactionId = null,
-      )
+    @Nested
+    inner class WhenAccountsDontResolve {
 
-      val response = webTestClient.post().uri("/migrate/holds")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(hold)
-        .exchange()
-        .expectStatus().isCreated
-        .expectBody<SyncCreateHoldResponse>()
-        .returnResult()
-        .responseBody!!
+      @Test
+      fun `should return 201 when a hold is migrated - creates a missing sub account where the other exists`() {
+        holdsApi.stubMigrateHold(
+          holdRequest = hold,
+          responseHoldId = responseHoldUUID,
+          subAccountRef = HoldResponse.SubAccountRef.CASH,
+          holdTransactionId = null,
+          releaseTransactionId = null,
+        )
 
-      assertThat(response.holdNumber).isEqualTo(hold.holdNumber)
-      assertThat(response.holdUuid).isEqualTo(responseHoldUUID)
+        val prisonAccountId = UUID.randomUUID()
+        generalLedgerApi.stubGetAccount(
+          reference = hold.holdLocation,
+          returnUuid = prisonAccountId,
+          subAccounts = listOf(
+            SubAccountResponse(
+              id = UUID.randomUUID(),
+              reference = "2199:${hold.holdType}",
+              parentAccountId = prisonAccountId,
+              createdBy = "TEST USER",
+              createdAt = Instant.now(),
+            ),
+          ),
+        )
+
+        val prisonerAccountId = UUID.randomUUID()
+        generalLedgerApi.stubGetAccount(
+          reference = hold.prisonNumber,
+          returnUuid = prisonerAccountId,
+          subAccounts = emptyList(),
+        )
+
+        generalLedgerApi.stubCreateSubAccount(
+          parentId = prisonerAccountId,
+          reference = "CASH",
+          returnUuid = UUID.randomUUID().toString(),
+        )
+
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isCreated
+          .expectBody<SyncCreateHoldResponse>()
+          .returnResult()
+          .responseBody!!
+
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.holdLocation}")))
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.prisonNumber}")))
+
+        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
+      }
+
+      @Test
+      fun `should return 201 when a hold is migrated and creates all sub account if only the accounts exist`() {
+        holdsApi.stubMigrateHold(
+          holdRequest = hold,
+          responseHoldId = responseHoldUUID,
+          subAccountRef = HoldResponse.SubAccountRef.CASH,
+          holdTransactionId = null,
+          releaseTransactionId = null,
+        )
+
+        val prisonAccountId = UUID.randomUUID()
+        generalLedgerApi.stubGetAccount(
+          reference = hold.holdLocation,
+          returnUuid = prisonAccountId,
+          subAccounts = emptyList(),
+        )
+
+        generalLedgerApi.stubCreateSubAccount(
+          parentId = prisonAccountId,
+          reference = "2199:${hold.holdType}",
+          returnUuid = UUID.randomUUID().toString(),
+        )
+
+        val prisonerAccountId = UUID.randomUUID()
+        generalLedgerApi.stubGetAccount(
+          reference = hold.prisonNumber,
+          returnUuid = prisonerAccountId,
+          subAccounts = emptyList(),
+        )
+
+        generalLedgerApi.stubCreateSubAccount(
+          parentId = prisonerAccountId,
+          reference = "CASH",
+          returnUuid = UUID.randomUUID().toString(),
+        )
+
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isCreated
+          .expectBody<SyncCreateHoldResponse>()
+          .returnResult()
+          .responseBody!!
+
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.holdLocation}")))
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.prisonNumber}")))
+
+        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
+        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
+      }
+
+      @Test
+      fun `should return 201 when a hold is migrated and creates all accounts and sub account if none exist`() {
+        holdsApi.stubMigrateHold(
+          holdRequest = hold,
+          responseHoldId = responseHoldUUID,
+          subAccountRef = HoldResponse.SubAccountRef.CASH,
+          holdTransactionId = null,
+          releaseTransactionId = null,
+        )
+
+        val prisonAccountId = UUID.randomUUID()
+        generalLedgerApi.stubGetAccountNotFound(
+          reference = hold.holdLocation,
+          scenarioName = "Prison Account",
+        )
+
+        generalLedgerApi.stubCreateAccount(
+          reference = hold.holdLocation,
+          returnUuid = prisonAccountId,
+        )
+
+        generalLedgerApi.stubCreateSubAccount(
+          parentId = prisonAccountId,
+          reference = "2199:${hold.holdType}",
+          returnUuid = UUID.randomUUID().toString(),
+        )
+
+        val prisonerAccountId = UUID.randomUUID()
+        generalLedgerApi.stubGetAccountNotFound(
+          reference = hold.prisonNumber,
+          scenarioName = "Prisoner Account",
+        )
+
+        generalLedgerApi.stubCreateAccount(
+          reference = hold.prisonNumber,
+          returnUuid = prisonerAccountId,
+        )
+
+        generalLedgerApi.stubCreateSubAccount(
+          parentId = prisonerAccountId,
+          reference = "CASH",
+          returnUuid = UUID.randomUUID().toString(),
+        )
+
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isCreated
+          .expectBody<SyncCreateHoldResponse>()
+          .returnResult()
+          .responseBody!!
+
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.holdLocation}")))
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.prisonNumber}")))
+
+        generalLedgerApi.verify(2, postRequestedFor(urlEqualTo("/accounts")))
+
+        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonAccountId/sub-accounts")))
+        generalLedgerApi.verify(1, postRequestedFor(urlEqualTo("/accounts/$prisonerAccountId/sub-accounts")))
+      }
     }
 
-    @Test
-    fun `should return 201 when a hold is migrated twice`() {
-      integrationTestHelpers.stubAndCreateTransaction(
-        transactionId = hold.holdTransactionId,
-        prisonNumber = hold.prisonNumber,
-        caseloadId = hold.holdLocation,
-        transactionType = hold.holdType,
-        transactionUUID = responseHoldTransactionGLUUID,
-        prisonAccountCode = 1101,
-        prisonerAccountCode = hold.subAccountCode,
-        prisonAccountRef = "CASH",
-      )
+    @Nested
+    inner class WhenAccountsDoResolve {
+      val prisonAccountId: UUID = UUID.randomUUID()
+      val prisonerAccountId: UUID = UUID.randomUUID()
 
-      integrationTestHelpers.stubAndCreateTransaction(
-        transactionId = hold.releaseTransactionId!!,
-        prisonNumber = hold.prisonNumber,
-        caseloadId = hold.holdLocation,
-        transactionType = "HOR",
-        transactionUUID = responseHoldReleaseTransactionGLUUID,
-        prisonAccountCode = 1101,
-        prisonerAccountCode = hold.subAccountCode,
-        prisonAccountRef = "CASH",
-      )
+      @BeforeEach
+      fun setup() {
+        generalLedgerApi.resetAll()
 
-      holdsApi.stubMigrateHold(
-        holdRequest = hold,
-        responseHoldId = responseHoldUUID,
-        subAccountRef = HoldResponse.SubAccountRef.CASH,
-        holdTransactionId = responseHoldTransactionGLUUID,
-        releaseTransactionId = responseHoldReleaseTransactionGLUUID,
-      )
+        // Stub prison account and sub account
+        generalLedgerApi.stubGetAccount(
+          reference = hold.holdLocation,
+          returnUuid = prisonAccountId,
+          subAccounts = listOf(
+            SubAccountResponse(
+              id = UUID.randomUUID(),
+              reference = "2199:${hold.holdType}",
+              parentAccountId = prisonAccountId,
+              createdBy = "TEST USER",
+              createdAt = Instant.now(),
+            ),
+          ),
+          scenarioName = "Prison Account",
+        )
 
-      repeat(2) {
+        // Stub prisoner account and sub account
+        generalLedgerApi.stubGetAccount(
+          reference = hold.prisonNumber,
+          returnUuid = prisonerAccountId,
+          subAccounts = listOf(
+            SubAccountResponse(
+              id = UUID.randomUUID(),
+              reference = "CASH",
+              parentAccountId = prisonerAccountId,
+              createdBy = "TEST USER",
+              createdAt = Instant.now(),
+            ),
+          ),
+          scenarioName = "Prisoner Account",
+        )
+      }
+
+      @Test
+      fun `should return 201 when a hold is migrated and is able to resolve the prisoner's and prison's sub account`() {
+        holdsApi.stubMigrateHold(
+          holdRequest = hold,
+          responseHoldId = responseHoldUUID,
+          subAccountRef = HoldResponse.SubAccountRef.CASH,
+          holdTransactionId = null,
+          releaseTransactionId = null,
+        )
+
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isCreated
+          .expectBody<SyncCreateHoldResponse>()
+          .returnResult()
+          .responseBody!!
+
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.holdLocation}")))
+        generalLedgerApi.verify(1, getRequestedFor(urlEqualTo("/accounts?reference=${hold.prisonNumber}")))
+      }
+
+      @Test
+      fun `should return 201 when a hold is migrated twice`() {
+        holdsApi.stubMigrateHold(
+          holdRequest = hold,
+          responseHoldId = responseHoldUUID,
+          subAccountRef = HoldResponse.SubAccountRef.CASH,
+        )
+
+        repeat(2) {
+          val response = webTestClient.post().uri("/migrate/holds")
+            .accept(MediaType.APPLICATION_JSON)
+            .contentType(MediaType.APPLICATION_JSON)
+            .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+            .bodyValue(hold)
+            .exchange()
+            .expectStatus().isCreated
+            .expectBody<SyncCreateHoldResponse>()
+            .returnResult()
+            .responseBody!!
+
+          assertThat(response.holdNumber).isEqualTo(hold.holdNumber)
+          assertThat(response.holdUuid).isEqualTo(responseHoldUUID)
+        }
+      }
+
+      @Test
+      fun `should return 201 when a hold is migrated and send any available GL mappings`() {
+        // Sync hold
+        integrationTestHelpers.stubAndCreateTransaction(
+          transactionId = hold.holdTransactionId,
+          prisonNumber = hold.prisonNumber,
+          caseloadId = hold.holdLocation,
+          transactionType = hold.holdType,
+          transactionUUID = responseHoldTransactionGLUUID,
+          prisonAccountCode = prisonHoldAccountNumber,
+          prisonerAccountCode = hold.subAccountCode,
+          prisonAccountRef = "CASH",
+        )
+
+        holdsApi.stubMigrateHold(
+          holdRequest = hold,
+          responseHoldId = responseHoldUUID,
+          subAccountRef = HoldResponse.SubAccountRef.CASH,
+          holdTransactionId = responseHoldTransactionGLUUID,
+        )
+
         val response = webTestClient.post().uri("/migrate/holds")
           .accept(MediaType.APPLICATION_JSON)
           .contentType(MediaType.APPLICATION_JSON)
@@ -821,109 +1020,93 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         assertThat(response.holdNumber).isEqualTo(hold.holdNumber)
         assertThat(response.holdUuid).isEqualTo(responseHoldUUID)
       }
-    }
 
-    @Test
-    fun `should return 201 when a hold is migrated, sending null for transactionId fields if there are mappings`() {
-      integrationTestHelpers.stubAndCreateTransaction(
-        transactionId = hold.holdTransactionId,
-        prisonNumber = hold.prisonNumber,
-        caseloadId = hold.holdLocation,
-        transactionType = hold.holdType,
-        transactionUUID = responseHoldTransactionGLUUID,
-        prisonAccountCode = 1101,
-        prisonerAccountCode = hold.subAccountCode,
-        prisonAccountRef = "CASH",
-      )
+      @Test
+      fun `should return 400  when hold is released but doesn't have a released transaction`() {
+        val hold = SyncCreateHoldRequest(
+          subAccountCode = 2101,
+          holdNumber = 12345,
+          holdTransactionId = 1234567,
+          prisonNumber = "A1234XZ",
+          createdAt = LocalDateTime.now(),
+          createdBy = "",
+          holdFromDate = LocalDateTime.now(),
+          holdUntilDate = null,
+          isReleased = true,
+          description = "",
+          holdType = "HOA",
+          holdLocation = "LEI",
+          amount = BigDecimal.valueOf(100),
+        )
 
-      integrationTestHelpers.stubAndCreateTransaction(
-        transactionId = hold.releaseTransactionId!!,
-        prisonNumber = hold.prisonNumber,
-        caseloadId = hold.holdLocation,
-        transactionType = "HOR",
-        transactionUUID = responseHoldReleaseTransactionGLUUID,
-        prisonAccountCode = 1101,
-        prisonerAccountCode = hold.subAccountCode,
-        prisonAccountRef = "CASH",
-      )
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isBadRequest
+          .expectBody<ErrorResponse>()
+          .returnResult()
+          .responseBody!!
+      }
 
-      holdsApi.stubMigrateHold(
-        holdRequest = hold,
-        responseHoldId = responseHoldUUID,
-        subAccountRef = HoldResponse.SubAccountRef.CASH,
-        holdTransactionId = responseHoldTransactionGLUUID,
-        releaseTransactionId = responseHoldReleaseTransactionGLUUID,
-      )
+      @Test
+      fun `should return 502 when the general ledger service returns an error`() {
+        generalLedgerApi.stubGetAccountReturnsError(
+          reference = hold.prisonNumber,
+          errorCode = 500,
+        )
 
-      val response = webTestClient.post().uri("/migrate/holds")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(hold)
-        .exchange()
-        .expectStatus().isCreated
-        .expectBody<SyncCreateHoldResponse>()
-        .returnResult()
-        .responseBody!!
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isEqualTo(502)
+          .expectBody<ErrorResponse>()
+      }
 
-      assertThat(response.holdNumber).isEqualTo(hold.holdNumber)
-      assertThat(response.holdUuid).isEqualTo(responseHoldUUID)
-    }
+      @Test
+      fun `should return 502 when hold service returns an error`() {
+        val accountId = UUID.randomUUID()
+        generalLedgerApi.stubGetAccount(
+          reference = hold.prisonNumber,
+          returnUuid = accountId,
+          subAccounts = listOf(
+            SubAccountResponse(
+              id = accountId,
+              reference = "CASH",
+              parentAccountId = UUID.randomUUID(),
+              createdBy = "TEST USER",
+              createdAt = Instant.now(),
+            ),
+          ),
+        )
+        holdsApi.stubMigrateHoldReturnsError()
 
-    @Test
-    fun `should return 400  when hold is released but doesn't have a released transaction`() {
-      val hold = SyncCreateHoldRequest(
-        subAccountCode = 2101,
-        holdNumber = 12345,
-        holdTransactionId = 1234567,
-        prisonNumber = "A1234XZ",
-        createdAt = LocalDateTime.now(),
-        createdBy = "",
-        holdFromDate = LocalDateTime.now(),
-        holdUntilDate = null,
-        isReleased = true,
-        description = "",
-        holdType = "HOA",
-        holdLocation = "LEI",
-        amount = BigDecimal.valueOf(100),
-      )
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isEqualTo(502)
+          .expectBody<ErrorResponse>()
+      }
 
-      webTestClient.post().uri("/migrate/holds")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(hold)
-        .exchange()
-        .expectStatus().isBadRequest
-        .expectBody<ErrorResponse>()
-        .returnResult()
-        .responseBody!!
-    }
-
-    @Test
-    fun `should return 502 when hold service returns an error`() {
-      holdsApi.stubMigrateHoldReturnsError()
-
-      webTestClient.post().uri("/migrate/holds")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(hold)
-        .exchange()
-        .expectStatus().isEqualTo(502)
-        .expectBody<ErrorResponse>()
-    }
-
-    @Test
-    fun `should return a 403 if sent the wrong role`() {
-      webTestClient.post().uri("/migrate/holds")
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .headers(setAuthorisation(roles = listOf("ROLE__WRONG_ROLE")))
-        .bodyValue(hold)
-        .exchange()
-        .expectStatus().isEqualTo(403)
-        .expectBody<ErrorResponse>()
+      @Test
+      fun `should return a 403 if sent the wrong role`() {
+        webTestClient.post().uri("/migrate/holds")
+          .accept(MediaType.APPLICATION_JSON)
+          .contentType(MediaType.APPLICATION_JSON)
+          .headers(setAuthorisation(roles = listOf("ROLE__WRONG_ROLE")))
+          .bodyValue(hold)
+          .exchange()
+          .expectStatus().isEqualTo(403)
+          .expectBody<ErrorResponse>()
+      }
     }
   }
 }
