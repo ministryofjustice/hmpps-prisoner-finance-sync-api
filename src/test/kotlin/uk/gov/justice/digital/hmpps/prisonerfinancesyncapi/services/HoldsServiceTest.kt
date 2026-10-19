@@ -17,6 +17,8 @@ import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
@@ -511,6 +513,37 @@ class HoldsServiceTest {
       val logs = listAppender.list.map { it.formattedMessage }
       assertThat(logs[0]).contains("MIGRATE HOLD REQUEST: ${syncNotReleasedCreateHoldRequest.toLog()}")
       assertThat(logs[1]).contains("MIGRATE HOLD REQUEST PROCESSED: ${syncNotReleasedCreateHoldRequest.holdTransactionId}")
+    }
+
+    @Test
+    fun `Should try to resolve the account during a migration of holds to ensure the account exists`() {
+      val createHoldResponse = HoldResponse(
+        id = createHoldResponseId,
+        prisonNumber = "AD23451",
+        subAccountRef = HoldResponse.SubAccountRef.CASH,
+        legacyHoldNumber = 123456789,
+        createdAt = holdsCreatedAtUTC,
+        createdBy = "USER",
+        holdFromDate = holdsCreatedAtUTC,
+        isReleased = false,
+        description = "Test Hold",
+        holdType = HoldResponse.HoldType.WHF,
+        holdLocation = "LEI",
+        amount = BigDecimal("99.99").toPence(),
+      )
+
+      whenever(holdsApiClient.migrateHold(any()))
+        .thenReturn(createHoldResponse)
+
+      holdsService.migrateHold(syncReleasedCreateHoldRequest)
+
+      verify(accountResolver, times(1)).resolveSubAccount(
+        prisonId = eq(syncReleasedCreateHoldRequest.holdLocation),
+        offenderId = eq(syncReleasedCreateHoldRequest.prisonNumber),
+        accountCode = eq(syncReleasedCreateHoldRequest.subAccountCode),
+        transactionType = eq(syncReleasedCreateHoldRequest.holdType),
+        parentCache = any<InMemoryAccountCache>(),
+      )
     }
   }
 

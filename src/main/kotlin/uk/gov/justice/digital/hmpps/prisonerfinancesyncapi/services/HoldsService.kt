@@ -149,6 +149,14 @@ class HoldsService(
       holdFromDate = timeConversionService.toUtcInstant(syncCreateHoldRequest.holdFromDate),
     )
 
+    accountResolver.resolveSubAccount(
+      prisonId = syncCreateHoldRequest.holdLocation,
+      offenderId = syncCreateHoldRequest.prisonNumber,
+      accountCode = syncCreateHoldRequest.subAccountCode,
+      transactionType = syncCreateHoldRequest.holdType,
+      parentCache = requestCache,
+    )
+
     val response = holdsApiClient.migrateHold(createHoldMigrationRequest)
 
     val holdsMapping = HoldsMapping(legacyHoldNumber = syncCreateHoldRequest.holdNumber, holdsUuid = response.id)
