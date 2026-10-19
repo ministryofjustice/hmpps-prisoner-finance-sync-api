@@ -516,7 +516,7 @@ class HoldsServiceTest {
     }
 
     @Test
-    fun `Should try to resolve the account during a migration of holds to ensure the account exists`() {
+    fun `Should try to resolve the prisoner and prison sub account during a migration of holds to ensure the account exists`() {
       val createHoldResponse = HoldResponse(
         id = createHoldResponseId,
         prisonNumber = "AD23451",
@@ -537,11 +537,15 @@ class HoldsServiceTest {
 
       holdsService.migrateHold(syncReleasedCreateHoldRequest)
 
-      verify(accountResolver, times(1)).resolveSubAccount(
+      verify(accountResolver, times(1)).resolvePrisonSubAccount(
         prisonId = eq(syncReleasedCreateHoldRequest.holdLocation),
+        accountCode = eq(2199),
+        transactionType = eq(syncReleasedCreateHoldRequest.holdType),
+        parentCache = any<InMemoryAccountCache>(),
+      )
+      verify(accountResolver, times(1)).resolvePrisonerSubAccount(
         offenderId = eq(syncReleasedCreateHoldRequest.prisonNumber),
         accountCode = eq(syncReleasedCreateHoldRequest.subAccountCode),
-        transactionType = eq(syncReleasedCreateHoldRequest.holdType),
         parentCache = any<InMemoryAccountCache>(),
       )
     }
