@@ -6,7 +6,7 @@
       "name": "HMPPS Digital Studio",
       "email": "feedback@digital.justice.gov.uk"
     },
-    "version": "2026-10-16"
+    "version": "2026-10-19"
   },
   "servers": [
     {
@@ -181,7 +181,7 @@
             }
           },
           "400": {
-            "description": "Bad Request",
+            "description": "Bad Request - cannot write off an advance that is not active",
             "content": {
               "application/json": {
                 "schema": {
@@ -600,6 +600,85 @@
           }
         ]
       }
+    },
+    "/advances/account/{prisonNumber}/balance": {
+      "get": {
+        "tags": [
+          "Advance Record Controller"
+        ],
+        "operationId": "getAccountAdvanceBalance",
+        "parameters": [
+          {
+            "name": "prisonNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account advance balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountAdvanceBalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW",
+              "ROLE_PRISONER_FINANCE__ADVANCES__RO"
+            ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -866,10 +945,15 @@
           },
           "writtenOffBy": {
             "type": "string"
+          },
+          "writtenOffAmount": {
+            "type": "integer",
+            "format": "int64"
           }
         },
         "required": [
           "writeOffDateTime",
+          "writtenOffAmount",
           "writtenOffBy"
         ]
       },
@@ -1017,6 +1101,31 @@
           "advanceAmount",
           "balanceOutstanding",
           "remainingPayments",
+          "weeklyPaymentAmount"
+        ]
+      },
+      "AccountAdvanceBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "advancesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combined initial amount of all advances on the account in pence"
+          },
+          "balancesOutstanding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combined outstanding amount of all advances on the account in pence"
+          },
+          "weeklyPaymentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combined maximum weekly payment amount of all advances on the account in pence"
+          }
+        },
+        "required": [
+          "advancesAmount",
+          "balancesOutstanding",
           "weeklyPaymentAmount"
         ]
       }

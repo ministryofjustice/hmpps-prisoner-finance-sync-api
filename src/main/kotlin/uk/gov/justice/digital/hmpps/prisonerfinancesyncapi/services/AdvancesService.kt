@@ -131,12 +131,14 @@ class AdvancesService(
       request = AdvanceWriteOffRequest(
         writeOffDateTime = timeConversionService.toUtcInstant(syncAdvanceWriteOffRequest.writeOffDateTime),
         writtenOffBy = syncAdvanceWriteOffRequest.writtenOffBy,
+        writtenOffAmount = syncAdvanceWriteOffRequest.writtenOffAmount.toPence(),
       ),
     )
 
     return SyncAdvanceWriteOffResponse(
       advanceId = advanceResponse.id,
       advanceStatus = advanceResponse.status,
+      writtenOffAmount = syncAdvanceWriteOffRequest.writtenOffAmount,
     )
   }
 }

@@ -217,6 +217,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     val syncCreateAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
       writeOffDateTime = LocalDateTime.now(),
       writtenOffBy = "USER",
+      writtenOffAmount = BigDecimal("10.12"),
     )
 
     @BeforeEach
@@ -245,6 +246,25 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .responseBody!!
 
       assertThat(response.advanceId).isEqualTo(advanceId)
+    }
+
+    @Test
+    fun `should propagate 400 errors from advance service`() {
+      advancesApi.stubPostAdvanceWriteOffReturnsStatusCode(
+        advanceUUID = advanceId,
+        statusCode = 400,
+      )
+
+      val response = webTestClient.post().uri("/sync/advances/{advanceId}/write-off", advanceId)
+        .headers(setAuthorisation(roles = listOf("ROLE_PRISONER_FINANCE_SYNC__RW")))
+        .bodyValue(syncCreateAdvanceWriteOffRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.userMessage).isEqualTo("Bad Request from Advances API")
     }
 
     @Test

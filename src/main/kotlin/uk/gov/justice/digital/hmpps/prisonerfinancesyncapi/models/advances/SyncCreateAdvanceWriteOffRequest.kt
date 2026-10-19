@@ -1,6 +1,7 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 
 import io.swagger.v3.oas.annotations.media.Schema
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 data class SyncCreateAdvanceWriteOffRequest(
@@ -9,4 +10,7 @@ data class SyncCreateAdvanceWriteOffRequest(
 
   @field:Schema(description = "The username that wrote off this advance", example = "JOHN_USER", required = true)
   val writtenOffBy: String,
+
+  @field:Schema(description = "The amount written off", example = "10.10", required = true)
+  val writtenOffAmount: BigDecimal,
 )

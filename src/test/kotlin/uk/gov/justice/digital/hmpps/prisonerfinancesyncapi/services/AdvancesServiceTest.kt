@@ -270,6 +270,7 @@ class AdvancesServiceTest {
       val syncAdvanceWriteOffRequest = SyncCreateAdvanceWriteOffRequest(
         writeOffDateTime = LocalDateTime.now(),
         writtenOffBy = "TEST",
+        writtenOffAmount = BigDecimal("10.10"),
       )
 
       val response = advancesService.writeOffAdvance(advanceId, syncAdvanceWriteOffRequest)
@@ -279,6 +280,7 @@ class AdvancesServiceTest {
 
       val request = requestCaptor.firstValue
 
+      assertThat(request.writtenOffAmount).isEqualTo(syncAdvanceWriteOffRequest.writtenOffAmount.toPence())
       assertThat(request.writtenOffBy).isEqualTo(syncAdvanceWriteOffRequest.writtenOffBy)
       assertThat(request.writeOffDateTime.truncatedTo(ChronoUnit.MILLIS)).isEqualTo(
         timeConversionService.toUtcInstant(syncAdvanceWriteOffRequest.writeOffDateTime)
