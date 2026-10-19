@@ -83,6 +83,11 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @ApiResponses(
     value = [
       ApiResponse(
+        responseCode = "201",
+        description = "Advance record written off.",
+        content = [Content(schema = Schema(implementation = SyncAdvanceWriteOffResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "400",
         description = "Bad request - invalid input data.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -98,8 +103,18 @@ class AdvancesController(private val advancesService: AdvancesService) {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "501",
-        description = "This endpoint is not yet implemented.",
+        responseCode = "404",
+        description = "Not Found - Advance was not found.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal Server Error - An unexpected error occurred.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "The Advance Service is not available or throwing an error",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
