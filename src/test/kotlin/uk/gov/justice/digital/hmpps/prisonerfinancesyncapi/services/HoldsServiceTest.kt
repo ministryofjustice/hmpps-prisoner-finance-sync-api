@@ -167,8 +167,6 @@ class HoldsServiceTest {
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = BigDecimal("99.99").toPence(),
-        prisonerSubAccountId = prisonerSubaccountUUID,
-        prisonSubAccountId = prisonSubaccountUUID,
         holdLegacyTransactionId = syncCreateHoldRequest.holdTransactionId,
       )
 
@@ -256,8 +254,6 @@ class HoldsServiceTest {
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = BigDecimal("99.99").toPence(),
-        prisonerSubAccountId = prisonerSubaccountUUID,
-        prisonSubAccountId = prisonSubaccountUUID,
         holdLegacyTransactionId = syncCreateHoldRequest.holdTransactionId,
       )
 

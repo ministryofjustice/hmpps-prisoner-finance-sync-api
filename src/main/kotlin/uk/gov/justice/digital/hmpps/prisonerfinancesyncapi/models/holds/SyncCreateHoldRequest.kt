@@ -140,8 +140,6 @@ data class SyncCreateHoldRequest(
     holdLocation = this.holdLocation,
     holdUntilDate = holdUntilDate,
     description = this.description,
-    prisonSubAccountId = prisonSubAccountId,
-    prisonerSubAccountId = prisonerSubAccountId,
     holdLegacyTransactionId = this.holdTransactionId,
   )
 

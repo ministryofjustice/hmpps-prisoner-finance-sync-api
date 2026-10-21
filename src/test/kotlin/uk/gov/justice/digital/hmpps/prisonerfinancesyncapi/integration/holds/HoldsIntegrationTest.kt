@@ -103,8 +103,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
       integrationTestHelpers.stubCreateGlSubAccountsForPrisonerAndPrison(
@@ -170,8 +168,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
       integrationTestHelpers.stubCreateGlParentAccountAndSubAccountForPrisonerAndPrison(
@@ -237,8 +233,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
       integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
@@ -303,8 +297,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.HOA,
         holdLocation = syncHoldRequest.holdLocation,
         amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
       integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
@@ -373,8 +365,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
       integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
@@ -464,8 +454,6 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
         holdType = CreateHoldRequest.HoldType.WHF,
         holdLocation = "LEI",
         amount = syncHoldRequest.amount.toPence(),
-        prisonSubAccountId = prisonSubaccountUUID,
-        prisonerSubAccountId = prisonerSubaccountUUID,
       )
 
       integrationTestHelpers.stubGlAccountsAndSubAccountsForPrisonerAndPrison(
