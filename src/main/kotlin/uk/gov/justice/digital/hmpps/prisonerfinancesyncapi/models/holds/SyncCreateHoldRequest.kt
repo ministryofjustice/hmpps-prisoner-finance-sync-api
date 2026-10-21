@@ -125,8 +125,6 @@ data class SyncCreateHoldRequest(
     createdAt: Instant,
     holdFromDate: Instant,
     holdUntilDate: Instant? = null,
-    prisonSubAccountId: UUID,
-    prisonerSubAccountId: UUID,
   ) = CreateHoldRequest(
     prisonNumber = this.prisonNumber,
     legacyHoldNumber = this.holdNumber,

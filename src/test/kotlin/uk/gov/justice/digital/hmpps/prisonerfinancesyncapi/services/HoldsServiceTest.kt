@@ -96,39 +96,9 @@ class HoldsServiceTest {
     logger.addAppender(listAppender)
   }
 
-  val prisonSubaccountUUID = UUID.randomUUID()
-  val prisonerSubaccountUUID = UUID.randomUUID()
-
   @Nested
   @DisplayName("Create Hold")
   inner class CreateHold {
-
-    fun mockAccountResolver(
-      syncCreateHoldRequest: SyncCreateHoldRequest,
-      prisonSubaccountUUID: UUID,
-      prisonerSubaccountUUID: UUID,
-    ) {
-      whenever(
-        accountResolver.resolvePrisonSubAccount(
-          prisonId = eq(syncCreateHoldRequest.holdLocation),
-          accountCode = eq(2199),
-          transactionType = eq(syncCreateHoldRequest.holdType),
-          parentCache = any(),
-        ),
-      ).thenReturn(
-        prisonSubaccountUUID,
-      )
-
-      whenever(
-        accountResolver.resolvePrisonerSubAccount(
-          offenderId = eq(syncCreateHoldRequest.prisonNumber),
-          accountCode = eq(syncCreateHoldRequest.subAccountCode),
-          parentCache = any(),
-        ),
-      ).thenReturn(
-        prisonerSubaccountUUID,
-      )
-    }
 
     @Test
     fun `should send the hold request to the hold service, store the mapping and return the created hold`() {
@@ -187,8 +157,6 @@ class HoldsServiceTest {
         holdLocation = "LEI",
         amount = BigDecimal("99.99").toPence(),
       )
-
-      mockAccountResolver(syncCreateHoldRequest, prisonSubaccountUUID, prisonerSubaccountUUID)
 
       whenever(
         holdsApiClient.postHold(

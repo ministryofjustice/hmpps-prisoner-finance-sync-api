@@ -47,19 +47,6 @@ class HoldsService(
       return SyncCreateHoldResponse(mapping.legacyHoldNumber, mapping.holdsUuid)
     }
 
-    val prisonSubAccountId = accountResolver.resolvePrisonSubAccount(
-      prisonId = syncCreateHoldRequest.holdLocation,
-      accountCode = holdNOMISAccountCode,
-      transactionType = syncCreateHoldRequest.holdType,
-      parentCache = requestCache,
-    )
-
-    val prisonerSubAccountId = accountResolver.resolvePrisonerSubAccount(
-      offenderId = syncCreateHoldRequest.prisonNumber,
-      accountCode = syncCreateHoldRequest.subAccountCode,
-      parentCache = requestCache,
-    )
-
     val subAccountRef = accountMapping.mapPrisonerSubAccount(
       syncCreateHoldRequest.subAccountCode,
     )
@@ -73,8 +60,6 @@ class HoldsService(
       } else {
         null
       },
-      prisonSubAccountId = prisonSubAccountId,
-      prisonerSubAccountId = prisonerSubAccountId,
     )
 
     val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(
