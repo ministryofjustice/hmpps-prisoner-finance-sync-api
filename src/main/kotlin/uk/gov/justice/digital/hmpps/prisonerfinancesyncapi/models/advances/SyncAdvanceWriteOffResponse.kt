@@ -1,9 +1,16 @@
 package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 
 import io.swagger.v3.oas.annotations.media.Schema
+import java.math.BigDecimal
 import java.util.UUID
 
 data class SyncAdvanceWriteOffResponse(
   @field:Schema(description = "The advance id from Prisoner Finance", example = "de2bc56c-ea73-4f3c-8a37-5a46fdb2d79a", required = true)
   val advanceId: UUID,
+
+  @field:Schema(description = "The status of the advance", example = "WRITTEN_OFF", required = true)
+  val advanceStatus: AdvanceRecordResponse.Status,
+
+  @field:Schema(description = "The amount written off", example = "10.10", required = true)
+  val writtenOffAmount: BigDecimal,
 )

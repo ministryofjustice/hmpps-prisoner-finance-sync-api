@@ -8,12 +8,15 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceM
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceWriteOffResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
 
@@ -120,5 +123,22 @@ class AdvancesService(
       }
       throw e
     }
+  }
+
+  fun writeOffAdvance(advanceId: UUID, syncAdvanceWriteOffRequest: SyncCreateAdvanceWriteOffRequest): SyncAdvanceWriteOffResponse {
+    val advanceResponse = advancesApiClient.postWriteOffAdvance(
+      advanceId = advanceId,
+      request = AdvanceWriteOffRequest(
+        writeOffDateTime = timeConversionService.toUtcInstant(syncAdvanceWriteOffRequest.writeOffDateTime),
+        writtenOffBy = syncAdvanceWriteOffRequest.writtenOffBy,
+        writtenOffAmount = syncAdvanceWriteOffRequest.writtenOffAmount.toPence(),
+      ),
+    )
+
+    return SyncAdvanceWriteOffResponse(
+      advanceId = advanceResponse.id,
+      advanceStatus = advanceResponse.status,
+      writtenOffAmount = syncAdvanceWriteOffRequest.writtenOffAmount,
+    )
   }
 }

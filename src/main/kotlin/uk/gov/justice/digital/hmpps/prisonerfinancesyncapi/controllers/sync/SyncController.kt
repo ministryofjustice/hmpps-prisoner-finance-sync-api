@@ -114,7 +114,6 @@ class SyncController(
       SyncTransactionReceipt.Action.CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(receipt)
       SyncTransactionReceipt.Action.PROCESSED -> ResponseEntity.ok(receipt)
       SyncTransactionReceipt.Action.PROCESSED_WITH_ERRORS -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(receipt)
-      else -> throw IllegalStateException("Unexpected action: $receiptAction")
     }
   }
 

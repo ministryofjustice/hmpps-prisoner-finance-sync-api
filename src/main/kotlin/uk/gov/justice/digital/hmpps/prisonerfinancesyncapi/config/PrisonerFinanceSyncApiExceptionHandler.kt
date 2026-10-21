@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus.NOT_FOUND
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.web.HttpMediaTypeNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -66,6 +67,17 @@ class PrisonerFinanceSyncApiExceptionHandler(
         ),
       ).also { log.info("No resource found exception: {}", e.message) }
   }
+
+  @ExceptionHandler(value = [HttpMediaTypeNotSupportedException::class])
+  fun handleMissingHeaderException(e: HttpMediaTypeNotSupportedException): ResponseEntity<ErrorResponse> = ResponseEntity
+    .status(BAD_REQUEST)
+    .body(
+      ErrorResponse(
+        status = BAD_REQUEST,
+        userMessage = "Incorrect or missing media type '${e.cause?.message}'",
+        developerMessage = e.message,
+      ),
+    ).also { log.info("Incorrect or missing media type '${e.cause?.message}'") }
 
   @ExceptionHandler(HttpMessageNotReadableException::class)
   fun handleHttpMessageNotReadableException(e: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> {

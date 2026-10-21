@@ -6,6 +6,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.Adva
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRepaymentControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
 import java.util.UUID
@@ -34,11 +35,26 @@ class AdvancesApiClient(
     log.info("Creating advance repayment for advance UUID $advanceId for amount ${request.amount}")
     val response = handleExceptions(
       block = {
-        advanceRepaymentControllerApi.repayAdvance(idempotencyKey = idempotencyKey, advanceId = advanceId, createAdvanceRepaymentRequest = request)
+        advanceRepaymentControllerApi.repayAdvance(
+          idempotencyKey = idempotencyKey,
+          advanceId = advanceId,
+          createAdvanceRepaymentRequest = request,
+        )
           .block()
       },
     )
 
-    return response ?: throw IllegalStateException("Received null response when creating advance repayment for advance $advanceId")
+    return response
+      ?: throw IllegalStateException("Received null response when creating advance repayment for advance $advanceId")
+  }
+  fun postWriteOffAdvance(advanceId: UUID, request: AdvanceWriteOffRequest): AdvanceRecordResponse {
+    log.info("Writing off advance $advanceId")
+    val response = handleExceptions(
+      block = {
+        advanceRecordControllerApi.writeOffAdvance(advanceId, request)
+          .block()
+      },
+    )
+    return response ?: throw IllegalStateException("Received null response when writing off advance {advanceId}")
   }
 }
