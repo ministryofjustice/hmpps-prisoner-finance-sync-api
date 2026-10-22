@@ -34,7 +34,7 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
         createdBy = "USER",
         createdAt = LocalDateTime.now(),
         prisonId = "LEI",
-        prisonerNumber = "A2222AA",
+        prisonNumber = "A2222AA",
         subAccountCode = 2101,
       )
 
