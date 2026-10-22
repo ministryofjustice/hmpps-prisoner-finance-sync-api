@@ -28,7 +28,7 @@ data class SyncCreateSubscriptionRequest(
   @field:Schema(description = "The caseload ID of the prison", example = "LEI", required = true)
   val prisonId: String,
   @field:Schema(description = "The prison number of the offender that has the subscription", example = "AE12345", required = true)
-  val prisonerNumber: String,
+  val prisonNumber: String,
   @field:Schema(description = "The sub-account that the subscription payment is debited from", example = "2101", required = true)
   val subAccountCode: Int,
 )
