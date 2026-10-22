@@ -110,6 +110,11 @@ class SubscriptionController {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
+        responseCode = "404",
+        description = "Subscription not found",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "501",
         description = "This endpoint is not yet implemented.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
