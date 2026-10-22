@@ -3,8 +3,8 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions
 import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
 import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 data class SyncCreateSubscriptionRequest(
   @field:Schema(description = "The payment profile ID", example = "123456789", required = true)
@@ -24,7 +24,7 @@ data class SyncCreateSubscriptionRequest(
   @field:Schema(description = "The user that created the subscription", example = "TEST_USER", required = true)
   val createdBy: String,
   @field:Schema(description = "The time that the subscription was created", example = "2023-07-01T12:00:00Z", required = true)
-  val createdAt: Instant,
+  val createdAt: LocalDateTime,
   @field:Schema(description = "The caseload ID of the prison", example = "LEI", required = true)
   val prisonId: String,
   @field:Schema(description = "The prison number of the offender that has the subscription", example = "AE12345", required = true)

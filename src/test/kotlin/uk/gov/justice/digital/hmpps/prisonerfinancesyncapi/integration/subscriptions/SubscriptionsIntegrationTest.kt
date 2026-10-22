@@ -5,16 +5,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.http.HttpStatus
-import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionRequest
 import java.math.BigDecimal
 import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 @ExtendWith(MockitoExtension::class)
@@ -34,10 +32,10 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
         subscriptionType = "TELE",
         reference = "",
         createdBy = "USER",
-        createdAt = Instant.now(),
+        createdAt = LocalDateTime.now(),
         prisonId = "LEI",
         prisonerNumber = "A2222AA",
-        subAccountCode = "2101",
+        subAccountCode = 2101,
       )
 
       webTestClient.post().uri("/sync/subscriptions")
@@ -45,9 +43,6 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
         .bodyValue(syncCreateSubscriptionRequest)
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
-        .expectBody<SyncCreateSubscriptionResponse>()
-        .returnResult()
-        .responseBody!!
     }
   }
 
@@ -67,9 +62,6 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
         .bodyValue(syncUpdateSubscriptionRequest)
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
-        .expectBody<SyncUpdateSubscriptionRequest>()
-        .returnResult()
-        .responseBody!!
     }
   }
 }
