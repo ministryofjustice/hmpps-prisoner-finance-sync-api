@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.HOLDS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_HOLDS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncReleaseHoldRequest
@@ -24,7 +24,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncRele
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.HoldsService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 
-@Tag(name = HOLDS)
+@Tag(name = TAG_HOLDS)
 @RestController
 class HoldsController(var holdsService: HoldsService) {
 

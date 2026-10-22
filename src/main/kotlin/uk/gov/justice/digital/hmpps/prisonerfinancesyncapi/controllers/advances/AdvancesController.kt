@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ADVANCES
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_ADVANCES
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceWriteOffResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
@@ -26,7 +26,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.AdvancesServ
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.util.UUID
 
-@Tag(name = ADVANCES)
+@Tag(name = TAG_ADVANCES)
 @RestController
 class AdvancesController(private val advancesService: AdvancesService) {
 
