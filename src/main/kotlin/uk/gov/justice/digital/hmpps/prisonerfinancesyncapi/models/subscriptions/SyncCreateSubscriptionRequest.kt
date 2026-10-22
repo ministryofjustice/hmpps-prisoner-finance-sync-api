@@ -9,7 +9,7 @@ import java.time.LocalDateTime
 data class SyncCreateSubscriptionRequest(
   @field:Schema(description = "The payment profile ID", example = "123456789", required = true)
   val legacyPaymentProfileId: Long,
-  @field:Schema(description = "The amount paid weekly in pence", example = "0.50", required = true)
+  @field:Schema(description = "The amount paid weekly", example = "0.50", required = true)
   val amount: BigDecimal,
   @field:Schema(description = "The day the payment is made weekly", example = "MONDAY", required = true)
   val dayOfPayment: DayOfWeek,
