@@ -30,6 +30,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncMigrateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.InMemoryAccountCache
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import java.math.BigDecimal
@@ -514,24 +515,50 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       requestCache.clear()
     }
 
+    val syncCreateAdvanceRepayRequest = SyncMigrateAdvanceRecordRequest(
+      legacyPaymentProfileId = 1,
+      legacyInformationNumber = "1-1",
+      prisonNumber = "A1234AA",
+      prisonID = "LEI",
+      createdOn = LocalDateTime.now(),
+      createdBy = "USER",
+      repaymentStartDate = LocalDateTime.now(),
+      repaymentAmount = BigDecimal(10.0),
+      reference = "SPENDS",
+      comment = "You owe me money",
+      status = CreateAdvanceRecordRequest.Status.ACTIVE,
+      legacyTransactionId = 12345L,
+      amountOutstanding = BigDecimal(10.0),
+      amountIssued = BigDecimal(12.0),
+      migrationTimestamp = LocalDateTime.now(),
+    )
+
+    @Test
+    fun `should return 400 bad request when called with an invalid body`() {
+      webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue("{\"Invalid\" : \"JSON\"}")
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return 403 forbidden when called with an invalid roles`() {
+      webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.FORBIDDEN)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
     @Test
     fun `should return a 501 when the advance migrate endpoint is called and not implemented`() {
-      val syncCreateAdvanceRepayRequest = SyncCreateAdvanceRecordRequest(
-        legacyPaymentProfileId = 1,
-        legacyInformationNumber = "1-1",
-        prisonNumber = "A1234AA",
-        prisonID = "LEI",
-        createdOn = LocalDateTime.now(),
-        createdBy = "USER",
-        repaymentStartDate = LocalDateTime.now(),
-        repaymentAmount = BigDecimal(10.0),
-        reference = "SPENDS",
-        comment = "You owe me money",
-        status = CreateAdvanceRecordRequest.Status.ACTIVE,
-        legacyTransactionId = 12345L,
-        amount = BigDecimal(10.0),
-      )
-
       webTestClient.post().uri("/migrate/advances")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncCreateAdvanceRepayRequest)
