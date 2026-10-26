@@ -7,12 +7,14 @@ import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.post
+import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
 import org.junit.jupiter.api.extension.AfterAllCallback
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
+import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
 import java.util.UUID
 
@@ -66,6 +68,28 @@ class SubscriptionsApiMockServer :
             .withHeader("Content-Type", "application/json")
             .withBody(mapper.writeValueAsString(response))
             .withStatus(201),
+        ),
+    )
+  }
+
+  fun stubPostSubscriptionsReturnsError(errorCode: Int) {
+    stubFor(
+      post(urlPathMatching("^/subscriptions.*"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(errorCode)
+            .withBody(
+              """
+              {
+                  "status": $errorCode,
+                  "errorCode": null,
+                  "userMessage": "Server Error",
+                  "developerMessage": "Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
         ),
     )
   }

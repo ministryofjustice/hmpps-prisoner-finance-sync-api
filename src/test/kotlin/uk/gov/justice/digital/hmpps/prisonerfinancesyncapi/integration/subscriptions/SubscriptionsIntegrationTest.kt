@@ -7,12 +7,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.IntegrationTestBase
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension.Companion.subscriptionsApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
@@ -90,6 +92,54 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
         .responseBody!!
 
       assertThat(response.subscriptionId).isEqualTo(subscriptionResponse.id)
+    }
+
+    @Test
+    fun `should return a 400 when an invalid payload is sent`() {
+      webTestClient
+        .post()
+        .uri("/sync/subscriptions")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(
+          """
+          {"hello" : "world" }
+          """.trimIndent(),
+        )
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>()
+    }
+
+    @Test
+    fun `should return a 403 when using the incorrect role`() {
+      webTestClient
+        .post()
+        .uri("/sync/subscriptions")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf("ROLE__INCORRECT_ROLE")))
+        .bodyValue(syncCreateSubscriptionRequest)
+        .exchange()
+        .expectStatus().isForbidden
+        .expectBody<ErrorResponse>()
+    }
+
+    @Test
+    fun `should return a 502 when Advance service returns a 5XX error`() {
+      subscriptionsApi.stubPostSubscriptionsReturnsError(500)
+
+      webTestClient
+        .post()
+        .uri("/sync/subscriptions")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateSubscriptionRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+        .expectBody<ErrorResponse>()
     }
   }
 
