@@ -7,7 +7,7 @@ import java.net.URI
 import java.nio.file.Files
 
 plugins {
-  id("uk.gov.justice.hmpps.gradle-spring-boot") version "11.0.12"
+  id("uk.gov.justice.hmpps.gradle-spring-boot") version "11.0.14"
   kotlin("plugin.spring") version "2.4.21"
   id("org.jetbrains.kotlin.plugin.noarg") version "2.4.21"
   id("org.openapi.generator") version "7.26.0"
@@ -33,9 +33,9 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-webflux")
   implementation("org.springframework.boot:spring-boot-starter-webclient")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
-  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.4.0")
+  implementation("uk.gov.justice.service.hmpps:hmpps-sqs-spring-boot-starter:7.4.1")
 
-  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
+  implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
 
   implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.2")
   implementation("org.springframework.boot:spring-boot-starter-validation")
