@@ -37,7 +37,7 @@ dependencies {
 
   implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
 
-  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.1")
+  implementation("org.springframework.boot:spring-boot-starter-data-jpa:4.1.2")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
