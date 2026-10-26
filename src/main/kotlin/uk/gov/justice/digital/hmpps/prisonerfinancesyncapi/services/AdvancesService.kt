@@ -8,6 +8,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceM
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
@@ -17,6 +18,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncMigrateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
 
@@ -139,6 +141,33 @@ class AdvancesService(
       advanceId = advanceResponse.id,
       advanceStatus = advanceResponse.status,
       writtenOffAmount = syncAdvanceWriteOffRequest.writtenOffAmount,
+    )
+  }
+
+  fun migrateAdvance(migrateAdvanceRequest: SyncMigrateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
+    val request = AdvanceMigrationRequest(
+      legacyPaymentProfileId = migrateAdvanceRequest.legacyPaymentProfileId,
+      legacyInformationNumber = migrateAdvanceRequest.legacyInformationNumber,
+      prisonNumber = migrateAdvanceRequest.prisonNumber,
+      prisonID = migrateAdvanceRequest.prisonID,
+      amountIssued = migrateAdvanceRequest.amountIssued.toPence(),
+      amountOutstanding = migrateAdvanceRequest.amountOutstanding.toPence(),
+      createdOn = timeConversionService.toUtcInstant(migrateAdvanceRequest.createdOn),
+      migrationTimestamp = timeConversionService.toUtcInstant(migrateAdvanceRequest.balanceCalculationTime),
+      repaymentStartDate = timeConversionService.toUtcInstant(migrateAdvanceRequest.repaymentStartDate),
+      repaymentAmount = migrateAdvanceRequest.repaymentAmount.toPence(),
+      createdBy = migrateAdvanceRequest.createdBy,
+      status = AdvanceMigrationRequest.Status.valueOf(migrateAdvanceRequest.status.name),
+      reference = migrateAdvanceRequest.reference,
+      comment = migrateAdvanceRequest.comment,
+      legacyTransactionId = migrateAdvanceRequest.legacyTransactionId,
+    )
+
+    val response = advancesApiClient.postMigrateAdvance(request)
+
+    return SyncCreateAdvanceRecordResponse(
+      paymentProfileId = response.legacyPaymentProfileId,
+      advanceId = response.id,
     )
   }
 }

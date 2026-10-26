@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
@@ -206,12 +207,58 @@ class AdvancesApiMockServer :
                {
                   "status": $statusCode,
                   "errorCode": null,
-                  "userMessage": "GL Server Error",
-                  "developerMessage": "GL Server Error",
+                  "userMessage": "Server Error",
+                  "developerMessage": "Server Error",
                   "moreInfo": null
               }
               """.trimIndent(),
             ),
+        ),
+    )
+  }
+
+  fun stubPostMigrateAdvance(advanceMigrationRequest: AdvanceMigrationRequest, advanceRecordResponse: AdvanceRecordResponse) {
+    stubFor(
+      post("/migrate/advances")
+        .withRequestBody(
+          matchingJsonPath(
+            "$.legacyPaymentProfileId",
+            equalTo(advanceMigrationRequest.legacyPaymentProfileId.toString()),
+          ),
+        )
+        .withRequestBody(matchingJsonPath("$.legacyInformationNumber", equalTo(advanceMigrationRequest.legacyInformationNumber)))
+        .withRequestBody(matchingJsonPath("$.prisonNumber", equalTo(advanceMigrationRequest.prisonNumber)))
+        .withRequestBody(matchingJsonPath("$.prisonID", equalTo(advanceMigrationRequest.prisonID)))
+        .withRequestBody(matchingJsonPath("$.amountIssued", equalTo(advanceMigrationRequest.amountIssued.toString())))
+        .withRequestBody(matchingJsonPath("$.amountOutstanding", equalTo(advanceMigrationRequest.amountOutstanding.toString())))
+        .withRequestBody(
+          matchingJsonPath(
+            "$.createdOn",
+            equalTo(advanceMigrationRequest.createdOn.toString()),
+          ),
+        )
+        .withRequestBody(matchingJsonPath("$.migrationTimestamp", equalTo(advanceMigrationRequest.migrationTimestamp.toString())))
+        .withRequestBody(
+          matchingJsonPath(
+            "$.repaymentStartDate",
+            equalTo(advanceMigrationRequest.repaymentStartDate.toString()),
+          ),
+        )
+        .withRequestBody(
+          matchingJsonPath(
+            "$.repaymentAmount",
+            equalTo(advanceMigrationRequest.repaymentAmount.toString()),
+          ),
+        )
+        .withRequestBody(matchingJsonPath("$.reference", equalTo(advanceMigrationRequest.reference)))
+        .withRequestBody(matchingJsonPath("$.createdBy", equalTo(advanceMigrationRequest.createdBy)))
+        .withRequestBody(matchingJsonPath("$.status", equalTo(advanceMigrationRequest.status.toString())))
+        .withRequestBody(matchingJsonPath("$.legacyTransactionId", equalTo(advanceMigrationRequest.legacyTransactionId.toString())))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(mapper.writeValueAsString(advanceRecordResponse)),
         ),
     )
   }

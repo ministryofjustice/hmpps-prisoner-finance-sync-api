@@ -21,6 +21,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.ErrorResponse
@@ -33,6 +34,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncMigrateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.InMemoryAccountCache
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.util.UUID
@@ -516,7 +518,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     val syncCreateAdvanceRepayRequest = SyncMigrateAdvanceRecordRequest(
-      legacyPaymentProfileId = 1,
+      legacyPaymentProfileId = 1234,
       legacyInformationNumber = "1-1",
       prisonNumber = "A1234AA",
       prisonID = "LEI",
@@ -530,8 +532,65 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
       legacyTransactionId = 12345L,
       amountOutstanding = BigDecimal(10.0),
       amountIssued = BigDecimal(12.0),
-      migrationTimestamp = LocalDateTime.now(),
+      balanceCalculationTime = LocalDateTime.now(),
     )
+
+    val expectedAdvanceMigrationRequest = AdvanceMigrationRequest(
+      legacyPaymentProfileId = syncCreateAdvanceRepayRequest.legacyPaymentProfileId,
+      legacyInformationNumber = syncCreateAdvanceRepayRequest.legacyInformationNumber,
+      prisonNumber = syncCreateAdvanceRepayRequest.prisonNumber,
+      prisonID = syncCreateAdvanceRepayRequest.prisonID,
+      amountIssued = syncCreateAdvanceRepayRequest.amountIssued.toPence(),
+      amountOutstanding = syncCreateAdvanceRepayRequest.amountOutstanding.toPence(),
+      createdOn = timeConversionService.toUtcInstant(syncCreateAdvanceRepayRequest.createdOn),
+      migrationTimestamp = timeConversionService.toUtcInstant(syncCreateAdvanceRepayRequest.balanceCalculationTime),
+      repaymentStartDate = timeConversionService.toUtcInstant(syncCreateAdvanceRepayRequest.repaymentStartDate),
+      repaymentAmount = syncCreateAdvanceRepayRequest.repaymentAmount.toPence(),
+      createdBy = syncCreateAdvanceRepayRequest.createdBy,
+      status = AdvanceMigrationRequest.Status.valueOf(syncCreateAdvanceRepayRequest.status.name),
+      reference = syncCreateAdvanceRepayRequest.reference,
+      comment = syncCreateAdvanceRepayRequest.comment,
+      legacyTransactionId = syncCreateAdvanceRepayRequest.legacyTransactionId,
+    )
+
+    @Test
+    fun `should return a 201 when the advance migrate endpoint is called`() {
+      val createdOn = LocalDateTime.now()
+      val repaymentStartDate = LocalDateTime.now().plusDays(1)
+      val advanceUuid: UUID = UUID.randomUUID()
+      val glUUID: UUID = UUID.randomUUID()
+
+      val advanceRecordResponse = AdvanceRecordResponse(
+        id = advanceUuid,
+        legacyPaymentProfileId = 1234,
+        legacyInformationNumber = "5678",
+        prisonNumber = "A1234BC",
+        prisonID = "LEI",
+        amount = 500,
+        createdOn = timeConversionService.toUtcInstant(createdOn as LocalDateTime),
+        repaymentStartDate = timeConversionService.toUtcInstant(repaymentStartDate as LocalDateTime),
+        repaymentAmount = 50,
+        reference = "REF",
+        createdBy = "USER",
+        status = AdvanceRecordResponse.Status.ACTIVE,
+        updatedAt = null,
+        generalLedgerUUID = glUUID,
+      )
+
+      advancesApi.stubPostMigrateAdvance(expectedAdvanceMigrationRequest, advanceRecordResponse)
+
+      val response = webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.CREATED)
+        .expectBody<SyncCreateAdvanceRecordResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.paymentProfileId).isEqualTo(syncCreateAdvanceRepayRequest.legacyPaymentProfileId)
+      assertThat(response.advanceId).isEqualTo(advanceUuid)
+    }
 
     @Test
     fun `should return 400 bad request when called with an invalid body`() {
@@ -553,18 +612,6 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.FORBIDDEN)
         .expectBody<ErrorResponse>()
-        .returnResult()
-        .responseBody!!
-    }
-
-    @Test
-    fun `should return a 501 when the advance migrate endpoint is called and not implemented`() {
-      webTestClient.post().uri("/migrate/advances")
-        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
-        .bodyValue(syncCreateAdvanceRepayRequest)
-        .exchange()
-        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
-        .expectBody<SyncCreateAdvanceRecordResponse>()
         .returnResult()
         .responseBody!!
     }

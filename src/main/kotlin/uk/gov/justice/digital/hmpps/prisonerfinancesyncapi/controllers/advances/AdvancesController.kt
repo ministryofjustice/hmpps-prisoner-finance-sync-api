@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.PathVariable
@@ -201,6 +202,11 @@ class AdvancesController(private val advancesService: AdvancesService) {
   @ApiResponses(
     value = [
       ApiResponse(
+        responseCode = "201",
+        description = "Advance record migrated.",
+        content = [Content(schema = Schema(implementation = SyncCreateAdvanceRecordResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "400",
         description = "Bad request - invalid input data.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -215,22 +221,16 @@ class AdvancesController(private val advancesService: AdvancesService) {
         description = "Forbidden - requires an appropriate role",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
-      ApiResponse(
-        responseCode = "501",
-        description = "This endpoint is not yet implemented.",
-        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
-      ),
     ],
   )
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   @PostMapping("/migrate/advances")
   fun migrateAdvance(
-    @Suppress("UNUSED_PARAMETER")
     @RequestBody migrateAdvanceRequest: SyncMigrateAdvanceRecordRequest,
   ): ResponseEntity<SyncCreateAdvanceRecordResponse> {
-    val notImplementedResponse = 501
+    val response: SyncCreateAdvanceRecordResponse = advancesService.migrateAdvance(migrateAdvanceRequest)
 
-    return ResponseEntity.status(notImplementedResponse).body(SyncCreateAdvanceRecordResponse(paymentProfileId = 0, advanceId = UUID.randomUUID()))
+    return ResponseEntity.status(HttpStatus.CREATED).body(response)
   }
 }

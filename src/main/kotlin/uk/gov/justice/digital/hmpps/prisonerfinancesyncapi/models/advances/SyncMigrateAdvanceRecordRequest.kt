@@ -29,8 +29,8 @@ data class SyncMigrateAdvanceRecordRequest(
   @field:Schema(description = "The date time when the advance was created with the time set to midnight", example = "2024-06-18T00:00:00.000000", required = true)
   val createdOn: LocalDateTime,
 
-  @field:Schema(description = "The date time the advance was migrated", example = "2024-06-18T12:05:38.000000", required = true)
-  val migrationTimestamp: LocalDateTime,
+  @field:Schema(description = "The date time that the advance balance was calculated. I.e. the time of the last transaction relating to this advance.", example = "2024-06-18T12:05:38.000000", required = true)
+  val balanceCalculationTime: LocalDateTime,
 
   @field:Schema(description = "The date time when the payments are intended to begin", example = "2024-06-18T00:00:00.000000", required = true)
   val repaymentStartDate: LocalDateTime,

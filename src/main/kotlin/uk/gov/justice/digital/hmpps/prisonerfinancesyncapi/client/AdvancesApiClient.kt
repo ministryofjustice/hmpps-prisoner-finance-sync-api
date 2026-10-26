@@ -4,6 +4,8 @@ import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRecordControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRepaymentControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.MigrationControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
@@ -15,6 +17,7 @@ import java.util.UUID
 class AdvancesApiClient(
   private val advanceRecordControllerApi: AdvanceRecordControllerApi,
   private val advanceRepaymentControllerApi: AdvanceRepaymentControllerApi,
+  private val migrationControllerApi: MigrationControllerApi,
 ) : ApiClientBase("Advances API") {
 
   @Throws(WebClientResponseException::class, IllegalStateException::class)
@@ -47,6 +50,7 @@ class AdvancesApiClient(
     return response
       ?: throw IllegalStateException("Received null response when creating advance repayment for advance $advanceId")
   }
+
   fun postWriteOffAdvance(advanceId: UUID, request: AdvanceWriteOffRequest): AdvanceRecordResponse {
     log.info("Writing off advance $advanceId")
     val response = handleExceptions(
@@ -56,5 +60,17 @@ class AdvancesApiClient(
       },
     )
     return response ?: throw IllegalStateException("Received null response when writing off advance {advanceId}")
+  }
+
+  fun postMigrateAdvance(request: AdvanceMigrationRequest): AdvanceRecordResponse {
+    log.info("Migrating advance ${request.legacyPaymentProfileId}")
+    val response = handleExceptions(
+      block = {
+        migrationControllerApi.migrateAdvance(
+          advanceMigrationRequest = request,
+        ).block()
+      },
+    )
+    return response ?: throw IllegalStateException("Received null response when migrating advance ${request.legacyPaymentProfileId}")
   }
 }
