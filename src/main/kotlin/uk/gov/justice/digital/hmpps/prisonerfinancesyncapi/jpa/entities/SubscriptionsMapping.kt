@@ -5,7 +5,6 @@ import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
-import jakarta.persistence.Index
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import java.util.UUID
@@ -13,12 +12,6 @@ import java.util.UUID
 @Entity
 @Table(
   name = "subscriptions_mapping",
-  indexes = [
-    Index(
-      name = "idx_subscriptions_mapping_legacy_payment_profile_id",
-      columnList = "legacy_payment_profile_id",
-    ),
-  ],
   uniqueConstraints = [
     UniqueConstraint(
       name = "uc_subscriptions_mapping_legacy_payment_profile_id",
@@ -33,8 +26,9 @@ import java.util.UUID
 data class SubscriptionsMapping(
 
   @Id
+  @Column(name = "subscription_mapping_id")
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  var id: Long? = null,
+  var subscriptionMappingId: Long? = null,
 
   @Column(name = "legacy_payment_profile_id", nullable = false, unique = true)
   var legacyPaymentProfileId: Long,

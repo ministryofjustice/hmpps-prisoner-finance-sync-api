@@ -61,6 +61,11 @@ class SubscriptionController(private val subscriptionsService: SubscriptionsServ
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
+        responseCode = "500",
+        description = "Internal server error.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
         responseCode = "502",
         description = "A dependency error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -110,6 +115,11 @@ class SubscriptionController(private val subscriptionsService: SubscriptionsServ
       ApiResponse(
         responseCode = "404",
         description = "Subscription not found",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal server error.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
