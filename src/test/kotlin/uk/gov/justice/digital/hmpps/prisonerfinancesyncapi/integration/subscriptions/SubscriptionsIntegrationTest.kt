@@ -95,6 +95,31 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
+    fun `should return a 201 when the same subscription is sent twice`() {
+      subscriptionsApi.stubPostSubscription(idempotencyKey, subscriptionResponse)
+
+      val responseOne = webTestClient.post().uri("/sync/subscriptions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateSubscriptionRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.CREATED)
+        .expectBody<SyncCreateSubscriptionResponse>()
+        .returnResult()
+        .responseBody!!
+
+      val responseTwo = webTestClient.post().uri("/sync/subscriptions")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateSubscriptionRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.CREATED)
+        .expectBody<SyncCreateSubscriptionResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(responseOne.subscriptionId).isEqualTo(responseTwo.subscriptionId)
+    }
+
+    @Test
     fun `should return a 400 when an invalid payload is sent`() {
       webTestClient
         .post()

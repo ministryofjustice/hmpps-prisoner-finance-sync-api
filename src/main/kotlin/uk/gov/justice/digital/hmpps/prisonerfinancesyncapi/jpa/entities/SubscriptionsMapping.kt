@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import java.util.UUID
 
 @Entity
@@ -16,6 +17,16 @@ import java.util.UUID
     Index(
       name = "idx_subscriptions_mapping_legacy_payment_profile_id",
       columnList = "legacy_payment_profile_id",
+    ),
+  ],
+  uniqueConstraints = [
+    UniqueConstraint(
+      name = "uc_subscriptions_mapping_legacy_payment_profile_id",
+      columnNames = ["legacy_payment_profile_id"],
+    ),
+    UniqueConstraint(
+      name = "uc_subscriptions_mapping_subscription_uuid",
+      columnNames = ["subscription_uuid"],
     ),
   ],
 )

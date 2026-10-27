@@ -7,7 +7,7 @@ CREATE TABLE subscriptions_mapping
 );
 
 ALTER TABLE subscriptions_mapping
-    ADD CONSTRAINT uc_subscriptions_mapping_legacy_payment_profile UNIQUE (legacy_payment_profile_id);
+    ADD CONSTRAINT uc_subscriptions_mapping_legacy_payment_profile_id UNIQUE (legacy_payment_profile_id);
 
 ALTER TABLE subscriptions_mapping
     ADD CONSTRAINT uc_subscriptions_mapping_subscription_uuid UNIQUE (subscription_uuid);
