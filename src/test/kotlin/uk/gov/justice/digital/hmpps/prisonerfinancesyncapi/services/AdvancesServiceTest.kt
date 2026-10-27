@@ -57,6 +57,9 @@ class AdvancesServiceTest {
   @Spy
   lateinit var idempotencyService: GeneralLedgerIdempotencyService
 
+  @Mock
+  lateinit var accountResolver: GeneralLedgerAccountResolver
+
   private lateinit var advancesService: AdvancesService
 
   @BeforeEach
@@ -67,6 +70,7 @@ class AdvancesServiceTest {
       advancesMappingRepository = advancesMappingRepository,
       idempotencyService = idempotencyService,
       advanceRepaymentMappingRepository = advanceRepaymentMappingRepository,
+      accountResolver = accountResolver,
     )
   }
 
@@ -341,6 +345,9 @@ class AdvancesServiceTest {
       generalLedgerUUID = null,
     )
 
+    val prisonSubAccountRefAdvances = 1502
+    val prisonerSubAccountRefAdvances = 2102
+
     @Test
     fun `Should call the migrateAdvance endpoint and return advance record`() {
       whenever(
@@ -357,6 +364,19 @@ class AdvancesServiceTest {
       val response = advancesService.migrateAdvance(migrateRequest)
 
       verify(advancesApiClient, times(1)).postMigrateAdvance(any())
+
+      verify(accountResolver, times(1)).resolvePrisonSubAccount(
+        prisonId = eq(prisonId),
+        accountCode = eq(prisonSubAccountRefAdvances),
+        transactionType = eq("ADV"),
+        parentCache = any<InMemoryAccountCache>(),
+      )
+
+      verify(accountResolver, times(1)).resolvePrisonerSubAccount(
+        offenderId = eq(prisonNumber),
+        accountCode = eq(prisonerSubAccountRefAdvances),
+        parentCache = any<InMemoryAccountCache>(),
+      )
 
       assertThat(response.advanceId).isEqualTo(advanceId)
       assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)

@@ -29,6 +29,8 @@ class AdvancesService(
   @Autowired var advancesMappingRepository: AdvancesMappingRepository,
   @Autowired val idempotencyService: GeneralLedgerIdempotencyService,
   @Autowired val advanceRepaymentMappingRepository: AdvanceRepaymentMappingRepository,
+  @Autowired val accountResolver: GeneralLedgerAccountResolver,
+  val requestCache: InMemoryAccountCache = InMemoryAccountCache(),
 ) {
   // we do not expect any advance to have more than one entry
   val advanceTransactionEntrySequence = 1
@@ -145,6 +147,9 @@ class AdvancesService(
   }
 
   fun migrateAdvance(migrateAdvanceRequest: SyncMigrateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
+    val prisonSubAccountRefAdvances = 1502
+    val prisonerSubAccountRefAdvances = 2102
+
     val request = AdvanceMigrationRequest(
       legacyPaymentProfileId = migrateAdvanceRequest.legacyPaymentProfileId,
       legacyInformationNumber = migrateAdvanceRequest.legacyInformationNumber,
@@ -161,6 +166,19 @@ class AdvancesService(
       reference = migrateAdvanceRequest.reference,
       comment = migrateAdvanceRequest.comment,
       legacyTransactionId = migrateAdvanceRequest.legacyTransactionId,
+    )
+
+    accountResolver.resolvePrisonSubAccount(
+      prisonId = migrateAdvanceRequest.prisonID,
+      accountCode = prisonSubAccountRefAdvances,
+      transactionType = "ADV",
+      parentCache = requestCache,
+    )
+
+    accountResolver.resolvePrisonerSubAccount(
+      offenderId = migrateAdvanceRequest.prisonNumber,
+      accountCode = prisonerSubAccountRefAdvances,
+      parentCache = requestCache,
     )
 
     val response = advancesApiClient.postMigrateAdvance(request)
