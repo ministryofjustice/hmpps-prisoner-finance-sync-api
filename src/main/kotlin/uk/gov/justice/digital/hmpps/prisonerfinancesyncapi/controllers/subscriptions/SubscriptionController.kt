@@ -22,12 +22,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SubscriptionsService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.util.UUID
 
 @Tag(name = TAG_SUBSCRIPTIONS)
 @RestController
-class SubscriptionController {
+class SubscriptionController(private val subscriptionsService: SubscriptionsService) {
 
   @Operation(
     summary = "Create a new subscription record for a prisoner",
@@ -69,10 +70,12 @@ class SubscriptionController {
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC}')")
   fun createSubscription(
-    @Suppress("UNUSED_PARAMETER")
     @RequestBody
     @Valid request: SyncCreateSubscriptionRequest,
-  ): ResponseEntity<SyncCreateSubscriptionResponse> = ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build()
+  ): ResponseEntity<SyncCreateSubscriptionResponse> {
+    val response = subscriptionsService.createSubscription(request)
+    return ResponseEntity.status(HttpStatus.CREATED).body(response)
+  }
 
   @Operation(
     summary = "Update a subscription record for a prisoner",

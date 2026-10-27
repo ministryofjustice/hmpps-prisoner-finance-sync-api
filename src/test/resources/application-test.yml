@@ -33,6 +33,9 @@ holds-api:
 advances-api:
   url: http://localhost:8093
 
+subscriptions-api:
+  url: http://localhost:8094
+
 springdoc:
   packages-to-scan: uk.gov.justice.digital.hmpps.prisonerfinancesyncapi
   packages-to-exclude:
