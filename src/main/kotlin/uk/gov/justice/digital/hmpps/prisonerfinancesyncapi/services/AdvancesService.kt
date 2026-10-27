@@ -8,7 +8,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceM
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
@@ -34,6 +33,9 @@ class AdvancesService(
 ) {
   // we do not expect any advance to have more than one entry
   val advanceTransactionEntrySequence = 1
+  val advanceTransactionType = "ADV"
+  val prisonAdvancesSubaccountAccountCode = 1502
+  val prisonerSpendsSubaccountAccountCode = 2102
 
   fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
     val mapping = advancesMappingRepository.findAdvanceMappingByLegacyPaymentProfileId(syncCreateAdvanceRecordRequest.legacyPaymentProfileId)
@@ -147,37 +149,18 @@ class AdvancesService(
   }
 
   fun migrateAdvance(migrateAdvanceRequest: SyncMigrateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
-    val prisonSubAccountRefAdvances = 1502
-    val prisonerSubAccountRefAdvances = 2102
-
-    val request = AdvanceMigrationRequest(
-      legacyPaymentProfileId = migrateAdvanceRequest.legacyPaymentProfileId,
-      legacyInformationNumber = migrateAdvanceRequest.legacyInformationNumber,
-      prisonNumber = migrateAdvanceRequest.prisonNumber,
-      prisonID = migrateAdvanceRequest.prisonID,
-      amountIssued = migrateAdvanceRequest.amountIssued.toPence(),
-      amountOutstanding = migrateAdvanceRequest.amountOutstanding.toPence(),
-      createdOn = timeConversionService.toUtcInstant(migrateAdvanceRequest.createdOn),
-      migrationTimestamp = timeConversionService.toUtcInstant(migrateAdvanceRequest.balanceCalculationTime),
-      repaymentStartDate = timeConversionService.toUtcInstant(migrateAdvanceRequest.repaymentStartDate),
-      repaymentAmount = migrateAdvanceRequest.repaymentAmount.toPence(),
-      createdBy = migrateAdvanceRequest.createdBy,
-      status = AdvanceMigrationRequest.Status.valueOf(migrateAdvanceRequest.status.name),
-      reference = migrateAdvanceRequest.reference,
-      comment = migrateAdvanceRequest.comment,
-      legacyTransactionId = migrateAdvanceRequest.legacyTransactionId,
-    )
+    val request = migrateAdvanceRequest.toAdvanceMigrationRequest()
 
     accountResolver.resolvePrisonSubAccount(
       prisonId = migrateAdvanceRequest.prisonID,
-      accountCode = prisonSubAccountRefAdvances,
-      transactionType = "ADV",
+      accountCode = prisonAdvancesSubaccountAccountCode,
+      transactionType = advanceTransactionType,
       parentCache = requestCache,
     )
 
     accountResolver.resolvePrisonerSubAccount(
       offenderId = migrateAdvanceRequest.prisonNumber,
-      accountCode = prisonerSubAccountRefAdvances,
+      accountCode = prisonerSpendsSubaccountAccountCode,
       parentCache = requestCache,
     )
 

@@ -12,6 +12,7 @@ import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.capture
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -22,6 +23,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceM
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
@@ -327,39 +329,39 @@ class AdvancesServiceTest {
       legacyTransactionId = 1234567,
     )
 
+    val advanceMigrationRequest = migrateRequest.toAdvanceMigrationRequest()
+
+    val timeConversionService = TimeConversionService()
+
     val advanceRecordResponse = AdvanceRecordResponse(
       id = advanceId,
       legacyPaymentProfileId = legacyPaymentProfileId,
       legacyInformationNumber = legacyInformationNumber,
       prisonNumber = prisonNumber,
       prisonID = prisonId,
-      amount = 123,
-      createdOn = Instant.now(),
-      repaymentStartDate = Instant.now(),
-      repaymentAmount = 1,
-      createdBy = "TEST",
+      amount = migrateRequest.amountIssued.toPence(),
+      createdOn = timeConversionService.toUtcInstant(migrateRequest.createdOn),
+      repaymentStartDate = timeConversionService.toUtcInstant(migrateRequest.repaymentStartDate),
+      repaymentAmount = migrateRequest.repaymentAmount.toPence(),
+      createdBy = migrateRequest.createdBy,
       status = AdvanceRecordResponse.Status.ACTIVE,
-      reference = "",
-      comment = "",
+      reference = migrateRequest.reference,
+      comment = migrateRequest.comment,
       updatedAt = null,
       generalLedgerUUID = null,
     )
 
     val prisonSubAccountRefAdvances = 1502
-    val prisonerSubAccountRefAdvances = 2102
+    val prisonerSpendsRef = 2102
 
     @Test
     fun `Should call the migrateAdvance endpoint and return advance record`() {
+      val captor = argumentCaptor<AdvanceMigrationRequest>()
       whenever(
-        advancesApiClient.postMigrateAdvance(any()),
+        advancesApiClient.postMigrateAdvance(captor.capture()),
       ).thenReturn(advanceRecordResponse)
 
-      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenReturn(
-        AdvanceMapping(
-          legacyPaymentProfileId = legacyPaymentProfileId,
-          advanceUuid = advanceId,
-        ),
-      )
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenAnswer { it.arguments[0] }
 
       val response = advancesService.migrateAdvance(migrateRequest)
 
@@ -374,12 +376,13 @@ class AdvancesServiceTest {
 
       verify(accountResolver, times(1)).resolvePrisonerSubAccount(
         offenderId = eq(prisonNumber),
-        accountCode = eq(prisonerSubAccountRefAdvances),
+        accountCode = eq(prisonerSpendsRef),
         parentCache = any<InMemoryAccountCache>(),
       )
 
       assertThat(response.advanceId).isEqualTo(advanceId)
       assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)
+      assertThat(captor.firstValue).isEqualTo(advanceMigrationRequest)
     }
 
     @Test
@@ -388,12 +391,7 @@ class AdvancesServiceTest {
         advancesApiClient.postMigrateAdvance(any()),
       ).thenReturn(advanceRecordResponse)
 
-      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenReturn(
-        AdvanceMapping(
-          legacyPaymentProfileId = legacyPaymentProfileId,
-          advanceUuid = advanceId,
-        ),
-      )
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenAnswer { it.arguments[0] }
 
       advancesService.migrateAdvance(migrateRequest)
 

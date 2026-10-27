@@ -676,8 +676,17 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.FORBIDDEN)
         .expectBody<ErrorResponse>()
-        .returnResult()
-        .responseBody!!
+    }
+
+    @Test
+    fun `should return 502 when advances returns 5xx error`() {
+      advancesApi.stubPostMigrateAdvanceReturnsStatusCode(500)
+      webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncMigrateAdvanceRecordRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+        .expectBody<ErrorResponse>()
     }
   }
 }
