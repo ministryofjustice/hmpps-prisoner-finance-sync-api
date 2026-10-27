@@ -35,6 +35,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncMigrateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toUtcInstant
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
@@ -331,8 +332,6 @@ class AdvancesServiceTest {
 
     val advanceMigrationRequest = migrateRequest.toAdvanceMigrationRequest()
 
-    val timeConversionService = TimeConversionService()
-
     val advanceRecordResponse = AdvanceRecordResponse(
       id = advanceId,
       legacyPaymentProfileId = legacyPaymentProfileId,
@@ -340,8 +339,8 @@ class AdvancesServiceTest {
       prisonNumber = prisonNumber,
       prisonID = prisonId,
       amount = migrateRequest.amountIssued.toPence(),
-      createdOn = timeConversionService.toUtcInstant(migrateRequest.createdOn),
-      repaymentStartDate = timeConversionService.toUtcInstant(migrateRequest.repaymentStartDate),
+      createdOn = migrateRequest.createdOn.toUtcInstant(),
+      repaymentStartDate = migrateRequest.repaymentStartDate.toUtcInstant(),
       repaymentAmount = migrateRequest.repaymentAmount.toPence(),
       createdBy = migrateRequest.createdBy,
       status = AdvanceRecordResponse.Status.ACTIVE,

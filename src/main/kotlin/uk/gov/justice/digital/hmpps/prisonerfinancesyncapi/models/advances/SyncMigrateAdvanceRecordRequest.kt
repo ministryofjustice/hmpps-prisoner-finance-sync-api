@@ -2,8 +2,8 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Digits
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toUtcInstant
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -56,24 +56,21 @@ data class SyncMigrateAdvanceRecordRequest(
   @field:Schema(description = "The legacy transaction ID from NOMIS that paid the advance to the prisoner", example = "123456", required = true)
   val legacyTransactionId: Long,
 ) {
-  fun toAdvanceMigrationRequest(): AdvanceMigrationRequest {
-    val timeConversionService = TimeConversionService()
-    return AdvanceMigrationRequest(
-      legacyPaymentProfileId = this.legacyPaymentProfileId,
-      legacyInformationNumber = this.legacyInformationNumber,
-      prisonNumber = this.prisonNumber,
-      prisonID = this.prisonID,
-      amountIssued = this.amountIssued.toPence(),
-      amountOutstanding = this.amountOutstanding.toPence(),
-      createdOn = timeConversionService.toUtcInstant(this.createdOn),
-      migrationTimestamp = timeConversionService.toUtcInstant(this.balanceCalculationTime),
-      repaymentStartDate = timeConversionService.toUtcInstant(this.repaymentStartDate),
-      repaymentAmount = this.repaymentAmount.toPence(),
-      createdBy = this.createdBy,
-      status = AdvanceMigrationRequest.Status.valueOf(this.status.name),
-      reference = this.reference,
-      comment = this.comment,
-      legacyTransactionId = this.legacyTransactionId,
-    )
-  }
+  fun toAdvanceMigrationRequest(): AdvanceMigrationRequest = AdvanceMigrationRequest(
+    legacyPaymentProfileId = this.legacyPaymentProfileId,
+    legacyInformationNumber = this.legacyInformationNumber,
+    prisonNumber = this.prisonNumber,
+    prisonID = this.prisonID,
+    amountIssued = this.amountIssued.toPence(),
+    amountOutstanding = this.amountOutstanding.toPence(),
+    createdOn = this.createdOn.toUtcInstant(),
+    migrationTimestamp = this.balanceCalculationTime.toUtcInstant(),
+    repaymentStartDate = this.repaymentStartDate.toUtcInstant(),
+    repaymentAmount = this.repaymentAmount.toPence(),
+    createdBy = this.createdBy,
+    status = AdvanceMigrationRequest.Status.valueOf(this.status.name),
+    reference = this.reference,
+    comment = this.comment,
+    legacyTransactionId = this.legacyTransactionId,
+  )
 }
