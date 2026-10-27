@@ -2,26 +2,36 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 
 class IdempotencyServiceTest {
 
-  private val service = IdempotencyService()
+  private val service = spy(IdempotencyService())
 
-  @Test
-  fun `should generate deterministic UUID for same inputs`() {
-    val first = service.genGLTransactionIdempotencyKey(12345L, 1)
-    val second = service.genGLTransactionIdempotencyKey(12345L, 1)
+  @Nested
+  inner class GenerateIdempotencyKey {
+    @Test
+    fun `should generate deterministic UUID for same inputs`() {
+      val seed = "12345L-1"
 
-    assertEquals(first, second)
-  }
+      val first = service.generateIdempotencyKey(seed)
+      val second = service.generateIdempotencyKey(seed)
 
-  @Test
-  fun `should generate different UUIDs for different transaction ids`() {
-    val first = service.genGLTransactionIdempotencyKey(12345L, 1)
-    val second = service.genGLTransactionIdempotencyKey(54321L, 1)
+      assertEquals(first, second)
+    }
 
-    assertNotEquals(first, second)
+    @Test
+    fun `should generate different UUIDs for different seeds`() {
+      val first = service.generateIdempotencyKey("SEED-1")
+      val second = service.generateIdempotencyKey("SEED-2")
+
+      assertNotEquals(first, second)
+    }
   }
 
   @Test
@@ -45,6 +55,59 @@ class IdempotencyServiceTest {
     val validVersions = setOf(1, 2, 3, 4, 5)
     if (uuid.version() !in validVersions) {
       throw AssertionError("UUID Version ${uuid.version()} is invalid. Must be one of $validVersions")
+    }
+  }
+
+  @Nested
+  inner class GLTransaction {
+    val seedCaptor = argumentCaptor<String>()
+
+    @Test
+    fun `should pass same seed for same arguments`() {
+      service.genGLTransactionIdempotencyKey(12345L, 1)
+      service.genGLTransactionIdempotencyKey(12345L, 1)
+      verify(service, times(2)).generateIdempotencyKey(seedCaptor.capture())
+      val seeds = seedCaptor.allValues
+      assert(seeds.distinct().size == 1)
+    }
+
+    @Test
+    fun `should pass different seeds to the UUID generator`() {
+      service.genGLTransactionIdempotencyKey(12345L, 1)
+      service.genGLTransactionIdempotencyKey(56789L, 1)
+      service.genGLTransactionIdempotencyKey(12345L, 2)
+
+      verify(service, times(3)).generateIdempotencyKey(seedCaptor.capture())
+
+      val seeds = seedCaptor.allValues
+
+      assert(seeds.distinct().size == seeds.size)
+    }
+  }
+
+  @Nested
+  inner class Subscriptions {
+    val seedCaptor = argumentCaptor<String>()
+
+    @Test
+    fun `should pass same seed for same arguments`() {
+      service.genSubscriptionIdempotencyKey(12345L)
+      service.genSubscriptionIdempotencyKey(12345L)
+      verify(service, times(2)).generateIdempotencyKey(seedCaptor.capture())
+      val seeds = seedCaptor.allValues
+      assert(seeds.distinct().size == 1)
+    }
+
+    @Test
+    fun `should pass different seeds to the UUID generator`() {
+      service.genSubscriptionIdempotencyKey(12345L)
+      service.genSubscriptionIdempotencyKey(56789L)
+
+      verify(service, times(2)).generateIdempotencyKey(seedCaptor.capture())
+
+      val seeds = seedCaptor.allValues
+
+      assert(seeds.distinct().size == seeds.size)
     }
   }
 }

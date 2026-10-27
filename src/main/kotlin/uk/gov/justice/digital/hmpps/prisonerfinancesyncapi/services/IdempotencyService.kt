@@ -19,7 +19,7 @@ class IdempotencyService {
     return generateIdempotencyKey(seed)
   }
 
-  private fun generateIdempotencyKey(seed: String): UUID {
+  fun generateIdempotencyKey(seed: String): UUID {
     val digest = MessageDigest.getInstance("SHA-1")
 
     val bytes = digest.digest(seed.toByteArray(StandardCharsets.UTF_8))
