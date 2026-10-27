@@ -14,6 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsMigrationControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.subscriptions.SubscriptionRecordsApi
 import uk.gov.justice.hmpps.kotlin.auth.authorisedWebClient
 import uk.gov.justice.hmpps.kotlin.auth.healthWebClient
 import java.time.Duration
@@ -24,6 +25,7 @@ class WebClientConfiguration(
   @Value("\${general-ledger-api.url}") private val generalLedgerApiBaseUri: String,
   @Value("\${holds-api.url}") private val holdsApiBaseUri: String,
   @Value("\${advances-api.url}") private val advancesApiBaseUri: String,
+  @Value("\${subscriptions-api.url}") private val subscriptionsApiBaseUri: String,
   @param:Value("\${api.health-timeout:2s}") val healthTimeout: Duration,
   @param:Value("\${api.timeout:20s}") val timeout: Duration,
 ) {
@@ -38,6 +40,9 @@ class WebClientConfiguration(
 
   @Bean
   fun advancesHealthWebClient(builder: WebClient.Builder): WebClient = builder.healthWebClient(advancesApiBaseUri, healthTimeout)
+
+  @Bean
+  fun subscriptionsHealthWebClient(builder: WebClient.Builder): WebClient = builder.healthWebClient(subscriptionsApiBaseUri, healthTimeout)
 
   @Bean
   fun generalLedgerApiWebClient(
@@ -95,4 +100,18 @@ class WebClientConfiguration(
 
   @Bean
   fun advanceMigrationApi(@Qualifier("advancesApiWebClient") webClient: WebClient): MigrationControllerApi = MigrationControllerApi(webClient)
+
+  @Bean
+  fun subscriptionsApiWebClient(
+    authorizedClientManager: OAuth2AuthorizedClientManager,
+    builder: WebClient.Builder,
+  ): WebClient = builder.authorisedWebClient(
+    authorizedClientManager = authorizedClientManager,
+    registrationId = "sync-api",
+    url = subscriptionsApiBaseUri,
+    timeout = timeout,
+  )
+
+  @Bean
+  fun subscriptionRecordApi(@Qualifier("subscriptionsApiWebClient") webClient: WebClient): SubscriptionRecordsApi = SubscriptionRecordsApi(webClient)
 }

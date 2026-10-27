@@ -29,6 +29,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension.Companion.subscriptionsApi
 import uk.gov.justice.hmpps.test.kotlin.auth.JwtAuthorisationHelper
 import java.util.EnumSet
 
@@ -37,6 +39,7 @@ import java.util.EnumSet
   GeneralLedgerApiExtension::class,
   HoldsApiExtension::class,
   AdvancesApiExtension::class,
+  SubscriptionsApiExtension::class,
 )
 @SpringBootTest(
   webEnvironment = RANDOM_PORT,
@@ -78,6 +81,7 @@ abstract class IntegrationTestBase {
     generalLedgerApi.stubHealthPing(status)
     holdsApi.stubHealthPing(status)
     advancesApi.stubHealthPing(status)
+    subscriptionsApi.stubHealthPing(status)
   }
 
   companion object {

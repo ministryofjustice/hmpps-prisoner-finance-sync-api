@@ -18,3 +18,6 @@ class HoldsApiHealthPing(@Qualifier("holdsHealthWebClient") webClient: WebClient
 
 @Component("advances")
 class AdvancesApiHealthPing(@Qualifier("advancesHealthWebClient") webClient: WebClient) : HealthPingCheck(webClient)
+
+@Component("subscriptions")
+class SubscriptionsApiHealthPing(@Qualifier("subscriptionsHealthWebClient") webClient: WebClient) : HealthPingCheck(webClient)

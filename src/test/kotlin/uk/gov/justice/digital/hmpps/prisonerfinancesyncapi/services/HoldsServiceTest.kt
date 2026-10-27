@@ -59,7 +59,7 @@ class HoldsServiceTest {
   private lateinit var holdsMappingRepository: HoldsMappingRepository
 
   @Spy
-  private lateinit var idempotencyService: GeneralLedgerIdempotencyService
+  private lateinit var idempotencyService: IdempotencyService
 
   @Mock
   private lateinit var accountResolver: GeneralLedgerAccountResolver
@@ -556,7 +556,7 @@ class HoldsServiceTest {
         releasedAt = syncReleaseHoldRequest.releaseDateTime,
       )
 
-      val expectedIdempotencyKey = idempotencyService.genTransactionIdempotencyKey(legacyTransactionNumber, 1)
+      val expectedIdempotencyKey = idempotencyService.genGLTransactionIdempotencyKey(legacyTransactionNumber, 1)
 
       whenever(
         holdsMappingRepository.findHoldsMappingByLegacyHoldNumber(legacyHoldNumber),

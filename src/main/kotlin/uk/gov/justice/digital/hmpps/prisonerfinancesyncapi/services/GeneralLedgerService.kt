@@ -36,7 +36,7 @@ class GeneralLedgerService(
   private val accountMapping: LedgerAccountMappingService,
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
-  private val idempotencyService: GeneralLedgerIdempotencyService,
+  private val idempotencyService: IdempotencyService,
   private val generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository,
   private val generalLedgerAccountResolver: GeneralLedgerAccountResolver,
   private val legacyTransactionFixService: LegacyTransactionFixService,
@@ -89,7 +89,7 @@ class GeneralLedgerService(
 
     return generalLedgerApiClient.postTransaction(
       glRequest,
-      idempotencyService.genTransactionIdempotencyKey(
+      idempotencyService.genGLTransactionIdempotencyKey(
         fixedRequest.transactionId,
         transaction.entrySequence,
       ),

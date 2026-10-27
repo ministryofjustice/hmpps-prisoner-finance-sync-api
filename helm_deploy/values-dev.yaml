@@ -15,6 +15,7 @@ generic-service:
     SPRINGDOC_SWAGGER-UI_ENABLED: "true"
     HOLDS_API_URL: "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk"
     ADVANCES_API_URL: "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk"
+    SUBSCRIPTIONS_API_URL: "https://prisoner-finance-subscriptions-api-dev.hmpps.service.justice.gov.uk"
 
 # CloudPlatform AlertManager receiver to route prometheus alerts to slack
 # See https://user-guide.cloud-platform.service.justice.gov.uk/documentation/monitoring-an-app/how-to-create-alarms.html#creating-your-own-custom-alerts

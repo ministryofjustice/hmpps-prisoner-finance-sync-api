@@ -1,0 +1,304 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "HMPPS Prisoner Finance Subscriptions Api",
+    "contact" : {
+      "name" : "HMPPS Digital Studio",
+      "email" : "feedback@digital.justice.gov.uk"
+    },
+    "version" : "2026-10-26.91.65a71c6"
+  },
+  "servers" : [ {
+    "url" : "https://prisoner-finance-subscriptions-api-dev.hmpps.service.justice.gov.uk",
+    "description" : "Development"
+  }, {
+    "url" : "https://prisoner-finance-subscriptions-api-preprod.hmpps.service.justice.gov.uk",
+    "description" : "Pre-Production"
+  }, {
+    "url" : "https://prisoner-finance-subscriptions-api.hmpps.service.justice.gov.uk",
+    "description" : "Production"
+  }, {
+    "url" : "http://localhost:8080",
+    "description" : "Local"
+  } ],
+  "security" : [ {
+    "bearer-jwt" : [ "read", "write" ]
+  } ],
+  "tags" : [ {
+    "name" : "SUBSCRIPTIONS",
+    "description" : "Endpoints for subscription management and viewing in prisoner finance."
+  } ],
+  "paths" : {
+    "/subscriptions" : {
+      "post" : {
+        "tags" : [ "Subscription Records" ],
+        "summary" : "Create a new subscription record",
+        "description" : "Creates a new subscription for a prisoners sub-account.\n Requires an Idempotency Key to ensure that subscriptions are not duplicated.",
+        "operationId" : "createSubscriptionRecord",
+        "parameters" : [ {
+          "name" : "Idempotency-Key",
+          "in" : "header",
+          "description" : "An Idempotency Key to ensure that subscription creation requests are not repeated",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateSubscriptionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Subscription created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RW" ]
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "CreateSubscriptionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "legacyPaymentProfileId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The payment profile ID",
+            "example" : 123456789
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount paid weekly in pence",
+            "example" : 50
+          },
+          "dayOfPayment" : {
+            "type" : "string",
+            "description" : "The day the payment is made weekly",
+            "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ],
+            "example" : "MONDAY"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "The start date of the subscription",
+            "example" : "2026-12-03"
+          },
+          "endDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date",
+            "description" : "The end date of the subscription",
+            "example" : "2026-13-04"
+          },
+          "subscriptionType" : {
+            "type" : "string",
+            "description" : "The transaction type for the payments",
+            "example" : "TELE"
+          },
+          "reference" : {
+            "type" : [ "string", "null" ],
+            "description" : "Reference note or external Identifier associated with the subscription",
+            "example" : "sky tv"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The user that created the subscription",
+            "example" : "TEST_USER"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The time that the subscription was created",
+            "example" : "2023-07-01T12:00:00Z"
+          },
+          "prisonId" : {
+            "type" : "string",
+            "description" : "The caseload ID of the prison",
+            "example" : "LEI"
+          },
+          "prisonNumber" : {
+            "type" : "string",
+            "description" : "The prison number of the offender that has the subscription",
+            "example" : "AE12345"
+          },
+          "subAccountRef" : {
+            "type" : "string",
+            "description" : "The sub-account that the subscription payment is debited from",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ],
+            "example" : "CASH"
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "legacyPaymentProfileId", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
+      },
+      "SubscriptionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "ID of the subscription",
+            "example" : "123e4567-e89b-12d3-a456-426655440000"
+          },
+          "legacyPaymentProfileId" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The payment profile ID",
+            "example" : 123456789
+          },
+          "amount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "The amount paid weekly in pence",
+            "example" : 50
+          },
+          "dayOfPayment" : {
+            "type" : "string",
+            "description" : "The day the payment is made weekly",
+            "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ],
+            "example" : "MONDAY"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date",
+            "description" : "The start date of the subscription",
+            "example" : "2026-12-03"
+          },
+          "endDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date",
+            "description" : "The end date of the subscription",
+            "example" : "2026-13-04"
+          },
+          "subscriptionType" : {
+            "type" : "string",
+            "description" : "The transaction type on the payment profile",
+            "example" : "TELE"
+          },
+          "reference" : {
+            "type" : [ "string", "null" ],
+            "description" : "The reference on the payment profile",
+            "example" : "REF"
+          },
+          "createdBy" : {
+            "type" : "string",
+            "description" : "The user that created the subscription",
+            "example" : "TEST_USER"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "The time that the subscription was created",
+            "example" : "2023-07-01T12:00:00Z"
+          },
+          "prisonId" : {
+            "type" : "string",
+            "description" : "The caseload ID of the prison",
+            "example" : "LEI"
+          },
+          "prisonNumber" : {
+            "type" : "string",
+            "description" : "The prison number of the offender that has the subscription",
+            "example" : "AE12345"
+          },
+          "subAccountRef" : {
+            "type" : "string",
+            "description" : "The sub-account that the subscription payment is debited from",
+            "enum" : [ "CASH", "SPENDS", "SAVINGS" ],
+            "example" : "CASH"
+          }
+        },
+        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "id", "legacyPaymentProfileId", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
+      },
+      "ErrorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errorCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "userMessage" : {
+            "type" : [ "string", "null" ]
+          },
+          "developerMessage" : {
+            "type" : [ "string", "null" ]
+          },
+          "moreInfo" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "required" : [ "status" ]
+      }
+    },
+    "securitySchemes" : {
+      "bearer-jwt" : {
+        "type" : "http",
+        "description" : "A HMPPS Auth access token with either role: `[ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RO, ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RW]`",
+        "name" : "Authorization",
+        "in" : "header",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  }
+}

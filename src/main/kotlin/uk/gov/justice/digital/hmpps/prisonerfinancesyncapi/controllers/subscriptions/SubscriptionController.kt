@@ -22,12 +22,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.SubscriptionsService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
 import java.util.UUID
 
 @Tag(name = TAG_SUBSCRIPTIONS)
 @RestController
-class SubscriptionController {
+class SubscriptionController(private val subscriptionsService: SubscriptionsService) {
 
   @Operation(
     summary = "Create a new subscription record for a prisoner",
@@ -60,8 +61,13 @@ class SubscriptionController {
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "501",
-        description = "This endpoint is not yet implemented.",
+        responseCode = "500",
+        description = "Internal server error.",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "502",
+        description = "A dependency error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
@@ -69,10 +75,12 @@ class SubscriptionController {
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC}')")
   fun createSubscription(
-    @Suppress("UNUSED_PARAMETER")
     @RequestBody
     @Valid request: SyncCreateSubscriptionRequest,
-  ): ResponseEntity<SyncCreateSubscriptionResponse> = ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build()
+  ): ResponseEntity<SyncCreateSubscriptionResponse> {
+    val response = subscriptionsService.createSubscription(request)
+    return ResponseEntity.status(HttpStatus.CREATED).body(response)
+  }
 
   @Operation(
     summary = "Update a subscription record for a prisoner",
@@ -107,6 +115,11 @@ class SubscriptionController {
       ApiResponse(
         responseCode = "404",
         description = "Subscription not found",
+        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+      ),
+      ApiResponse(
+        responseCode = "500",
+        description = "Internal server error.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(

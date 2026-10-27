@@ -71,7 +71,7 @@ class GeneralLedgerServiceTest {
   private lateinit var generalLedgerTransactionMappingRepository: GeneralLedgerTransactionMappingRepository
 
   @Spy
-  private lateinit var idempotencyService: GeneralLedgerIdempotencyService
+  private lateinit var idempotencyService: IdempotencyService
 
   @Spy
   private lateinit var accountMapping: LedgerAccountMappingService

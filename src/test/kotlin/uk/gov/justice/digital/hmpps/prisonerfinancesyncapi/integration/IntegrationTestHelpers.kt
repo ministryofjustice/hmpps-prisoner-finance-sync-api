@@ -6,12 +6,12 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.health.GeneralLedgerApiHealthPing
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.GeneralLedgerApiExtension.Companion.generalLedgerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.HoldsMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.SubscriptionsMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
@@ -30,7 +30,7 @@ class IntegrationTestHelpers(
   private val nomisSyncPayloadRepository: NomisSyncPayloadRepository,
   private val holdsMappingRepository: HoldsMappingRepository,
   private val advancesMappingRepository: AdvancesMappingRepository,
-  private val generalLedgerApiHealthPing: GeneralLedgerApiHealthPing,
+  private val subscriptionsMappingRepository: SubscriptionsMappingRepository,
 ) {
 
   lateinit var webTestClient: WebTestClient
@@ -44,6 +44,14 @@ class IntegrationTestHelpers(
     roles: List<String> = listOf(),
     scopes: List<String> = listOf("read"),
   ): (HttpHeaders) -> Unit = jwtAuthHelper.setAuthorisationHeader(username = username, scope = scopes, roles = roles)
+
+  fun clearDB() {
+    generalLedgerTransactionMappingRepository.deleteAllInBatch()
+    nomisSyncPayloadRepository.deleteAllInBatch()
+    holdsMappingRepository.deleteAllInBatch()
+    advancesMappingRepository.deleteAllInBatch()
+    subscriptionsMappingRepository.deleteAllInBatch()
+  }
 
   fun stubAndCreateTransaction(
     transactionId: Long,
@@ -298,12 +306,5 @@ class IntegrationTestHelpers(
       returnUuid = prisonerSubAccount.toString(),
       parentId = prisonerParentAccount,
     )
-  }
-
-  fun clearDB() {
-    generalLedgerTransactionMappingRepository.deleteAllInBatch()
-    nomisSyncPayloadRepository.deleteAllInBatch()
-    holdsMappingRepository.deleteAllInBatch()
-    advancesMappingRepository.deleteAllInBatch()
   }
 }
