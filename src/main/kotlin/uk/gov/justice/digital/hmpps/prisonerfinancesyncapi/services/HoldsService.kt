@@ -23,7 +23,7 @@ class HoldsService(
   var timeConversionService: TimeConversionService,
   var holdsApiClient: HoldsApiClient,
   var holdsMappingRepository: HoldsMappingRepository,
-  val idempotencyService: GeneralLedgerIdempotencyService,
+  val idempotencyService: IdempotencyService,
   val accountResolver: GeneralLedgerAccountResolver,
   val requestCache: InMemoryAccountCache = InMemoryAccountCache(),
   val accountMapping: LedgerAccountMappingService,
@@ -62,7 +62,7 @@ class HoldsService(
       },
     )
 
-    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(
+    val idempotencyKey = idempotencyService.genGLTransactionIdempotencyKey(
       transactionId = syncCreateHoldRequest.holdTransactionId,
       // HARDCODED, we do not expect any hold transaction to have more than one entry
       entrySequence = 1,
@@ -170,7 +170,7 @@ class HoldsService(
       legacyTransactionId = releaseRequest.releaseTransactionId,
     )
 
-    val idempotencyKey = idempotencyService.genTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 1)
+    val idempotencyKey = idempotencyService.genGLTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 1)
 
     val response = holdsApiClient.postHoldRelease(mapping.holdsUuid, releaseHoldRequest, idempotencyKey)
 

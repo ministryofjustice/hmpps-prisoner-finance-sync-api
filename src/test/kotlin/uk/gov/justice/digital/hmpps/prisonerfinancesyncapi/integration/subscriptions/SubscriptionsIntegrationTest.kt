@@ -19,7 +19,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerIdempotencyService
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.IdempotencyService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
@@ -31,7 +31,7 @@ import java.util.UUID
 @ExtendWith(MockitoExtension::class, SubscriptionsApiExtension::class)
 class SubscriptionsIntegrationTest : IntegrationTestBase() {
 
-  val generalLedgerIdempotencyService = GeneralLedgerIdempotencyService()
+  val idempotencyService = IdempotencyService()
   val timeConversionService = TimeConversionService()
 
   @BeforeEach
@@ -45,8 +45,7 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
   inner class SyncSubscription {
 
     val legacyPaymentProfileId = 123456789L
-    val entrySequence = 1
-    val idempotencyKey = generalLedgerIdempotencyService.genTransactionIdempotencyKey(legacyPaymentProfileId, entrySequence)
+    val idempotencyKey = idempotencyService.genSubscriptionIdempotencyKey(legacyPaymentProfileId)
     val syncCreateSubscriptionRequest = SyncCreateSubscriptionRequest(
       legacyPaymentProfileId = legacyPaymentProfileId,
       amount = BigDecimal(10.0),

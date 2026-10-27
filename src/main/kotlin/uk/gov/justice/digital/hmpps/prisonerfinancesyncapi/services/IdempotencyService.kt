@@ -7,11 +7,21 @@ import java.security.MessageDigest
 import java.util.UUID
 
 @Service
-class GeneralLedgerIdempotencyService {
-  fun genTransactionIdempotencyKey(transactionId: Long, entrySequence: Int): UUID {
-    val seed = "NOMIS-$transactionId-$entrySequence"
+class IdempotencyService {
 
+  fun genGLTransactionIdempotencyKey(transactionId: Long, entrySequence: Int): UUID {
+    val seed = "NOMIS-$transactionId-$entrySequence"
+    return generateIdempotencyKey(seed)
+  }
+
+  fun genSubscriptionIdempotencyKey(legacyPaymentProfileId: Long): UUID {
+    val seed = "SUBSCRIPTIONS-$legacyPaymentProfileId"
+    return generateIdempotencyKey(seed)
+  }
+
+  private fun generateIdempotencyKey(seed: String): UUID {
     val digest = MessageDigest.getInstance("SHA-1")
+
     val bytes = digest.digest(seed.toByteArray(StandardCharsets.UTF_8))
 
     // Set Version to 5 (SHA-1) & Variant to 2 (IETF)

@@ -11,16 +11,15 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 
 @Service
 class SubscriptionsService(
-  private val generalLedgerIdempotencyService: GeneralLedgerIdempotencyService,
+  private val idempotencyService: IdempotencyService,
   private val timeConversionService: TimeConversionService,
   private val ledgerAccountMappingService: LedgerAccountMappingService,
   private val subscriptionsApiClient: SubscriptionsApiClient,
   private val subscriptionsMappingRepository: SubscriptionsMappingRepository,
 ) {
-  val entrySequence = 1
 
   fun createSubscription(syncSubscriptionRequest: SyncCreateSubscriptionRequest): SyncCreateSubscriptionResponse {
-    val idempotencyKey = generalLedgerIdempotencyService.genTransactionIdempotencyKey(syncSubscriptionRequest.legacyPaymentProfileId, entrySequence)
+    val idempotencyKey = idempotencyService.genSubscriptionIdempotencyKey(syncSubscriptionRequest.legacyPaymentProfileId)
     val subAccountRef = ledgerAccountMappingService.mapPrisonerSubAccount(syncSubscriptionRequest.subAccountCode)
 
     val createSubscriptionRequest = CreateSubscriptionRequest(

@@ -32,7 +32,7 @@ import java.util.UUID
 class SubscriptionsServiceTest {
 
   val timeConversionService = TimeConversionService()
-  val generalLedgerIdempotencyService = GeneralLedgerIdempotencyService()
+  val idempotencyService = IdempotencyService()
 
   @Mock
   lateinit var subscriptionsApiClient: SubscriptionsApiClient
@@ -48,7 +48,7 @@ class SubscriptionsServiceTest {
   fun setup() {
     subscriptionsService = SubscriptionsService(
       subscriptionsApiClient = subscriptionsApiClient,
-      generalLedgerIdempotencyService = generalLedgerIdempotencyService,
+      idempotencyService = idempotencyService,
       timeConversionService = timeConversionService,
       ledgerAccountMappingService = ledgerAccountMappingService,
       subscriptionsMappingRepository = subscriptionsMappingRepository,
@@ -59,8 +59,7 @@ class SubscriptionsServiceTest {
   inner class CreateSubscription {
 
     val legacyPaymentProfileId = 123L
-    val entrySequence = 1
-    val expectedIdempotencyKey = generalLedgerIdempotencyService.genTransactionIdempotencyKey(legacyPaymentProfileId, entrySequence)
+    val expectedIdempotencyKey = idempotencyService.genSubscriptionIdempotencyKey(legacyPaymentProfileId)
 
     val syncSubscriptionRequest = SyncCreateSubscriptionRequest(
       legacyPaymentProfileId = legacyPaymentProfileId,

@@ -4,37 +4,37 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 
-class GeneralLedgerIdempotencyServiceTest {
+class IdempotencyServiceTest {
 
-  private val service = GeneralLedgerIdempotencyService()
+  private val service = IdempotencyService()
 
   @Test
   fun `should generate deterministic UUID for same inputs`() {
-    val first = service.genTransactionIdempotencyKey(12345L, 1)
-    val second = service.genTransactionIdempotencyKey(12345L, 1)
+    val first = service.genGLTransactionIdempotencyKey(12345L, 1)
+    val second = service.genGLTransactionIdempotencyKey(12345L, 1)
 
     assertEquals(first, second)
   }
 
   @Test
   fun `should generate different UUIDs for different transaction ids`() {
-    val first = service.genTransactionIdempotencyKey(12345L, 1)
-    val second = service.genTransactionIdempotencyKey(54321L, 1)
+    val first = service.genGLTransactionIdempotencyKey(12345L, 1)
+    val second = service.genGLTransactionIdempotencyKey(54321L, 1)
 
     assertNotEquals(first, second)
   }
 
   @Test
   fun `should generate different UUIDs for different entry sequences`() {
-    val first = service.genTransactionIdempotencyKey(12345L, 1)
-    val second = service.genTransactionIdempotencyKey(12345L, 2)
+    val first = service.genGLTransactionIdempotencyKey(12345L, 1)
+    val second = service.genGLTransactionIdempotencyKey(12345L, 2)
 
     assertNotEquals(first, second)
   }
 
   @Test
   fun `should generate valid RFC 4122 UUIDs`() {
-    val uuid = service.genTransactionIdempotencyKey(12345L, 1)
+    val uuid = service.genGLTransactionIdempotencyKey(12345L, 1)
 
     // RFC 4122 requires the Variant to be 2 (IETF Leach-Salz)
     // The PR implementation fails this (it will likely be random or 0)
