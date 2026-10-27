@@ -165,6 +165,21 @@ class AdvancesService(
 
     val response = advancesApiClient.postMigrateAdvance(request)
 
+    try {
+      advancesMappingRepository.save(
+        AdvanceMapping(
+          legacyPaymentProfileId = response.legacyPaymentProfileId,
+          advanceUuid = response.id,
+        ),
+      )
+    } catch (e: DataIntegrityViolationException) {
+      val msg = e.message.orEmpty()
+      val isHandled = "uc_advance_mapping_advance_uuid" in msg ||
+        "uc_advance_mapping_legacy_payment_profile_id" in msg
+
+      if (!isHandled) throw e
+    }
+
     return SyncCreateAdvanceRecordResponse(
       paymentProfileId = response.legacyPaymentProfileId,
       advanceId = response.id,

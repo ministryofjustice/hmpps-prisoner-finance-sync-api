@@ -5,6 +5,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
@@ -16,6 +18,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
@@ -28,6 +31,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncA
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncMigrateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.Instant
@@ -236,7 +240,7 @@ class AdvancesServiceTest {
   }
 
   @Nested
-  inner class WriteOffAdvanceTest {
+  inner class WriteOffAdvance {
     @Test
     fun `should call the advance service`() {
       val advanceId = UUID.randomUUID()
@@ -289,6 +293,122 @@ class AdvancesServiceTest {
 
       verify(advancesApiClient, times(1))
         .postWriteOffAdvance(eq(advanceId), any<AdvanceWriteOffRequest>())
+    }
+  }
+
+  @Nested
+  inner class MigrateAdvance {
+
+    val advanceId = UUID.randomUUID()
+    val legacyPaymentProfileId = 1234L
+    val legacyInformationNumber = "23113-1"
+    val prisonId = "LEI"
+    val prisonNumber = "A1234AB"
+
+    val migrateRequest = SyncMigrateAdvanceRecordRequest(
+      legacyPaymentProfileId = legacyPaymentProfileId,
+      legacyInformationNumber = legacyInformationNumber,
+      prisonNumber = prisonNumber,
+      prisonID = prisonId,
+      amountIssued = BigDecimal("10.0"),
+      amountOutstanding = BigDecimal("10.0"),
+      createdOn = LocalDateTime.now(),
+      balanceCalculationTime = LocalDateTime.now(),
+      repaymentStartDate = LocalDateTime.now().plusDays(1),
+      repaymentAmount = BigDecimal("2.00"),
+      reference = "",
+      comment = "",
+      createdBy = "TEST",
+      status = CreateAdvanceRecordRequest.Status.ACTIVE,
+      legacyTransactionId = 1234567,
+    )
+
+    val advanceRecordResponse = AdvanceRecordResponse(
+      id = advanceId,
+      legacyPaymentProfileId = legacyPaymentProfileId,
+      legacyInformationNumber = legacyInformationNumber,
+      prisonNumber = prisonNumber,
+      prisonID = prisonId,
+      amount = 123,
+      createdOn = Instant.now(),
+      repaymentStartDate = Instant.now(),
+      repaymentAmount = 1,
+      createdBy = "TEST",
+      status = AdvanceRecordResponse.Status.ACTIVE,
+      reference = "",
+      comment = "",
+      updatedAt = null,
+      generalLedgerUUID = null,
+    )
+
+    @Test
+    fun `Should call the migrateAdvance endpoint and return advance record`() {
+      whenever(
+        advancesApiClient.postMigrateAdvance(any()),
+      ).thenReturn(advanceRecordResponse)
+
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenReturn(
+        AdvanceMapping(
+          legacyPaymentProfileId = legacyPaymentProfileId,
+          advanceUuid = advanceId,
+        ),
+      )
+
+      val response = advancesService.migrateAdvance(migrateRequest)
+
+      verify(advancesApiClient, times(1)).postMigrateAdvance(any())
+
+      assertThat(response.advanceId).isEqualTo(advanceId)
+      assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)
+    }
+
+    @Test
+    fun `Should save advance mapping on migrate`() {
+      whenever(
+        advancesApiClient.postMigrateAdvance(any()),
+      ).thenReturn(advanceRecordResponse)
+
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenReturn(
+        AdvanceMapping(
+          legacyPaymentProfileId = legacyPaymentProfileId,
+          advanceUuid = advanceId,
+        ),
+      )
+
+      advancesService.migrateAdvance(migrateRequest)
+
+      val capturedAdvanceMapping = argumentCaptor<AdvanceMapping>()
+
+      verify(advancesMappingRepository, times(1))
+        .save(capturedAdvanceMapping.capture())
+
+      val savedMapping = capturedAdvanceMapping.firstValue
+
+      assertThat(savedMapping.legacyPaymentProfileId).isEqualTo(legacyPaymentProfileId)
+      assertThat(savedMapping.advanceUuid).isEqualTo(advanceId)
+    }
+
+    @ParameterizedTest(name = "should not throw error when unique constraint violated on {0}")
+    @ValueSource(
+      strings = [
+        "uc_advance_mapping_advance_uuid",
+        "uc_advance_mapping_legacy_payment_profile_id",
+      ],
+    )
+    fun `should not throw an error if the mapping already exists when saving`(constraintName: String) {
+      whenever(
+        advancesApiClient.postMigrateAdvance(any()),
+      ).thenReturn(advanceRecordResponse)
+
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }
+        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"$constraintName\""))
+
+      val response = advancesService.migrateAdvance(migrateRequest)
+
+      verify(advancesApiClient, times(1)).postMigrateAdvance(any())
+
+      assertThat(response.advanceId).isEqualTo(advanceId)
+      assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)
     }
   }
 }

@@ -605,6 +605,22 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
+    fun `should propagate error 400 when advances returns 400`() {
+      advancesApi.stubPostMigrateAdvanceReturnsStatusCode(400)
+
+      val response = webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncCreateAdvanceRepayRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.userMessage).isEqualTo("Bad Request from Advances API")
+    }
+
+    @Test
     fun `should return 403 forbidden when called with an invalid roles`() {
       webTestClient.post().uri("/migrate/advances")
         .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))

@@ -262,4 +262,26 @@ class AdvancesApiMockServer :
         ),
     )
   }
+
+  fun stubPostMigrateAdvanceReturnsStatusCode(statusCode: Int) {
+    stubFor(
+      post("/migrate/advances")
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(statusCode)
+            .withBody(
+              """
+               {
+                  "status": $statusCode,
+                  "errorCode": null,
+                  "userMessage": "Server Error",
+                  "developerMessage": "Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
 }
