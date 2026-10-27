@@ -5,20 +5,25 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.capture
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
@@ -28,7 +33,9 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncA
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncMigrateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toUtcInstant
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDateTime
@@ -53,6 +60,9 @@ class AdvancesServiceTest {
   @Spy
   lateinit var idempotencyService: GeneralLedgerIdempotencyService
 
+  @Mock
+  lateinit var accountResolver: GeneralLedgerAccountResolver
+
   private lateinit var advancesService: AdvancesService
 
   @BeforeEach
@@ -63,6 +73,7 @@ class AdvancesServiceTest {
       advancesMappingRepository = advancesMappingRepository,
       idempotencyService = idempotencyService,
       advanceRepaymentMappingRepository = advanceRepaymentMappingRepository,
+      accountResolver = accountResolver,
     )
   }
 
@@ -236,7 +247,7 @@ class AdvancesServiceTest {
   }
 
   @Nested
-  inner class WriteOffAdvanceTest {
+  inner class WriteOffAdvance {
     @Test
     fun `should call the advance service`() {
       val advanceId = UUID.randomUUID()
@@ -289,6 +300,132 @@ class AdvancesServiceTest {
 
       verify(advancesApiClient, times(1))
         .postWriteOffAdvance(eq(advanceId), any<AdvanceWriteOffRequest>())
+    }
+  }
+
+  @Nested
+  inner class MigrateAdvance {
+
+    val advanceId = UUID.randomUUID()
+    val legacyPaymentProfileId = 1234L
+    val legacyInformationNumber = "23113-1"
+    val prisonId = "LEI"
+    val prisonNumber = "A1234AB"
+
+    val migrateRequest = SyncMigrateAdvanceRecordRequest(
+      legacyPaymentProfileId = legacyPaymentProfileId,
+      legacyInformationNumber = legacyInformationNumber,
+      prisonNumber = prisonNumber,
+      prisonID = prisonId,
+      amountIssued = BigDecimal("10.0"),
+      amountOutstanding = BigDecimal("10.0"),
+      createdOn = LocalDateTime.now(),
+      balanceCalculationTime = LocalDateTime.now(),
+      repaymentStartDate = LocalDateTime.now().plusDays(1),
+      repaymentAmount = BigDecimal("2.00"),
+      reference = "",
+      comment = "",
+      createdBy = "TEST",
+      status = CreateAdvanceRecordRequest.Status.ACTIVE,
+      legacyTransactionId = 1234567,
+    )
+
+    val advanceMigrationRequest = migrateRequest.toAdvanceMigrationRequest()
+
+    val advanceRecordResponse = AdvanceRecordResponse(
+      id = advanceId,
+      legacyPaymentProfileId = legacyPaymentProfileId,
+      legacyInformationNumber = legacyInformationNumber,
+      prisonNumber = prisonNumber,
+      prisonID = prisonId,
+      amount = migrateRequest.amountIssued.toPence(),
+      createdOn = migrateRequest.createdOn.toUtcInstant(),
+      repaymentStartDate = migrateRequest.repaymentStartDate.toUtcInstant(),
+      repaymentAmount = migrateRequest.repaymentAmount.toPence(),
+      createdBy = migrateRequest.createdBy,
+      status = AdvanceRecordResponse.Status.ACTIVE,
+      reference = migrateRequest.reference,
+      comment = migrateRequest.comment,
+      updatedAt = null,
+      generalLedgerUUID = null,
+    )
+
+    val prisonSubAccountRefAdvances = 1502
+    val prisonerSpendsRef = 2102
+
+    @Test
+    fun `Should call the migrateAdvance endpoint and return advance record`() {
+      val captor = argumentCaptor<AdvanceMigrationRequest>()
+      whenever(
+        advancesApiClient.postMigrateAdvance(captor.capture()),
+      ).thenReturn(advanceRecordResponse)
+
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenAnswer { it.arguments[0] }
+
+      val response = advancesService.migrateAdvance(migrateRequest)
+
+      verify(advancesApiClient, times(1)).postMigrateAdvance(any())
+
+      verify(accountResolver, times(1)).resolvePrisonSubAccount(
+        prisonId = eq(prisonId),
+        accountCode = eq(prisonSubAccountRefAdvances),
+        transactionType = eq("ADV"),
+        parentCache = any<InMemoryAccountCache>(),
+      )
+
+      verify(accountResolver, times(1)).resolvePrisonerSubAccount(
+        offenderId = eq(prisonNumber),
+        accountCode = eq(prisonerSpendsRef),
+        parentCache = any<InMemoryAccountCache>(),
+      )
+
+      assertThat(response.advanceId).isEqualTo(advanceId)
+      assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)
+      assertThat(captor.firstValue).isEqualTo(advanceMigrationRequest)
+    }
+
+    @Test
+    fun `Should save advance mapping on migrate`() {
+      whenever(
+        advancesApiClient.postMigrateAdvance(any()),
+      ).thenReturn(advanceRecordResponse)
+
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }.thenAnswer { it.arguments[0] }
+
+      advancesService.migrateAdvance(migrateRequest)
+
+      val capturedAdvanceMapping = argumentCaptor<AdvanceMapping>()
+
+      verify(advancesMappingRepository, times(1))
+        .save(capturedAdvanceMapping.capture())
+
+      val savedMapping = capturedAdvanceMapping.firstValue
+
+      assertThat(savedMapping.legacyPaymentProfileId).isEqualTo(legacyPaymentProfileId)
+      assertThat(savedMapping.advanceUuid).isEqualTo(advanceId)
+    }
+
+    @ParameterizedTest(name = "should not throw error when unique constraint violated on {0}")
+    @ValueSource(
+      strings = [
+        "uc_advance_mapping_advance_uuid",
+        "uc_advance_mapping_legacy_payment_profile_id",
+      ],
+    )
+    fun `should not throw an error if the mapping already exists when saving`(constraintName: String) {
+      whenever(
+        advancesApiClient.postMigrateAdvance(any()),
+      ).thenReturn(advanceRecordResponse)
+
+      whenever { advancesMappingRepository.save(any<AdvanceMapping>()) }
+        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"$constraintName\""))
+
+      val response = advancesService.migrateAdvance(migrateRequest)
+
+      verify(advancesApiClient, times(1)).postMigrateAdvance(any())
+
+      assertThat(response.advanceId).isEqualTo(advanceId)
+      assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)
     }
   }
 }

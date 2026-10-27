@@ -17,6 +17,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncMigrateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.util.UUID
 
@@ -27,9 +28,14 @@ class AdvancesService(
   @Autowired var advancesMappingRepository: AdvancesMappingRepository,
   @Autowired val idempotencyService: GeneralLedgerIdempotencyService,
   @Autowired val advanceRepaymentMappingRepository: AdvanceRepaymentMappingRepository,
+  @Autowired val accountResolver: GeneralLedgerAccountResolver,
+  val requestCache: InMemoryAccountCache = InMemoryAccountCache(),
 ) {
   // we do not expect any advance to have more than one entry
   val advanceTransactionEntrySequence = 1
+  val advanceTransactionType = "ADV"
+  val prisonAdvancesSubaccountAccountCode = 1502
+  val prisonerSpendsSubaccountAccountCode = 2102
 
   fun createAdvance(syncCreateAdvanceRecordRequest: SyncCreateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
     val mapping = advancesMappingRepository.findAdvanceMappingByLegacyPaymentProfileId(syncCreateAdvanceRecordRequest.legacyPaymentProfileId)
@@ -139,6 +145,45 @@ class AdvancesService(
       advanceId = advanceResponse.id,
       advanceStatus = advanceResponse.status,
       writtenOffAmount = syncAdvanceWriteOffRequest.writtenOffAmount,
+    )
+  }
+
+  fun migrateAdvance(migrateAdvanceRequest: SyncMigrateAdvanceRecordRequest): SyncCreateAdvanceRecordResponse {
+    val request = migrateAdvanceRequest.toAdvanceMigrationRequest()
+
+    accountResolver.resolvePrisonSubAccount(
+      prisonId = migrateAdvanceRequest.prisonID,
+      accountCode = prisonAdvancesSubaccountAccountCode,
+      transactionType = advanceTransactionType,
+      parentCache = requestCache,
+    )
+
+    accountResolver.resolvePrisonerSubAccount(
+      offenderId = migrateAdvanceRequest.prisonNumber,
+      accountCode = prisonerSpendsSubaccountAccountCode,
+      parentCache = requestCache,
+    )
+
+    val response = advancesApiClient.postMigrateAdvance(request)
+
+    try {
+      advancesMappingRepository.save(
+        AdvanceMapping(
+          legacyPaymentProfileId = response.legacyPaymentProfileId,
+          advanceUuid = response.id,
+        ),
+      )
+    } catch (e: DataIntegrityViolationException) {
+      val msg = e.message.orEmpty()
+      val isHandled = "uc_advance_mapping_advance_uuid" in msg ||
+        "uc_advance_mapping_legacy_payment_profile_id" in msg
+
+      if (!isHandled) throw e
+    }
+
+    return SyncCreateAdvanceRecordResponse(
+      paymentProfileId = response.legacyPaymentProfileId,
+      advanceId = response.id,
     )
   }
 }

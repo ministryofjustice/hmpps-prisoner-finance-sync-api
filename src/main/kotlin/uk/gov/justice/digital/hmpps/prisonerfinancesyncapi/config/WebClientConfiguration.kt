@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager
 import org.springframework.web.reactive.function.client.WebClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRecordControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRepaymentControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.MigrationControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.AccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.SubAccountControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.generalledger.TransactionControllerApi
@@ -91,4 +92,7 @@ class WebClientConfiguration(
 
   @Bean
   fun advanceRepaymentApi(@Qualifier("advancesApiWebClient") webClient: WebClient): AdvanceRepaymentControllerApi = AdvanceRepaymentControllerApi(webClient)
+
+  @Bean
+  fun advanceMigrationApi(@Qualifier("advancesApiWebClient") webClient: WebClient): MigrationControllerApi = MigrationControllerApi(webClient)
 }

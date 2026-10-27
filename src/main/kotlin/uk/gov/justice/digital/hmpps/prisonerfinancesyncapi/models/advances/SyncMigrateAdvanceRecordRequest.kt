@@ -2,6 +2,8 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Digits
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toUtcInstant
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -29,8 +31,8 @@ data class SyncMigrateAdvanceRecordRequest(
   @field:Schema(description = "The date time when the advance was created with the time set to midnight", example = "2024-06-18T00:00:00.000000", required = true)
   val createdOn: LocalDateTime,
 
-  @field:Schema(description = "The date time the advance was migrated", example = "2024-06-18T12:05:38.000000", required = true)
-  val migrationTimestamp: LocalDateTime,
+  @field:Schema(description = "The date time that the advance balance was calculated. I.e. the time of the last transaction relating to this advance.", example = "2024-06-18T12:05:38.000000", required = true)
+  val balanceCalculationTime: LocalDateTime,
 
   @field:Schema(description = "The date time when the payments are intended to begin", example = "2024-06-18T00:00:00.000000", required = true)
   val repaymentStartDate: LocalDateTime,
@@ -53,4 +55,22 @@ data class SyncMigrateAdvanceRecordRequest(
 
   @field:Schema(description = "The legacy transaction ID from NOMIS that paid the advance to the prisoner", example = "123456", required = true)
   val legacyTransactionId: Long,
-)
+) {
+  fun toAdvanceMigrationRequest(): AdvanceMigrationRequest = AdvanceMigrationRequest(
+    legacyPaymentProfileId = this.legacyPaymentProfileId,
+    legacyInformationNumber = this.legacyInformationNumber,
+    prisonNumber = this.prisonNumber,
+    prisonID = this.prisonID,
+    amountIssued = this.amountIssued.toPence(),
+    amountOutstanding = this.amountOutstanding.toPence(),
+    createdOn = this.createdOn.toUtcInstant(),
+    migrationTimestamp = this.balanceCalculationTime.toUtcInstant(),
+    repaymentStartDate = this.repaymentStartDate.toUtcInstant(),
+    repaymentAmount = this.repaymentAmount.toPence(),
+    createdBy = this.createdBy,
+    status = AdvanceMigrationRequest.Status.valueOf(this.status.name),
+    reference = this.reference,
+    comment = this.comment,
+    legacyTransactionId = this.legacyTransactionId,
+  )
+}
