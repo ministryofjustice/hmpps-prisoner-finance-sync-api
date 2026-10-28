@@ -18,11 +18,14 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AdvancesAccountReconciliation
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubscriptionsAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
+import java.math.BigDecimal
 
 @Validated
 @Tag(name = TAG_NOMIS_SYNC)
@@ -48,32 +51,39 @@ class ReconciliationController(
           Content(
             mediaType = "application/json",
             schema = Schema(
-              type = "object",
-              additionalPropertiesSchema = SubAccountBalanceForReconciliation::class,
+              implementation = AccountReconciliationResponse::class,
             ),
             examples = [
               ExampleObject(
-                name = "SubAccountBalances",
-                summary = "Example response",
+                name = "AccountReconciliation",
+                summary = "Example reconciliation response",
                 value = """
-                    {
-                      "2101": {
-                        "totalBalance": 100.50,
-                        "holdBalance": 0,
-                        "balanceDateTime": "2026-07-17T12:55:12.813Z"
-                      },
-                      "2102": {
-                        "totalBalance": 50.00,
-                        "holdBalance": 10.0,
-                        "balanceDateTime": "2026-07-17T12:55:12.813Z"
-                      },
-                      "2103": {
-                        "totalBalance": 0,
-                        "holdBalance": 0,
-                        "balanceDateTime": "2026-07-17T12:55:12.813Z"
-                      }
-                    }
-                    """,
+              {
+                "advances": {
+                  "totalAdvances": 15.00,
+                  "count": 2
+                },
+                "subscriptions": {
+                  "totalSubscriptions": 5.50,
+                  "count": 1
+                },
+                "2101": {
+                  "totalBalance": 100.50,
+                  "holdBalance": 0,
+                  "balanceDateTime": "2026-07-17T12:55:12.813Z"
+                },
+                "2102": {
+                  "totalBalance": 50.00,
+                  "holdBalance": 10.0,
+                  "balanceDateTime": "2026-07-17T12:55:12.813Z"
+                },
+                "2103": {
+                  "totalBalance": 0,
+                  "holdBalance": 0,
+                  "balanceDateTime": "2026-07-17T12:55:12.813Z"
+                }
+              }
+              """,
               ),
             ],
           ),
@@ -115,9 +125,22 @@ class ReconciliationController(
   @PreAuthorize("hasAnyAuthority('$ROLE_PRISONER_FINANCE_SYNC')")
   fun listPrisonerSubaccountBalances(
     @PathVariable prisonNumber: String,
-  ): ResponseEntity<Map<String, SubAccountBalanceForReconciliation>> {
+  ): ResponseEntity<AccountReconciliationResponse> {
     val prisonerBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
-    return ResponseEntity.ok(prisonerBalances)
+    // TODO: call advance reconciliation and subscription reconciliation endpoints
+    // populate accordingly
+    val response = AccountReconciliationResponse(
+      advances = AdvancesAccountReconciliation(
+        advanceCount = 0,
+        advanceBalance = BigDecimal("0"),
+      ),
+      subscriptions = SubscriptionsAccountReconciliation(
+        subscriptionCount = 0,
+        weeklyPaymentAmount = BigDecimal("0"),
+      ),
+      balances = prisonerBalances,
+    )
+    return ResponseEntity.ok(response)
   }
 
   @Operation(
