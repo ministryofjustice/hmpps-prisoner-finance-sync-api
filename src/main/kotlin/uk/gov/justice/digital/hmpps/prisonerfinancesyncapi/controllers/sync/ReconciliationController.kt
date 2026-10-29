@@ -60,12 +60,12 @@ class ReconciliationController(
                 value = """
               {
                 "advances": {
-                  "totalAdvances": 15.00,
-                  "count": 2
+                  "advanceBalance": 15.00,
+                  "advanceCount": 2
                 },
                 "subscriptions": {
-                  "totalSubscriptions": 5.50,
-                  "count": 1
+                  "weeklyPaymentAmount": 5.50,
+                  "subscriptionCount": 1
                 },
                 "2101": {
                   "totalBalance": 100.50,
