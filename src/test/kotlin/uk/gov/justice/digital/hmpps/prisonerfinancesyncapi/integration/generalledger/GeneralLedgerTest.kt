@@ -31,9 +31,11 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.NomisSyncPayloadRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AdvancesAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubscriptionsAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
@@ -1614,9 +1616,20 @@ class GeneralLedgerTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk()
-        .expectBody<Map<String, Any>>().returnResult().responseBody!!
+        .expectBody<AccountReconciliationResponse>().returnResult().responseBody!!
 
-      assertThat(body).isEmpty()
+      assertThat(body).isEqualTo(
+        AccountReconciliationResponse(
+          advances = AdvancesAccountReconciliation(
+            advanceCount = 0,
+            advanceBalance = BigDecimal("0"),
+          ),
+          subscriptions = SubscriptionsAccountReconciliation(
+            subscriptionCount = 0,
+            weeklyPaymentAmount = BigDecimal("0"),
+          ),
+        ),
+      ).usingRecursiveComparison()
     }
 
     @Test
@@ -1652,17 +1665,19 @@ class GeneralLedgerTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk()
-        .expectBody<Map<String, SubAccountBalanceForReconciliation>>().returnResult().responseBody!!
-
-      assertThat(body).hasSize(3)
-      // 2101 is cash, 2102 is spends, 2103 is savings
-      assertThat(body["2101"]?.totalBalance).isEqualTo(BigDecimal("10.00"))
-      assertThat(body["2102"]?.totalBalance).isEqualTo(BigDecimal("20.00"))
-      assertThat(body["2103"]?.totalBalance).isEqualTo(BigDecimal("0.00"))
-
-      assertThat(body["2101"]?.holdBalance).isEqualTo(BigDecimal("10.00"))
-      assertThat(body["2102"]?.holdBalance).isEqualTo(BigDecimal("0.00"))
-      assertThat(body["2103"]?.holdBalance).isEqualTo(BigDecimal("20.50"))
+        .expectBody()
+        // 2101 is cash - in json this sits at top level
+        .jsonPath("$['2101'].totalBalance").isEqualTo(10.00)
+        .jsonPath("$['2101'].holdBalance").isEqualTo(10.00)
+        // 2102 is spends - in json this sits at top level
+        .jsonPath("$['2102'].totalBalance").isEqualTo(20.00)
+        .jsonPath("$['2102'].holdBalance").isEqualTo(0.00)
+        // 2103 is savings - in json this sits at top level
+        .jsonPath("$['2103'].totalBalance").isEqualTo(0.00)
+        .jsonPath("$['2103'].holdBalance").isEqualTo(20.50)
+        // Advances and subscriptions sit at top level
+        .jsonPath("$.advances").exists()
+        .jsonPath("$.subscriptions").exists()
     }
 
     @Test
