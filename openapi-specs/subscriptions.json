@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-26.91.65a71c6"
+    "version" : "2026-10-28.98.5f29b68"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-subscriptions-api-dev.hmpps.service.justice.gov.uk",
@@ -119,9 +119,9 @@
         "type" : "object",
         "properties" : {
           "legacyPaymentProfileId" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64",
-            "description" : "The payment profile ID",
+            "description" : "The legacy payment profile ID",
             "example" : 123456789
           },
           "amount" : {
@@ -186,7 +186,7 @@
             "example" : "CASH"
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "legacyPaymentProfileId", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
+        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
       },
       "SubscriptionResponse" : {
         "type" : "object",
@@ -198,9 +198,9 @@
             "example" : "123e4567-e89b-12d3-a456-426655440000"
           },
           "legacyPaymentProfileId" : {
-            "type" : "integer",
+            "type" : [ "integer", "null" ],
             "format" : "int64",
-            "description" : "The payment profile ID",
+            "description" : "The legacy payment profile ID",
             "example" : 123456789
           },
           "amount" : {
@@ -265,7 +265,7 @@
             "example" : "CASH"
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "id", "legacyPaymentProfileId", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
+        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "id", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
       },
       "ErrorResponse" : {
         "type" : "object",

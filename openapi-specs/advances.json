@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-26.183.436a540"
+    "version" : "2026-10-29.189.39c0557"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
@@ -1329,13 +1329,18 @@
             "format" : "int64",
             "description" : "Combined maximum weekly payment amount of all advances on the account in pence"
           },
+          "advanceCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The number of active advances"
+          },
           "balanceDateTime" : {
             "type" : "string",
             "format" : "date-time",
             "writeOnly" : true
           }
         },
-        "required" : [ "advancesAmount", "balancesOutstanding", "weeklyPaymentAmount" ]
+        "required" : [ "advanceCount", "advancesAmount", "balancesOutstanding", "weeklyPaymentAmount" ]
       }
     },
     "securitySchemes" : {

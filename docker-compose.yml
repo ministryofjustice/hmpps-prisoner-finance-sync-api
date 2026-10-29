@@ -116,11 +116,11 @@ services:
       - SERVER_PORT=8080
       - SPRING_PROFILES_ACTIVE=dev
       - HMPPS_AUTH_URL=http://hmpps-auth:8080/auth
-      - DB_SERVER=hmpps-prisoner-finance-advances-db
       - DB_NAME=advances
       - DB_USER=postgres
       - DB_PASS=postgres
       - GENERAL_LEDGER_API_URL=hmpps-prisoner-finance-general-ledger-api
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://hmpps-prisoner-finance-advances-db:5432/advances
 
     depends_on:
       hmpps-auth:

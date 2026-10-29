@@ -19,13 +19,10 @@ import org.springframework.web.bind.annotation.RestController
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.ROLE_PRISONER_FINANCE_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.TAG_NOMIS_SYNC
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountReconciliationResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AdvancesAccountReconciliation
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubscriptionsAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerBalanceDetailsList
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.GeneralLedgerService
 import uk.gov.justice.hmpps.kotlin.common.ErrorResponse
-import java.math.BigDecimal
 
 @Validated
 @Tag(name = TAG_NOMIS_SYNC)
@@ -126,21 +123,8 @@ class ReconciliationController(
   fun listPrisonerSubaccountBalances(
     @PathVariable prisonNumber: String,
   ): ResponseEntity<AccountReconciliationResponse> {
-    val prisonerBalances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
-    // TODO: call advance reconciliation and subscription reconciliation endpoints
-    // populate accordingly
-    val response = AccountReconciliationResponse(
-      advances = AdvancesAccountReconciliation(
-        advanceCount = 0,
-        advanceBalance = BigDecimal("0"),
-      ),
-      subscriptions = SubscriptionsAccountReconciliation(
-        subscriptionCount = 0,
-        weeklyPaymentAmount = BigDecimal("0"),
-      ),
-      balances = prisonerBalances,
-    )
-    return ResponseEntity.ok(response)
+    val balances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
+    return ResponseEntity.ok(balances)
   }
 
   @Operation(
