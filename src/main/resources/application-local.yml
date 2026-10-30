@@ -24,6 +24,9 @@ holds-api:
 advances-api:
   url: ${ADVANCES_API_URL:http://localhost:8083}
 
+subscriptions-api:
+  url: ${SUBSCRIPTIONS_API_URL:http://localhost:8084}
+
 logging:
   level:
     org.hibernate.SQL: DEBUG

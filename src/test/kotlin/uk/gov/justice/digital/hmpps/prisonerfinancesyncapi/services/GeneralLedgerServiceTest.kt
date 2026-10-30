@@ -29,11 +29,13 @@ import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AccountAdvanceBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
@@ -63,6 +65,9 @@ class GeneralLedgerServiceTest {
 
   @Mock
   private lateinit var holdsApiClient: HoldsApiClient
+
+  @Mock
+  private lateinit var advancesApiClient: AdvancesApiClient
 
   @Mock
   private lateinit var telemetryClient: TelemetryClient
@@ -159,6 +164,16 @@ class GeneralLedgerServiceTest {
 
     @Test
     fun `Should return an empty list when the prisoner has no sub accounts`() {
+      whenever(advancesApiClient.getAccountAdvanceBalance(prisonNumber)).thenReturn(
+        AccountAdvanceBalanceResponse(
+          advancesAmount = 0,
+          balancesOutstanding = 0,
+          weeklyPaymentAmount = 0,
+          advanceCount = 0,
+          balanceDateTime = Instant.now(),
+        ),
+      )
+
       val mockAccount = mockAccount(offenderDisplayId, subAccounts = emptyList())
 
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(mockAccount)
@@ -168,7 +183,7 @@ class GeneralLedgerServiceTest {
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
       verifyNoMoreInteractions(generalLedgerApiClient)
 
-      assertThat(balances).isEmpty()
+      assertThat(balances.subAccountBalances).isEmpty()
     }
 
     @Test
@@ -219,6 +234,16 @@ class GeneralLedgerServiceTest {
       val parentUUID = UUID.randomUUID()
       val subAccounts = mutableListOf<SubAccountResponse>()
 
+      whenever(advancesApiClient.getAccountAdvanceBalance(prisonNumber)).thenReturn(
+        AccountAdvanceBalanceResponse(
+          advancesAmount = 0,
+          balancesOutstanding = 0,
+          weeklyPaymentAmount = 0,
+          advanceCount = 0,
+          balanceDateTime = Instant.now(),
+        ),
+      )
+
       for (account in prisonerAccounts) {
         val subAccount =
           SubAccountResponse(
@@ -253,6 +278,16 @@ class GeneralLedgerServiceTest {
       val parentUUID = UUID.randomUUID()
       val subAccounts = mutableListOf<SubAccountResponse>()
 
+      whenever(advancesApiClient.getAccountAdvanceBalance(prisonNumber)).thenReturn(
+        AccountAdvanceBalanceResponse(
+          advancesAmount = 0,
+          balancesOutstanding = 0,
+          weeklyPaymentAmount = 0,
+          advanceCount = 0,
+          balanceDateTime = Instant.now(),
+        ),
+      )
+
       for (account in prisonerAccounts) {
         subAccounts.add(
           SubAccountResponse(
@@ -280,7 +315,8 @@ class GeneralLedgerServiceTest {
       }
 
       val balances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
-      assertThat(balances).hasSize(prisonerAccounts.size)
+
+      assertThat(balances.subAccountBalances).hasSize(prisonerAccounts.size)
 
       verify(generalLedgerApiClient).findAccountByReference(prisonNumber)
 

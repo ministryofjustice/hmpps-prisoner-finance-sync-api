@@ -5,6 +5,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRecordControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.AdvanceRepaymentControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.advances.MigrationControllerApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AccountAdvanceBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
@@ -72,5 +73,16 @@ class AdvancesApiClient(
       },
     )
     return response ?: throw IllegalStateException("Received null response when migrating advance ${request.legacyPaymentProfileId}")
+  }
+
+  fun getAccountAdvanceBalance(prisonNumber: String): AccountAdvanceBalanceResponse {
+    log.info("Getting advance account balance for prison number $prisonNumber")
+
+    val response = handleExceptions(
+      block = {
+        advanceRecordControllerApi.getAccountAdvanceBalance(prisonNumber).block()
+      },
+    )
+    return response ?: throw IllegalStateException("Received null response when retrieving account balance $prisonNumber")
   }
 }

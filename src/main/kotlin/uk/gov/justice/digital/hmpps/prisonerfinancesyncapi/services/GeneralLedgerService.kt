@@ -11,28 +11,34 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountReconciliationResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AdvancesAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreatePostingRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.CreateTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchPostingResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceForReconciliation
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubscriptionsAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.math.BigDecimal
 import java.util.UUID
 
 @Service("generalLedgerService")
 class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val holdsApiClient: HoldsApiClient,
+  private val advancesApiClient: AdvancesApiClient,
   private val accountMapping: LedgerAccountMappingService,
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
@@ -198,11 +204,18 @@ class GeneralLedgerService(
     }
   }
 
-  private suspend fun asyncGetGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> = coroutineScope {
+  private suspend fun asyncGetGLPrisonerBalances(prisonNumber: String): AccountReconciliationResponse = coroutineScope {
+    val deferredAccountAdvanceBalanceResponse = async { advancesApiClient.getAccountAdvanceBalance(prisonNumber) }
+
+    val subscriptionsDeferred = async(Dispatchers.IO) {
+      // TODO: Replace with actual API call
+      SubscriptionsAccountReconciliation(subscriptionCount = 0, weeklyPaymentAmount = BigDecimal("0"))
+    }
+
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
       ?: throw CustomException("No General Ledger account found for prisoner $prisonNumber", status = HttpStatus.NOT_FOUND)
 
-    return@coroutineScope parentAccount.subAccounts
+    val balances = parentAccount.subAccounts
       .map { account ->
         async(Dispatchers.IO) {
           val balanceDeferred = async { generalLedgerApiClient.findSubAccountBalanceByAccountId(account.id) }
@@ -226,9 +239,17 @@ class GeneralLedgerService(
       .awaitAll()
       .filterNotNull()
       .toMap()
+
+    val advances = AdvancesAccountReconciliation.fromAccountAdvanceBalanceResponse(deferredAccountAdvanceBalanceResponse.await())
+
+    AccountReconciliationResponse(
+      advances = advances,
+      subscriptions = subscriptionsDeferred.await(),
+      subAccountBalances = balances,
+    )
   }
 
-  fun getGLPrisonerBalances(prisonNumber: String): Map<String, SubAccountBalanceForReconciliation> = runBlocking {
+  fun getGLPrisonerBalances(prisonNumber: String): AccountReconciliationResponse = runBlocking {
     asyncGetGLPrisonerBalances(prisonNumber)
   }
 
