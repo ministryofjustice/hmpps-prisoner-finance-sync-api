@@ -33,5 +33,5 @@ data class AccountReconciliationResponse(
   val subAccountBalances: Map<String, SubAccountBalanceForReconciliation> = emptyMap(),
 ) {
   @JsonAnyGetter
-  fun getDynamicSubAccountBalances(): Map<String, SubAccountBalanceForReconciliation> = subAccountBalances
+  fun getExistingSubAccountBalances(): Map<String, SubAccountBalanceForReconciliation> = subAccountBalances
 }
