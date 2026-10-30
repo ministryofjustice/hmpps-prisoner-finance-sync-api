@@ -164,6 +164,16 @@ class GeneralLedgerServiceTest {
 
     @Test
     fun `Should return an empty list when the prisoner has no sub accounts`() {
+      whenever(advancesApiClient.getAccountAdvanceBalance(prisonNumber)).thenReturn(
+        AccountAdvanceBalanceResponse(
+          advancesAmount = 0,
+          balancesOutstanding = 0,
+          weeklyPaymentAmount = 0,
+          advanceCount = 0,
+          balanceDateTime = Instant.now(),
+        ),
+      )
+
       val mockAccount = mockAccount(offenderDisplayId, subAccounts = emptyList())
 
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(mockAccount)
@@ -223,6 +233,16 @@ class GeneralLedgerServiceTest {
     fun `Should log error when prisoner sub balance account is not found`() {
       val parentUUID = UUID.randomUUID()
       val subAccounts = mutableListOf<SubAccountResponse>()
+
+      whenever(advancesApiClient.getAccountAdvanceBalance(prisonNumber)).thenReturn(
+        AccountAdvanceBalanceResponse(
+          advancesAmount = 0,
+          balancesOutstanding = 0,
+          weeklyPaymentAmount = 0,
+          advanceCount = 0,
+          balanceDateTime = Instant.now(),
+        ),
+      )
 
       for (account in prisonerAccounts) {
         val subAccount =

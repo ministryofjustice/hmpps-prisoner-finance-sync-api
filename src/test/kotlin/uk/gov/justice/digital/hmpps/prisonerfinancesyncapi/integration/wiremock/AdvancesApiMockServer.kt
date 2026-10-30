@@ -8,6 +8,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
 import com.github.tomakehurst.wiremock.client.WireMock.post
+import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AccountAdvanceBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
@@ -266,6 +268,51 @@ class AdvancesApiMockServer :
   fun stubPostMigrateAdvanceReturnsStatusCode(statusCode: Int) {
     stubFor(
       post("/migrate/advances")
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(statusCode)
+            .withBody(
+              """
+               {
+                  "status": $statusCode,
+                  "errorCode": null,
+                  "userMessage": "Server Error",
+                  "developerMessage": "Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  fun stubGetAdvanceBalanceForAccount(
+    prisonNumber: String,
+    advanceBalanceResponse: AccountAdvanceBalanceResponse = AccountAdvanceBalanceResponse(
+      advancesAmount = 0,
+      balancesOutstanding = 0,
+      weeklyPaymentAmount = 0,
+      advanceCount = 0,
+      balanceDateTime = Instant.now(),
+    ),
+  ) {
+    stubFor(
+      get(urlPathEqualTo("/advances/account/$prisonNumber/balance"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(mapper.writeValueAsString(advanceBalanceResponse)),
+        ),
+    )
+  }
+  fun stubGetAdvanceBalanceForAccountReturnsError(
+    prisonNumber: String,
+    statusCode: Int,
+  ) {
+    stubFor(
+      get(urlPathEqualTo("/advances/account/$prisonNumber/balance"))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
