@@ -184,6 +184,11 @@ class ReconciliationTest : IntegrationTestBase() {
     fun `should return a 502 if the advances service returns an error response`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
       advancesApi.stubGetAdvanceBalanceForAccountReturnsError(testPrisonNumber, 500)
+      holdsApi.stubGetHoldBalanceForSubAccount(
+        testPrisonNumber,
+        "CASH",
+        1000,
+      )
       webTestClient
         .get()
         .uri("/reconcile/prisoner-balances/$testPrisonNumber")
@@ -198,6 +203,7 @@ class ReconciliationTest : IntegrationTestBase() {
         createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "CASH"),
       )
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
+      advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber)
       generalLedgerApi.stubGetSubAccountBalanceThrowsError(subaccounts[0].id, 500)
       holdsApi.stubGetHoldBalanceForSubAccount(
         testPrisonNumber,
@@ -221,6 +227,7 @@ class ReconciliationTest : IntegrationTestBase() {
         createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "CASH"),
       )
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
+      advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, amount = 1000)
       holdsApi.stubGetHoldBalanceForSubAccountReturnError(testPrisonNumber, "CASH", 500)
 
