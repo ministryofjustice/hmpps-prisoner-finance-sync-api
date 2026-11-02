@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-28.98.5f29b68"
+    "version" : "2026-11-02.109.0f594ac"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-subscriptions-api-dev.hmpps.service.justice.gov.uk",
@@ -109,6 +109,65 @@
         },
         "security" : [ {
           "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RW" ]
+        } ]
+      }
+    },
+    "/subscriptions/account/{prisonNumber}/summary" : {
+      "get" : {
+        "tags" : [ "Subscription Records" ],
+        "operationId" : "getSubscriptionSummary",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Get subscription summary",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountSubscriptionSummaryResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RO" ]
         } ]
       }
     }
@@ -288,6 +347,24 @@
           }
         },
         "required" : [ "status" ]
+      },
+      "AccountSubscriptionSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "weeklyPaymentAmount" : {
+            "type" : "integer",
+            "format" : "int64",
+            "description" : "Combined maximum weekly payment amount of all subscriptions on the account in pence",
+            "example" : 1000
+          },
+          "subscriptionCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "The number of active subscriptions",
+            "example" : 3
+          }
+        },
+        "required" : [ "subscriptionCount", "weeklyPaymentAmount" ]
       }
     },
     "securitySchemes" : {

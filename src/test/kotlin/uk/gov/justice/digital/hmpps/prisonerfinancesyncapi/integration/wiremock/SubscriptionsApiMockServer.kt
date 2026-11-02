@@ -7,6 +7,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
 import com.github.tomakehurst.wiremock.client.WireMock.post
+import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.AccountSubscriptionSummaryResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
 import java.util.UUID
 
@@ -83,6 +85,49 @@ class SubscriptionsApiMockServer :
               """
               {
                   "status": $errorCode,
+                  "errorCode": null,
+                  "userMessage": "Server Error",
+                  "developerMessage": "Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  fun stubGetSubscriptionSummary(
+    prisonNumber: String,
+    accountSubscriptionSummaryResponse: AccountSubscriptionSummaryResponse = AccountSubscriptionSummaryResponse(
+      weeklyPaymentAmount = 0,
+      subscriptionCount = 0,
+    ),
+  ) {
+    stubFor(
+      get(urlPathEqualTo("/subscriptions/account/$prisonNumber/summary"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(200)
+            .withBody(mapper.writeValueAsString(accountSubscriptionSummaryResponse)),
+        ),
+    )
+  }
+
+  fun stubGetSubscriptionSummaryReturnsError(
+    prisonNumber: String,
+    statusCode: Int,
+  ) {
+    stubFor(
+      get(urlPathEqualTo("/subscriptions/account/$prisonNumber/summary"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(statusCode)
+            .withBody(
+              """
+               {
+                  "status": $statusCode,
                   "errorCode": null,
                   "userMessage": "Server Error",
                   "developerMessage": "Server Error",
