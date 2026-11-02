@@ -18,12 +18,14 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HoldsApiExtension.Companion.holdsApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension.Companion.subscriptionsApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AccountAdvanceBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AccountReconciliationResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.AdvancesAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubscriptionsAccountReconciliation
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ErrorResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.AccountSubscriptionSummaryResponse
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -64,6 +66,8 @@ class ReconciliationTest : IntegrationTestBase() {
     fun `should return subscription and advances balances when there are no subaccounts`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
       advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber)
+      subscriptionsApi.stubGetSubscriptionSummary(testPrisonNumber)
+
       val body = webTestClient
         .get()
         .uri("/reconcile/prisoner-balances/$testPrisonNumber")
@@ -80,14 +84,14 @@ class ReconciliationTest : IntegrationTestBase() {
           ),
           subscriptions = SubscriptionsAccountReconciliation(
             subscriptionCount = 0,
-            weeklyPaymentAmount = BigDecimal("0"),
+            weeklyPaymentAmount = BigDecimal("0.00"),
           ),
         ),
       ).usingRecursiveComparison()
     }
 
     @Test
-    fun `should return AdvancesAccountReconciliation built from the advances account balance response`() {
+    fun `should return AdvancesAccountReconciliation and SubscriptionsAccountReconciliation built from the subscription summary response`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
       val advanceAccountBalanceResponse = AccountAdvanceBalanceResponse(
         advancesAmount = 1000,
@@ -97,6 +101,12 @@ class ReconciliationTest : IntegrationTestBase() {
         balanceDateTime = Instant.now(),
       )
       advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber, advanceAccountBalanceResponse)
+
+      val accountSubscriptionSummaryResponse = AccountSubscriptionSummaryResponse(
+        weeklyPaymentAmount = 50,
+        subscriptionCount = 2,
+      )
+      subscriptionsApi.stubGetSubscriptionSummary(testPrisonNumber, accountSubscriptionSummaryResponse)
       val body = webTestClient
         .get()
         .uri("/reconcile/prisoner-balances/$testPrisonNumber")
@@ -112,8 +122,8 @@ class ReconciliationTest : IntegrationTestBase() {
             advanceBalance = BigDecimal("8.00"),
           ),
           subscriptions = SubscriptionsAccountReconciliation(
-            subscriptionCount = 0,
-            weeklyPaymentAmount = BigDecimal("0"),
+            subscriptionCount = 2,
+            weeklyPaymentAmount = BigDecimal("0.50"),
           ),
         ),
       ).usingRecursiveComparison()
@@ -127,6 +137,7 @@ class ReconciliationTest : IntegrationTestBase() {
         createSubAccountResponse(parentAccountId = testPrisonerAccountUUID, reference = "SAVINGS"),
       )
       advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber)
+      subscriptionsApi.stubGetSubscriptionSummary(testPrisonNumber)
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, 1000)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[1].id, 2000)
@@ -182,6 +193,33 @@ class ReconciliationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 502 if the advances service returns an error response`() {
+      generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
+
+      val advanceAccountBalanceResponse = AccountAdvanceBalanceResponse(
+        advancesAmount = 80,
+        balancesOutstanding = 166,
+        weeklyPaymentAmount = 2,
+        advanceCount = 2,
+        balanceDateTime = Instant.now(),
+      )
+      advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber, advanceAccountBalanceResponse)
+      subscriptionsApi.stubGetSubscriptionSummaryReturnsError(testPrisonNumber, 500)
+
+      holdsApi.stubGetHoldBalanceForSubAccount(
+        testPrisonNumber,
+        "CASH",
+        1000,
+      )
+      webTestClient
+        .get()
+        .uri("/reconcile/prisoner-balances/$testPrisonNumber")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .exchange()
+        .expectStatus().isEqualTo(502)
+    }
+
+    @Test
+    fun `should return a 502 if the subscription service returns an error response`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
       advancesApi.stubGetAdvanceBalanceForAccountReturnsError(testPrisonNumber, 500)
       holdsApi.stubGetHoldBalanceForSubAccount(

@@ -14,6 +14,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.SubscriptionsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -31,7 +32,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffen
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.ledger.LegacyTransactionFixService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
-import java.math.BigDecimal
 import java.util.UUID
 
 @Service("generalLedgerService")
@@ -39,6 +39,7 @@ class GeneralLedgerService(
   private val generalLedgerApiClient: GeneralLedgerApiClient,
   private val holdsApiClient: HoldsApiClient,
   private val advancesApiClient: AdvancesApiClient,
+  private val subscriptionsApiClient: SubscriptionsApiClient,
   private val accountMapping: LedgerAccountMappingService,
   private val telemetryClient: TelemetryClient,
   private val timeConversionService: TimeConversionService,
@@ -207,10 +208,7 @@ class GeneralLedgerService(
   private suspend fun asyncGetGLPrisonerBalances(prisonNumber: String): AccountReconciliationResponse = coroutineScope {
     val deferredAccountAdvanceBalanceResponse = async { advancesApiClient.getAccountAdvanceBalance(prisonNumber) }
 
-    val subscriptionsDeferred = async(Dispatchers.IO) {
-      // TODO: Replace with actual API call
-      SubscriptionsAccountReconciliation(subscriptionCount = 0, weeklyPaymentAmount = BigDecimal("0"))
-    }
+    val deferredSubscriptionSummaryResponse = async { subscriptionsApiClient.getSubscriptionSummary(prisonNumber) }
 
     val parentAccount = generalLedgerApiClient.findAccountByReference(prisonNumber)
       ?: throw CustomException("No General Ledger account found for prisoner $prisonNumber", status = HttpStatus.NOT_FOUND)
@@ -242,9 +240,11 @@ class GeneralLedgerService(
 
     val advances = AdvancesAccountReconciliation.fromAccountAdvanceBalanceResponse(deferredAccountAdvanceBalanceResponse.await())
 
+    val subscriptionsSummary = SubscriptionsAccountReconciliation.fromAccountSubscriptionSummaryResponse(deferredSubscriptionSummaryResponse.await())
+
     AccountReconciliationResponse(
       advances = advances,
-      subscriptions = subscriptionsDeferred.await(),
+      subscriptions = subscriptionsSummary,
       subAccountBalances = balances,
     )
   }

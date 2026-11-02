@@ -32,6 +32,7 @@ import org.springframework.dao.DataIntegrityViolationException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.AdvancesApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.GeneralLedgerApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.HoldsApiClient
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.SubscriptionsApiClient
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.config.CustomException
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.GeneralLedgerTransactionMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.GeneralLedgerTransactionMappingRepository
@@ -45,6 +46,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.AccountSubscriptionSummaryResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.SyncOffenderTransactionRequest
@@ -68,6 +70,9 @@ class GeneralLedgerServiceTest {
 
   @Mock
   private lateinit var advancesApiClient: AdvancesApiClient
+
+  @Mock
+  private lateinit var subscriptionsApiClient: SubscriptionsApiClient
 
   @Mock
   private lateinit var telemetryClient: TelemetryClient
@@ -173,6 +178,12 @@ class GeneralLedgerServiceTest {
           balanceDateTime = Instant.now(),
         ),
       )
+      whenever(subscriptionsApiClient.getSubscriptionSummary(prisonNumber)).thenReturn(
+        AccountSubscriptionSummaryResponse(
+          weeklyPaymentAmount = 0,
+          subscriptionCount = 0,
+        ),
+      )
 
       val mockAccount = mockAccount(offenderDisplayId, subAccounts = emptyList())
 
@@ -199,7 +210,7 @@ class GeneralLedgerServiceTest {
     }
 
     @Test
-    fun `Should throw error if an exception is throw inside the async block`() {
+    fun `Should throw error if an exception is thrown inside the async block`() {
       val accountUUID = UUID.randomUUID()
       val mockSubAccount = SubAccountResponse(
         id = UUID.randomUUID(),
@@ -241,6 +252,12 @@ class GeneralLedgerServiceTest {
           weeklyPaymentAmount = 0,
           advanceCount = 0,
           balanceDateTime = Instant.now(),
+        ),
+      )
+      whenever(subscriptionsApiClient.getSubscriptionSummary(prisonNumber)).thenReturn(
+        AccountSubscriptionSummaryResponse(
+          weeklyPaymentAmount = 0,
+          subscriptionCount = 0,
         ),
       )
 
@@ -285,6 +302,12 @@ class GeneralLedgerServiceTest {
           weeklyPaymentAmount = 0,
           advanceCount = 0,
           balanceDateTime = Instant.now(),
+        ),
+      )
+      whenever(subscriptionsApiClient.getSubscriptionSummary(prisonNumber)).thenReturn(
+        AccountSubscriptionSummaryResponse(
+          weeklyPaymentAmount = 0,
+          subscriptionCount = 0,
         ),
       )
 
