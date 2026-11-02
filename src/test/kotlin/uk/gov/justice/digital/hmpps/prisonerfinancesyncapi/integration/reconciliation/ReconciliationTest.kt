@@ -195,15 +195,9 @@ class ReconciliationTest : IntegrationTestBase() {
     fun `should return a 502 if the advances service returns an error response`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
 
-      val advanceAccountBalanceResponse = AccountAdvanceBalanceResponse(
-        advancesAmount = 80,
-        balancesOutstanding = 166,
-        weeklyPaymentAmount = 2,
-        advanceCount = 2,
-        balanceDateTime = Instant.now(),
-      )
-      advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber, advanceAccountBalanceResponse)
-      subscriptionsApi.stubGetSubscriptionSummaryReturnsError(testPrisonNumber, 500)
+      advancesApi.stubGetAdvanceBalanceForAccountReturnsError(testPrisonNumber, 500)
+
+      subscriptionsApi.stubGetSubscriptionSummary(testPrisonNumber)
 
       holdsApi.stubGetHoldBalanceForSubAccount(
         testPrisonNumber,
@@ -221,7 +215,11 @@ class ReconciliationTest : IntegrationTestBase() {
     @Test
     fun `should return a 502 if the subscription service returns an error response`() {
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), emptyList())
-      advancesApi.stubGetAdvanceBalanceForAccountReturnsError(testPrisonNumber, 500)
+
+      advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber)
+
+      subscriptionsApi.stubGetSubscriptionSummaryReturnsError(testPrisonNumber, 500)
+
       holdsApi.stubGetHoldBalanceForSubAccount(
         testPrisonNumber,
         "CASH",
