@@ -37,7 +37,7 @@ class PrisonerFinanceSyncApiExceptionHandler(
         developerMessage = exception.message,
       ),
     ).also {
-      log.error("Error processing sync transaction: $exception.properties", exception)
+      log.error("Error processing sync transaction: ${exception.properties}", exception)
 
       telemetryClient.trackException(exception, exception.properties, null)
     }
@@ -51,7 +51,13 @@ class PrisonerFinanceSyncApiExceptionHandler(
         userMessage = e.message,
         developerMessage = e.developerMessage ?: e.message,
       ),
-    ).also { log.info("CustomExceptionThrown: {}", e.message) }
+    ).also {
+      if (e.status == INTERNAL_SERVER_ERROR) {
+        log.info("Unexpected exception: ${e.cause}")
+      } else {
+        log.info("CustomExceptionThrown: {}", e.message)
+      }
+    }
 
   @ExceptionHandler(GeneralLedgerAccountNotFoundException::class)
   fun handleGeneralLedgerAccountNotFoundException(e: GeneralLedgerAccountNotFoundException): ResponseEntity<ErrorResponse> {
