@@ -24,7 +24,7 @@ generic-service:
       SecAuditLog /var/log/nginx/error.log
       SecAuditLogType Serial
       SecDefaultAction "phase:2,pass,log,tag:github_team=hmpps-prisoner-finance-live,tag:namespace={{ .Release.Namespace }}"
-      SecRule REQUEST_URI "@rx /sync/.+$" \
+      SecRule REQUEST_URI "@rx /(sync|migrate)/.+$" \
         "id:1000,phase:2,pass,nolog,\
         ctl:ruleRemoveById=200002,\
         ctl:ruleRemoveById=932230,\
