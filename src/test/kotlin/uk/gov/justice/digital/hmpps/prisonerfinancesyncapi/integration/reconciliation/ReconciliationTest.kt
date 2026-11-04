@@ -164,19 +164,16 @@ class ReconciliationTest : IntegrationTestBase() {
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .exchange()
         .expectStatus().isOk()
-        .expectBody()
-        // 2101 is cash - in json this sits at top level
-        .jsonPath("$['2101'].totalBalance").isEqualTo(10.00)
-        .jsonPath("$['2101'].holdBalance").isEqualTo(10.00)
-        // 2102 is spends - in json this sits at top level
-        .jsonPath("$['2102'].totalBalance").isEqualTo(20.00)
-        .jsonPath("$['2102'].holdBalance").isEqualTo(0.00)
-        // 2103 is savings - in json this sits at top level
-        .jsonPath("$['2103'].totalBalance").isEqualTo(0.00)
-        .jsonPath("$['2103'].holdBalance").isEqualTo(20.50)
-        // Advances and subscriptions sit at top level
-        .jsonPath("$.advances").exists()
-        .jsonPath("$.subscriptions").exists()
+        .expectBody<AccountReconciliationResponse>().returnResult().responseBody!!
+
+      assertThat(body.subAccountBalances["2101"]!!.totalBalance).isEqualTo(BigDecimal("10.00"))
+      assertThat(body.subAccountBalances["2101"]!!.holdBalance).isEqualTo(BigDecimal("10.00"))
+
+      assertThat(body.subAccountBalances["2102"]!!.totalBalance).isEqualTo(BigDecimal("20.00"))
+      assertThat(body.subAccountBalances["2102"]!!.holdBalance).isEqualTo(BigDecimal("0.00"))
+
+      assertThat(body.subAccountBalances["2103"]!!.totalBalance).isEqualTo(BigDecimal("0.00"))
+      assertThat(body.subAccountBalances["2103"]!!.holdBalance).isEqualTo(BigDecimal("20.50"))
     }
 
     @Test
