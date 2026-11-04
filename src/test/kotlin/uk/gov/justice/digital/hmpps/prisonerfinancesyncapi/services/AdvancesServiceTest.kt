@@ -57,7 +57,7 @@ class AdvancesServiceTest {
   @Mock
   lateinit var advanceRepaymentMappingRepository: AdvanceRepaymentMappingRepository
 
-  @Spy
+  @Mock
   lateinit var idempotencyService: IdempotencyService
 
   @Mock
@@ -116,6 +116,13 @@ class AdvancesServiceTest {
         comment = syncAdvanceRequest.comment,
         updatedAt = null,
       )
+
+      whenever {
+        idempotencyService.genGLTransactionIdempotencyKey(
+          syncAdvanceRequest.legacyTransactionId,
+          1,
+        )
+      }.thenReturn(UUID.randomUUID())
 
       whenever(advancesApiClient.postAdvanceRecord(requestCapture.capture(), any()))
         .thenReturn(advanceRecordResponse)
@@ -190,6 +197,13 @@ class AdvancesServiceTest {
             entrySequence = 2,
           ),
         )
+
+      whenever {
+        idempotencyService.genGLTransactionIdempotencyKey(
+          syncRepaymentRequest.transactionId,
+          2,
+        )
+      }.thenReturn(UUID.randomUUID())
 
       repaymentResponse = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
     }

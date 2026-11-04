@@ -48,7 +48,7 @@ class AdvancesService(
     }
 
     val idempotencyKey = idempotencyService.genGLTransactionIdempotencyKey(
-      syncCreateAdvanceRecordRequest.legacyPaymentProfileId,
+      syncCreateAdvanceRecordRequest.legacyTransactionId,
       advanceTransactionEntrySequence,
     )
 
