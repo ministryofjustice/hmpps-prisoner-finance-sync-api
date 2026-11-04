@@ -2,7 +2,6 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.controllers.sync
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
-import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
@@ -50,39 +49,6 @@ class ReconciliationController(
             schema = Schema(
               implementation = AccountReconciliationResponse::class,
             ),
-            examples = [
-              ExampleObject(
-                name = "AccountReconciliation",
-                summary = "Example reconciliation response",
-                value = """
-              {
-                "advances": {
-                  "advanceBalance": 15.00,
-                  "advanceCount": 2
-                },
-                "subscriptions": {
-                  "weeklyPaymentAmount": 5.50,
-                  "subscriptionCount": 1
-                },
-                "2101": {
-                  "totalBalance": 100.50,
-                  "holdBalance": 0,
-                  "balanceDateTime": "2026-07-17T12:55:12.813Z"
-                },
-                "2102": {
-                  "totalBalance": 50.00,
-                  "holdBalance": 10.0,
-                  "balanceDateTime": "2026-07-17T12:55:12.813Z"
-                },
-                "2103": {
-                  "totalBalance": 0,
-                  "holdBalance": 0,
-                  "balanceDateTime": "2026-07-17T12:55:12.813Z"
-                }
-              }
-              """,
-              ),
-            ],
           ),
         ],
       ),
