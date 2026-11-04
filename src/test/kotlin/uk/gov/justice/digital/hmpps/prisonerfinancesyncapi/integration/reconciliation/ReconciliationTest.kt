@@ -237,6 +237,7 @@ class ReconciliationTest : IntegrationTestBase() {
       )
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
       advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber)
+      subscriptionsApi.stubGetSubscriptionSummary(testPrisonNumber)
       generalLedgerApi.stubGetSubAccountBalanceThrowsError(subaccounts[0].id, 500)
       holdsApi.stubGetHoldBalanceForSubAccount(
         testPrisonNumber,
@@ -261,6 +262,7 @@ class ReconciliationTest : IntegrationTestBase() {
       )
       generalLedgerApi.stubGetAccount(testPrisonNumber, UUID.randomUUID(), subaccounts)
       advancesApi.stubGetAdvanceBalanceForAccount(testPrisonNumber)
+      subscriptionsApi.stubGetSubscriptionSummary(testPrisonNumber)
       generalLedgerApi.stubGetSubAccountBalance(subaccounts[0].id, amount = 1000)
       holdsApi.stubGetHoldBalanceForSubAccountReturnError(testPrisonNumber, "CASH", 500)
 
