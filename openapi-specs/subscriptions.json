@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-02.109.0f594ac"
+    "version" : "2026-11-04.120.39eace7"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-subscriptions-api-dev.hmpps.service.justice.gov.uk",
@@ -112,6 +112,173 @@
         } ]
       }
     },
+    "/subscriptions/{subscriptionId}/update" : {
+      "post" : {
+        "tags" : [ "Subscription Records" ],
+        "operationId" : "updateSubscription",
+        "parameters" : [ {
+          "name" : "subscriptionId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateSubscriptionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Update subscription",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountSubscriptionSummaryResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Subscription not found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RW" ]
+        } ]
+      }
+    },
+    "/subscriptions/account/{prisonNumber}" : {
+      "get" : {
+        "tags" : [ "Subscription Records" ],
+        "operationId" : "getSubscriptions",
+        "parameters" : [ {
+          "name" : "prisonNumber",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "pageNumber",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Get a list of subscriptions for a prisoner",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedResponseSubscriptionResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Unauthorized - requires a valid OAuth2 token",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Forbidden - requires an appropriate role",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Server Error - An unexpected error occurred.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ {
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RO", "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RW" ]
+        } ]
+      }
+    },
     "/subscriptions/account/{prisonNumber}/summary" : {
       "get" : {
         "tags" : [ "Subscription Records" ],
@@ -167,7 +334,7 @@
           }
         },
         "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RO" ]
+          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RO", "ROLE_PRISONER_FINANCE__SUBSCRIPTIONS__RW" ]
         } ]
       }
     }
@@ -348,6 +515,17 @@
         },
         "required" : [ "status" ]
       },
+      "UpdateSubscriptionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "endDate" : {
+            "type" : [ "string", "null" ],
+            "format" : "date",
+            "description" : "The end date to set for the subscription",
+            "example" : "2026-13-04"
+          }
+        }
+      },
       "AccountSubscriptionSummaryResponse" : {
         "type" : "object",
         "properties" : {
@@ -365,6 +543,37 @@
           }
         },
         "required" : [ "subscriptionCount", "weeklyPaymentAmount" ]
+      },
+      "PagedResponseSubscriptionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SubscriptionResponse"
+            }
+          },
+          "pageNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pageSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "isLastPage" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
       }
     },
     "securitySchemes" : {
