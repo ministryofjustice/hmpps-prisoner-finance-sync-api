@@ -255,7 +255,17 @@ class AdvancesApiMockServer :
         .withRequestBody(matchingJsonPath("$.reference", equalTo(advanceMigrationRequest.reference)))
         .withRequestBody(matchingJsonPath("$.createdBy", equalTo(advanceMigrationRequest.createdBy)))
         .withRequestBody(matchingJsonPath("$.status", equalTo(advanceMigrationRequest.status.toString())))
-        .withRequestBody(matchingJsonPath("$.legacyTransactionId", equalTo(advanceMigrationRequest.legacyTransactionId.toString())))
+        .apply {
+          if (advanceMigrationRequest.legacyTransactionId != null) {
+            withRequestBody(
+              matchingJsonPath("$.legacyTransactionId", equalTo(advanceMigrationRequest.legacyTransactionId.toString())),
+            )
+          } else {
+            withRequestBody(
+              matchingJsonPath("$.[?(@.legacyTransactionId == null)]"),
+            )
+          }
+        }
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)

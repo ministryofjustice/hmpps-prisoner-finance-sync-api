@@ -641,6 +641,48 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
+    fun `should return a 201 when the advance migrate endpoint is called without legacy transaction id`() {
+      val createdOn = LocalDateTime.now()
+      val repaymentStartDate = LocalDateTime.now().plusDays(1)
+      val advanceUuid: UUID = UUID.randomUUID()
+      val glUUID: UUID = UUID.randomUUID()
+
+      val advanceRecordResponse = AdvanceRecordResponse(
+        id = advanceUuid,
+        legacyPaymentProfileId = legacyPaymentProfileId,
+        legacyInformationNumber = legacyInformationNumber,
+        prisonNumber = prisonNumber,
+        prisonID = prisonId,
+        amount = syncMigrateAdvanceRecordRequest.amountIssued.toPence(),
+        createdOn = timeConversionService.toUtcInstant(createdOn as LocalDateTime),
+        repaymentStartDate = timeConversionService.toUtcInstant(repaymentStartDate as LocalDateTime),
+        repaymentAmount = syncMigrateAdvanceRecordRequest.repaymentAmount.toPence(),
+        reference = syncMigrateAdvanceRecordRequest.reference,
+        createdBy = syncMigrateAdvanceRecordRequest.createdBy,
+        status = AdvanceRecordResponse.Status.ACTIVE,
+        updatedAt = null,
+        generalLedgerUUID = null,
+      )
+      val syncMigrateAdvanceRecordRequestWithoutLegacyTxn = syncMigrateAdvanceRecordRequest.copy(legacyTransactionId = null)
+
+      val expectedAdvanceMigrationRequestWithoutLegacyTxn = expectedAdvanceMigrationRequest.copy(legacyTransactionId = null)
+
+      advancesApi.stubPostMigrateAdvance(expectedAdvanceMigrationRequestWithoutLegacyTxn, advanceRecordResponse)
+
+      val response = webTestClient.post().uri("/migrate/advances")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncMigrateAdvanceRecordRequestWithoutLegacyTxn)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.CREATED)
+        .expectBody<SyncCreateAdvanceRecordResponse>()
+        .returnResult()
+        .responseBody!!
+
+      assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)
+      assertThat(response.advanceId).isEqualTo(advanceUuid)
+    }
+
+    @Test
     fun `should return 400 bad request when called with an invalid body`() {
       webTestClient.post().uri("/migrate/advances")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
