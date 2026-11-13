@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-29.189.39c0557"
+    "version" : "2026-11-10.202.6f608f6"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
@@ -1307,9 +1307,14 @@
             "type" : [ "string", "null" ],
             "format" : "date",
             "description" : "Date of the next due repayment"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "Current status of the advance",
+            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ]
           }
         },
-        "required" : [ "advanceAmount", "balanceDateTime", "balanceOutstanding", "remainingPayments", "weeklyPaymentAmount" ]
+        "required" : [ "advanceAmount", "balanceDateTime", "balanceOutstanding", "remainingPayments", "status", "weeklyPaymentAmount" ]
       },
       "AccountAdvanceBalanceResponse" : {
         "type" : "object",

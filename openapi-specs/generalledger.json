@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-10-30.818.5081841"
+    "version" : "2026-11-03.821.24ffb22"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -2291,10 +2291,15 @@
         },
         "required" : [ "createdAt", "createdBy", "id", "reference", "type" ]
       },
-      "StatementEntryOppositePostingsResponse" : {
+      "StatementEntryOppositePostingResponse" : {
         "type" : "object",
         "description" : "Posting response of statement entry",
         "properties" : {
+          "sourcePostingId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The original posting id"
+          },
           "id" : {
             "type" : "string",
             "format" : "uuid",
@@ -2319,12 +2324,17 @@
             "format" : "int64",
             "description" : "The posting monetary amount in pence"
           },
-          "subAccount" : {
-            "$ref" : "#/components/schemas/SubAccountWithParentResponse",
-            "description" : "The sub-account with parent associated with the posting"
+          "parentAccountReference" : {
+            "type" : "string",
+            "description" : "The reference of the parent account"
+          },
+          "parentAccountType" : {
+            "type" : "string",
+            "description" : "The type of the parent account",
+            "enum" : [ "PRISONER", "PRISON" ]
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "id", "subAccount", "type" ]
+        "required" : [ "amount", "createdAt", "createdBy", "id", "parentAccountReference", "parentAccountType", "sourcePostingId", "type" ]
       },
       "StatementEntryResponse" : {
         "type" : "object",
@@ -2353,7 +2363,7 @@
             "type" : "array",
             "description" : "This is the opposite postings from the statement entry",
             "items" : {
-              "$ref" : "#/components/schemas/StatementEntryOppositePostingsResponse"
+              "$ref" : "#/components/schemas/StatementEntryOppositePostingResponse"
             }
           },
           "amount" : {
