@@ -123,11 +123,6 @@ class SubscriptionController(private val subscriptionsService: SubscriptionsServ
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "500",
-        description = "This endpoint is not yet implemented.",
-        content = [Content(schema = Schema(implementation = ErrorResponse::class))],
-      ),
-      ApiResponse(
         responseCode = "502",
         description = "A dependency error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
