@@ -14,7 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension.Companion.subscriptionsApi
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.ErrorResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
@@ -153,7 +153,7 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a 502 when Advance service returns a 5XX error`() {
+    fun `should return a 502 when subscription service returns a 5XX error`() {
       subscriptionsApi.stubPostSubscriptionsReturnsError(500)
 
       webTestClient
@@ -256,7 +256,7 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
     }
 
     @Test
-    fun `should return a 502 when Advance service returns a 5XX error`() {
+    fun `should return a 502 when subscription service returns a 5XX error`() {
       subscriptionsApi.stubPostSubscriptionUpdateReturnsError(
         subscriptionId,
         statusCode = 500,
