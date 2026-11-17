@@ -6,6 +6,7 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
 import com.github.tomakehurst.wiremock.client.WireMock.equalTo
 import com.github.tomakehurst.wiremock.client.WireMock.get
+import com.github.tomakehurst.wiremock.client.WireMock.matchingJsonPath
 import com.github.tomakehurst.wiremock.client.WireMock.post
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo
 import com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.AccountSubscriptionSummaryResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.UpdateSubscriptionRequest
 import java.util.UUID
 
 class SubscriptionsApiExtension :
@@ -120,6 +122,45 @@ class SubscriptionsApiMockServer :
   ) {
     stubFor(
       get(urlPathEqualTo("/subscriptions/account/$prisonNumber/summary"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(statusCode)
+            .withBody(
+              """
+               {
+                  "status": $statusCode,
+                  "errorCode": null,
+                  "userMessage": "Server Error",
+                  "developerMessage": "Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
+  fun stubPostSubscriptionUpdate(subscriptionId: UUID, request: UpdateSubscriptionRequest, response: SubscriptionResponse) {
+    stubFor(
+      post("/subscriptions/$subscriptionId/update")
+        .withRequestBody(matchingJsonPath("$.startDate", equalTo(request.startDate.toString())))
+        .withRequestBody(matchingJsonPath("$.endDate", equalTo(request.endDate.toString())))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", "application/json")
+            .withBody(mapper.writeValueAsString(response))
+            .withStatus(201),
+        ),
+    )
+  }
+
+  fun stubPostSubscriptionUpdateReturnsError(
+    subscriptionID: UUID,
+    statusCode: Int,
+  ) {
+    stubFor(
+      post(urlPathEqualTo("/subscriptions/$subscriptionID/update"))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)

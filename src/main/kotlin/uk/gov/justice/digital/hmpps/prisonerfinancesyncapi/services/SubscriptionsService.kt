@@ -5,9 +5,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.client.SubscriptionsA
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.SubscriptionsMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.SubscriptionsMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.CreateSubscriptionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.UpdateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
+import java.util.UUID
 
 @Service
 class SubscriptionsService(
@@ -60,5 +64,10 @@ class SubscriptionsService(
       }
       throw e
     }
+  }
+
+  fun updateSubscription(subscriptionId: UUID, updateRequest: SyncUpdateSubscriptionRequest): SubscriptionResponse {
+    val response = subscriptionsApiClient.updateSubscription(subscriptionId, UpdateSubscriptionRequest(startDate = updateRequest.startDate, endDate = updateRequest.endDate))
+    return response
   }
 }

@@ -123,8 +123,8 @@ class SubscriptionController(private val subscriptionsService: SubscriptionsServ
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
       ApiResponse(
-        responseCode = "501",
-        description = "This endpoint is not yet implemented.",
+        responseCode = "502",
+        description = "A dependency error occurred.",
         content = [Content(schema = Schema(implementation = ErrorResponse::class))],
       ),
     ],
@@ -132,10 +132,10 @@ class SubscriptionController(private val subscriptionsService: SubscriptionsServ
   @SecurityRequirement(name = "bearer-jwt", scopes = [ROLE_PRISONER_FINANCE_SYNC])
   @PreAuthorize("hasAnyAuthority('${ROLE_PRISONER_FINANCE_SYNC}')")
   fun updateSubscription(
-    @Suppress("UNUSED_PARAMETER")
     @PathVariable subscriptionId: UUID,
-    @Suppress("UNUSED_PARAMETER")
-    @RequestBody
-    @Valid request: SyncUpdateSubscriptionRequest,
-  ): ResponseEntity<SyncUpdateSubscriptionResponse> = ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build()
+    @Valid @RequestBody request: SyncUpdateSubscriptionRequest,
+  ): ResponseEntity<SyncUpdateSubscriptionResponse> {
+    val updatedSubscription = subscriptionsService.updateSubscription(subscriptionId, request)
+    return ResponseEntity.ok(SyncUpdateSubscriptionResponse(startDate = updatedSubscription.startDate, endDate = updatedSubscription.endDate))
+  }
 }
