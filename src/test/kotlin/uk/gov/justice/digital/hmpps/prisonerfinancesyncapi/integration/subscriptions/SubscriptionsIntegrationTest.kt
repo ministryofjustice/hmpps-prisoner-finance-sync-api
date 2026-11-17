@@ -19,11 +19,13 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.UpdateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.IdempotencyService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -169,20 +171,107 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
 
   @Nested
   inner class UpdateSubscription {
+    val subscriptionId: UUID = UUID.randomUUID()
+    val subscriptionResponse = SubscriptionResponse(
+      id = subscriptionId,
+      legacyPaymentProfileId = 123456,
+      amount = 50,
+      dayOfPayment = SubscriptionResponse.DayOfPayment.WEDNESDAY,
+      startDate = LocalDate.now().plusYears(1),
+      subscriptionType = "TELE",
+      createdBy = "USER",
+      createdAt = Instant.now(),
+      prisonId = "LEI",
+      prisonNumber = "A1234AA",
+      subAccountRef = SubscriptionResponse.SubAccountRef.SPENDS,
+      endDate = null,
+      reference = "ref",
+    )
+
+    val syncUpdateSubscriptionRequest = SyncUpdateSubscriptionRequest(
+      startDate = LocalDate.now().minusDays(1),
+      endDate = LocalDate.now(),
+    )
 
     @Test
-    fun `should return a 501 when the update subscription endpoint is called and not implemented`() {
-      val subscriptionId = UUID.randomUUID()
-
-      val syncUpdateSubscriptionRequest = SyncUpdateSubscriptionRequest(
-        endDate = LocalDate.now(),
+    fun `should return a 200 when the update subscription endpoint is called`() {
+      subscriptionsApi.stubPostSubscriptionUpdate(
+        subscriptionId,
+        request = UpdateSubscriptionRequest(startDate = syncUpdateSubscriptionRequest.startDate, endDate = syncUpdateSubscriptionRequest.endDate),
+        response = subscriptionResponse,
       )
 
       webTestClient.post().uri("/sync/subscriptions/$subscriptionId/update")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue(syncUpdateSubscriptionRequest)
         .exchange()
-        .expectStatus().isEqualTo(HttpStatus.NOT_IMPLEMENTED)
+        .expectStatus().isEqualTo(HttpStatus.OK)
+    }
+
+    @Test
+    fun `should return a 400 when an invalid payload is sent`() {
+      webTestClient
+        .post()
+        .uri("/sync/subscriptions/$subscriptionId/update")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(
+          """
+          { "startDate" : "hello",
+            "endDate" : "world" }
+          """.trimIndent(),
+        )
+        .exchange()
+        .expectStatus().isBadRequest
+        .expectBody<ErrorResponse>()
+    }
+
+    @Test
+    fun `should return a 400 when the subscriptions API returns a 400`() {
+      subscriptionsApi.stubPostSubscriptionUpdateReturnsError(
+        subscriptionId,
+        statusCode = 400,
+      )
+
+      webTestClient.post().uri("/sync/subscriptions/$subscriptionId/update")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncUpdateSubscriptionRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+    }
+
+    @Test
+    fun `should return a 403 when using the incorrect role`() {
+      webTestClient
+        .post()
+        .uri("/sync/subscriptions/$subscriptionId/update")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf("ROLE__INCORRECT_ROLE")))
+        .bodyValue(syncUpdateSubscriptionRequest)
+        .exchange()
+        .expectStatus().isForbidden
+        .expectBody<ErrorResponse>()
+    }
+
+    @Test
+    fun `should return a 502 when Advance service returns a 5XX error`() {
+      subscriptionsApi.stubPostSubscriptionUpdateReturnsError(
+        subscriptionId,
+        statusCode = 500,
+      )
+
+      webTestClient
+        .post()
+        .uri("/sync/subscriptions/$subscriptionId/update")
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(syncUpdateSubscriptionRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+        .expectBody<ErrorResponse>()
     }
   }
 }

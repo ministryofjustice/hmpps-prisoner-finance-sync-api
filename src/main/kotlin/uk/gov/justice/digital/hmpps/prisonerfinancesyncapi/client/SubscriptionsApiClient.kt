@@ -6,6 +6,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.subscriptions
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.AccountSubscriptionSummaryResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.CreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.UpdateSubscriptionRequest
 import java.util.UUID
 
 @Component
@@ -39,5 +40,18 @@ class SubscriptionsApiClient(
 
     return response
       ?: throw IllegalStateException("Received null response when getting subscription summary for $prisonNumber")
+  }
+
+  fun updateSubscription(subscriptionId: UUID, request: UpdateSubscriptionRequest): SubscriptionResponse {
+    log.info("Updating subscription: $subscriptionId")
+    val response = handleExceptions(
+      block = {
+        subscriptionRecordsApi.updateSubscription(subscriptionId, request)
+          .block()
+      },
+    )
+
+    return response
+      ?: throw IllegalStateException("Received null response when updating summary for $subscriptionId")
   }
 }

@@ -21,9 +21,12 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Subs
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.CreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncUpdateSubscriptionRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.UpdateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
@@ -152,6 +155,62 @@ class SubscriptionsServiceTest {
       val response = subscriptionsService.createSubscription(syncSubscriptionRequest)
 
       assertThat(response.subscriptionId).isEqualTo(subscriptionRecordResponse.id)
+    }
+  }
+
+  @Nested
+  inner class UpdateSubscription {
+
+    val requestCaptor = argumentCaptor<UpdateSubscriptionRequest>()
+    val subscriptionIdCaptor = argumentCaptor<UUID>()
+
+    val prisonNumber = "A1234AA"
+
+    val subscriptionId: UUID = UUID.randomUUID()
+    val expectedRecordResponse = SubscriptionResponse(
+      id = subscriptionId,
+      legacyPaymentProfileId = 123456,
+      amount = 50,
+      dayOfPayment = SubscriptionResponse.DayOfPayment.WEDNESDAY,
+      startDate = LocalDate.now().plusYears(1),
+      subscriptionType = "TELE",
+      createdBy = "USER",
+      createdAt = Instant.now(),
+      prisonId = "LEI",
+      prisonNumber = prisonNumber,
+      subAccountRef = SubscriptionResponse.SubAccountRef.SPENDS,
+      endDate = null,
+      reference = "ref",
+    )
+
+    val syncSubscriptionUpdateRequest = SyncUpdateSubscriptionRequest(
+      startDate = expectedRecordResponse.startDate,
+      endDate = expectedRecordResponse.endDate,
+    )
+
+    val subscriptionUpdateRequest = UpdateSubscriptionRequest(startDate = syncSubscriptionUpdateRequest.startDate, endDate = syncSubscriptionUpdateRequest.endDate)
+    lateinit var returnedResponse: SubscriptionResponse
+
+    @BeforeEach
+    fun setup() {
+      whenever(subscriptionsApiClient.updateSubscription(subscriptionIdCaptor.capture(), requestCaptor.capture()))
+        .thenReturn(expectedRecordResponse)
+
+      returnedResponse = subscriptionsService.updateSubscription(subscriptionId, syncSubscriptionUpdateRequest)
+    }
+
+    @Test
+    fun `Should call the subscriptions update endpoint with the request`() {
+      verify(subscriptionsApiClient, times(1))
+        .updateSubscription(subscriptionIdCaptor.capture(), requestCaptor.capture())
+
+      assertThat(subscriptionIdCaptor.firstValue).isEqualTo(subscriptionId)
+      assertThat(requestCaptor.firstValue).isEqualTo(subscriptionUpdateRequest)
+    }
+
+    @Test
+    fun `Should return the updated subscription response`() {
+      assertThat(returnedResponse).isEqualTo(expectedRecordResponse)
     }
   }
 }
