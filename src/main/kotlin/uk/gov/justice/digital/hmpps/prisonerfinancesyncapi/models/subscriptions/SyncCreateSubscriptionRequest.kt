@@ -2,7 +2,6 @@ package uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions
 
 import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -11,8 +10,8 @@ data class SyncCreateSubscriptionRequest(
   val legacyPaymentProfileId: Long,
   @field:Schema(description = "The amount paid weekly", example = "0.50", required = true)
   val amount: BigDecimal,
-  @field:Schema(description = "The day the payment is made weekly", example = "MONDAY", required = true)
-  val dayOfPayment: DayOfWeek,
+  @field:Schema(description = "The day or days the payment is made weekly", example = "MONDAY_TO_FRIDAY / TUESDAY", required = true)
+  val paymentSchedule: CreateSubscriptionRequest.PaymentSchedule,
   @field:Schema(description = "The start date of the subscription", example = "2026-12-03", required = true)
   val startDate: LocalDate,
   @field:Schema(description = "The end date of the subscription", example = "2026-13-04", required = false)
