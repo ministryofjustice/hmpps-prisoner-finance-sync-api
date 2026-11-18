@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-17.155.5b7ab97"
+    "version" : "2026-11-18.162.b873160"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-subscriptions-api-dev.hmpps.service.justice.gov.uk",
@@ -364,11 +364,11 @@
             "description" : "The amount paid weekly in pence",
             "example" : 50
           },
-          "dayOfPayment" : {
+          "paymentSchedule" : {
             "type" : "string",
-            "description" : "The day the payment is made weekly",
-            "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ],
-            "example" : "MONDAY"
+            "description" : "The day or days the payment is made weekly",
+            "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY", "MONDAY_TO_FRIDAY" ],
+            "example" : "MONDAY_TO_FRIDAY / TUESDAY"
           },
           "startDate" : {
             "type" : "string",
@@ -420,7 +420,7 @@
             "example" : "CASH"
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
+        "required" : [ "amount", "createdAt", "createdBy", "paymentSchedule", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
       },
       "SubscriptionResponse" : {
         "type" : "object",
@@ -443,11 +443,11 @@
             "description" : "The amount paid weekly in pence",
             "example" : 50
           },
-          "dayOfPayment" : {
+          "paymentSchedule" : {
             "type" : "string",
-            "description" : "The day the payment is made weekly",
-            "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY" ],
-            "example" : "MONDAY"
+            "description" : "The day or days the payment is made weekly",
+            "enum" : [ "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY", "MONDAY_TO_FRIDAY" ],
+            "example" : "MONDAY_TO_FRIDAY / TUESDAY"
           },
           "startDate" : {
             "type" : "string",
@@ -499,7 +499,7 @@
             "example" : "CASH"
           }
         },
-        "required" : [ "amount", "createdAt", "createdBy", "dayOfPayment", "id", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
+        "required" : [ "amount", "createdAt", "createdBy", "id", "paymentSchedule", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
       },
       "ErrorResponse" : {
         "type" : "object",

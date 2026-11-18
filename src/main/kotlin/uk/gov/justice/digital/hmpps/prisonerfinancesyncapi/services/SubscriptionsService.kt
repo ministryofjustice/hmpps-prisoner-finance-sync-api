@@ -29,7 +29,7 @@ class SubscriptionsService(
     val createSubscriptionRequest = CreateSubscriptionRequest(
       legacyPaymentProfileId = syncSubscriptionRequest.legacyPaymentProfileId,
       amount = syncSubscriptionRequest.amount.toPence(),
-      dayOfPayment = CreateSubscriptionRequest.DayOfPayment.valueOf(syncSubscriptionRequest.dayOfPayment.name),
+      paymentSchedule = CreateSubscriptionRequest.PaymentSchedule.valueOf(syncSubscriptionRequest.paymentSchedule.name),
       startDate = syncSubscriptionRequest.startDate,
       subscriptionType = syncSubscriptionRequest.subscriptionType,
       createdAt = timeConversionService.toUtcInstant(syncSubscriptionRequest.createdAt),

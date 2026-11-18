@@ -25,7 +25,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.UpdateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -67,7 +66,7 @@ class SubscriptionsServiceTest {
     val syncSubscriptionRequest = SyncCreateSubscriptionRequest(
       legacyPaymentProfileId = legacyPaymentProfileId,
       amount = BigDecimal("123.00"),
-      dayOfPayment = DayOfWeek.WEDNESDAY,
+      paymentSchedule = CreateSubscriptionRequest.PaymentSchedule.WEDNESDAY,
       startDate = LocalDate.now(),
       endDate = LocalDate.now().plusDays(7),
       subscriptionType = "TELE",
@@ -87,7 +86,7 @@ class SubscriptionsServiceTest {
       id = UUID.randomUUID(),
       legacyPaymentProfileId = syncSubscriptionRequest.legacyPaymentProfileId,
       amount = syncSubscriptionRequest.amount.toPence(),
-      dayOfPayment = SubscriptionResponse.DayOfPayment.WEDNESDAY,
+      paymentSchedule = SubscriptionResponse.PaymentSchedule.WEDNESDAY,
       startDate = syncSubscriptionRequest.startDate,
       subscriptionType = syncSubscriptionRequest.subscriptionType,
       createdBy = syncSubscriptionRequest.createdBy,
@@ -120,7 +119,7 @@ class SubscriptionsServiceTest {
       val capturedRequest = requestCaptor.firstValue
       assertThat(capturedRequest.legacyPaymentProfileId).isEqualTo(syncSubscriptionRequest.legacyPaymentProfileId)
       assertThat(capturedRequest.amount).isEqualTo(syncSubscriptionRequest.amount.toPence())
-      assertThat(capturedRequest.dayOfPayment).isEqualTo(CreateSubscriptionRequest.DayOfPayment.WEDNESDAY)
+      assertThat(capturedRequest.paymentSchedule).isEqualTo(CreateSubscriptionRequest.PaymentSchedule.WEDNESDAY)
       assertThat(capturedRequest.startDate).isEqualTo(syncSubscriptionRequest.startDate)
       assertThat(capturedRequest.subscriptionType).isEqualTo(syncSubscriptionRequest.subscriptionType)
       assertThat(capturedRequest.createdBy).isEqualTo(syncSubscriptionRequest.createdBy)
@@ -171,7 +170,7 @@ class SubscriptionsServiceTest {
       id = subscriptionId,
       legacyPaymentProfileId = 123456,
       amount = 50,
-      dayOfPayment = SubscriptionResponse.DayOfPayment.WEDNESDAY,
+      paymentSchedule = SubscriptionResponse.PaymentSchedule.WEDNESDAY,
       startDate = LocalDate.now().plusYears(1),
       subscriptionType = "TELE",
       createdBy = "USER",

@@ -14,6 +14,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.Integrati
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.SubscriptionsApiExtension.Companion.subscriptionsApi
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.CreateSubscriptionRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SubscriptionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.SyncCreateSubscriptionRequest
@@ -24,7 +25,6 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.IdempotencyS
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.services.TimeConversionService
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.math.BigDecimal
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -51,7 +51,7 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
     val syncCreateSubscriptionRequest = SyncCreateSubscriptionRequest(
       legacyPaymentProfileId = legacyPaymentProfileId,
       amount = BigDecimal(10.0),
-      dayOfPayment = DayOfWeek.MONDAY,
+      paymentSchedule = CreateSubscriptionRequest.PaymentSchedule.MONDAY,
       startDate = LocalDate.now(),
       endDate = LocalDate.now().plusWeeks(1),
       subscriptionType = "TELE",
@@ -67,7 +67,7 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
       id = UUID.randomUUID(),
       legacyPaymentProfileId = syncCreateSubscriptionRequest.legacyPaymentProfileId,
       amount = syncCreateSubscriptionRequest.amount.toPence(),
-      dayOfPayment = SubscriptionResponse.DayOfPayment.MONDAY,
+      paymentSchedule = SubscriptionResponse.PaymentSchedule.MONDAY,
       startDate = syncCreateSubscriptionRequest.startDate,
       subscriptionType = syncCreateSubscriptionRequest.subscriptionType,
       createdBy = syncCreateSubscriptionRequest.createdBy,
@@ -176,7 +176,7 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
       id = subscriptionId,
       legacyPaymentProfileId = 123456,
       amount = 50,
-      dayOfPayment = SubscriptionResponse.DayOfPayment.WEDNESDAY,
+      paymentSchedule = SubscriptionResponse.PaymentSchedule.WEDNESDAY,
       startDate = LocalDate.now().plusYears(1),
       subscriptionType = "TELE",
       createdBy = "USER",
