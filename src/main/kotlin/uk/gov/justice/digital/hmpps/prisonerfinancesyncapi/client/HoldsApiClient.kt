@@ -6,10 +6,10 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsCo
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.clients.holds.HoldsMigrationControllerApi
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleaseHoldRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.TotalHoldBalanceResponse
 import java.util.UUID
 
 @Component
@@ -62,7 +62,7 @@ class HoldsApiClient(
   }
 
   @Throws(WebClientResponseException::class)
-  fun getSubAccountHoldBalance(prisonNumber: String, subAccountReference: String): HoldBalanceResponse {
+  fun getSubAccountHoldBalance(prisonNumber: String, subAccountReference: String): TotalHoldBalanceResponse {
     val response = handleExceptions(
       block = {
         holdsControllerApi.getSubAccountHoldBalance(prisonNumber, subAccountReference)

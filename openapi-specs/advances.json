@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-18.213.754d460"
+    "version" : "2026-11-18.219.dcead99"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
