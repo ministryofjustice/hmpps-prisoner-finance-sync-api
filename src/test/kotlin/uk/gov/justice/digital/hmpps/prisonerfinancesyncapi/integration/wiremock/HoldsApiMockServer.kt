@@ -20,10 +20,10 @@ import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.springframework.http.MediaType
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.CreateHoldRequest
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.ReleasedHoldResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.SyncCreateHoldRequest
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.TotalHoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.utils.toPence
 import java.time.Instant
 import java.util.UUID
@@ -254,9 +254,11 @@ class HoldsApiMockServer :
   )
 
   fun stubGetHoldBalanceForSubAccount(prisonNumber: String, subAccountReference: String, amount: Long) {
-    val holdBalanceResponse = HoldBalanceResponse(
+    val holdBalanceResponse = TotalHoldBalanceResponse(
       balanceDateTime = Instant.now(),
       amount = amount,
+      hoa = 0L,
+      whf = 0L,
     )
     stubFor(
       get(urlPathEqualTo("/holds/$prisonNumber/balance/$subAccountReference"))

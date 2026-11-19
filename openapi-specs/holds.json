@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-18.300.19e62f0"
+    "version" : "2026-11-19.305.df391a6"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
@@ -446,6 +446,14 @@
             "format" : "int32",
             "minimum" : 1
           }
+        }, {
+          "name" : "holdType",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "HOA", "WHF" ]
+          }
         } ],
         "responses" : {
           "200" : {
@@ -525,7 +533,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/HoldBalanceResponse"
+                  "$ref" : "#/components/schemas/TotalHoldBalanceResponse"
                 }
               }
             }
@@ -604,7 +612,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/HoldBalanceResponse"
+                  "$ref" : "#/components/schemas/TotalHoldBalanceResponse"
                 }
               }
             }
@@ -1086,7 +1094,7 @@
         },
         "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
       },
-      "HoldBalanceResponse" : {
+      "TotalHoldBalanceResponse" : {
         "type" : "object",
         "properties" : {
           "balanceDateTime" : {
@@ -1096,9 +1104,17 @@
           "amount" : {
             "type" : "integer",
             "format" : "int64"
+          },
+          "hoa" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "whf" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         },
-        "required" : [ "amount", "balanceDateTime" ]
+        "required" : [ "amount", "balanceDateTime", "hoa", "whf" ]
       }
     },
     "securitySchemes" : {

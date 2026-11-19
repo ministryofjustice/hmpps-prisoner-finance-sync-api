@@ -45,7 +45,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SearchTransactionResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.generalledger.SubAccountResponse
-import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.HoldBalanceResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.holds.TotalHoldBalanceResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.subscriptions.AccountSubscriptionSummaryResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.GeneralLedgerEntry
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.sync.OffenderTransaction
@@ -224,9 +224,11 @@ class GeneralLedgerServiceTest {
       whenever(generalLedgerApiClient.findAccountByReference(prisonNumber)).thenReturn(mockAccount)
 
       lenient().whenever(holdsApiClient.getSubAccountHoldBalance(prisonNumber, mockSubAccount.reference)).thenReturn(
-        HoldBalanceResponse(
+        TotalHoldBalanceResponse(
           balanceDateTime = Instant.now(),
           amount = 77,
+          hoa = 0L,
+          whf = 0L,
         ),
       )
       whenever(generalLedgerApiClient.findSubAccountBalanceByAccountId(mockSubAccount.id))
@@ -334,7 +336,7 @@ class GeneralLedgerServiceTest {
           ),
         )
         whenever(holdsApiClient.getSubAccountHoldBalance(prisonNumber, subAccount.reference))
-          .thenReturn(HoldBalanceResponse(amount = 0L, balanceDateTime = Instant.now()))
+          .thenReturn(TotalHoldBalanceResponse(amount = 0L, balanceDateTime = Instant.now(), hoa = 0L, whf = 0L))
       }
 
       val balances = generalLedgerService.getGLPrisonerBalances(prisonNumber)
