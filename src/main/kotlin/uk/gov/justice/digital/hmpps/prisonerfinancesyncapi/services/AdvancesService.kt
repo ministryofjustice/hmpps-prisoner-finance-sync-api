@@ -8,6 +8,8 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceM
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.entities.AdvanceRepaymentMapping
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvanceRepaymentMappingRepository
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.AdvancesMappingRepository
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceUpdateRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
@@ -186,4 +188,6 @@ class AdvancesService(
       advanceId = response.id,
     )
   }
+
+  fun updateAdvance(advanceId: UUID, updateAdvanceRequest: AdvanceUpdateRequest): AdvanceRecordResponse = advancesApiClient.updateAdvance(advanceId, updateAdvanceRequest)
 }
