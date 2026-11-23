@@ -23,6 +23,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.integration.wiremock.HmppsAuthApiExtension.Companion.hmppsAuth
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceUpdateRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.ErrorResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncAdvanceRepayResponse
@@ -420,7 +421,7 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
 
     @Test
     fun `should return a 400 if request body is malformed`() {
-      webTestClient.post().uri("/sync/advances/NOT_A_UUID/repay")
+      webTestClient.post().uri("/sync/advances/${UUID.randomUUID()}/repay")
         .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
         .bodyValue("{\"Invalid\" : \"JSON\"}")
         .exchange()
@@ -729,6 +730,103 @@ class AdvancesIntegrationTest : IntegrationTestBase() {
         .exchange()
         .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
         .expectBody<ErrorResponse>()
+    }
+  }
+
+  @Nested
+  inner class UpdateAdvance {
+    @BeforeEach
+    fun setup() {
+      hmppsAuth.stubGrantToken()
+      generalLedgerApi.resetAll()
+      advancesApi.resetAll()
+    }
+
+    val advanceUpdateRequest = AdvanceUpdateRequest(
+      comment = "HELLO",
+      updatedBy = "TEST",
+    )
+    val advanceId = UUID.randomUUID()
+
+    @Test
+    fun `should return a 201 when the advance update endpoint is called`() {
+      advancesApi.stubPostAdvanceUpdate(
+        advanceUpdateRequest = advanceUpdateRequest,
+        advanceUUID = advanceId,
+      )
+
+      webTestClient.post().uri("/sync/advances/$advanceId/update")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(advanceUpdateRequest)
+        .exchange()
+        .expectStatus().isOk
+        .expectBody<AdvanceRecordResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 400 if advance ID is not UUID`() {
+      webTestClient.post().uri("/sync/advances/NOT_A_UUID/update")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(advanceUpdateRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 400 if request body is malformed`() {
+      webTestClient.post().uri("/sync/advances/${UUID.randomUUID()}/update")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue("{\"Invalid\" : \"JSON\"}")
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 404 if advance does not exist`() {
+      advancesApi.stubUpdateAdvanceReturnsError(404, advanceId)
+
+      webTestClient.post().uri("/sync/advances/$advanceId/update")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(advanceUpdateRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.NOT_FOUND)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 403 if passed role is incorrect`() {
+      webTestClient.post().uri("/sync/advances/$advanceId/update")
+        .headers(setAuthorisation(roles = listOf("WRONG_ROLE")))
+        .bodyValue(advanceUpdateRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.FORBIDDEN)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
+    }
+
+    @Test
+    fun `should return a 502 if advance service returns a 5XX error`() {
+      advancesApi.stubUpdateAdvanceReturnsError(500, advanceId)
+
+      webTestClient.post().uri("/sync/advances/$advanceId/update")
+        .headers(setAuthorisation(roles = listOf(ROLE_PRISONER_FINANCE_SYNC)))
+        .bodyValue(advanceUpdateRequest)
+        .exchange()
+        .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+        .expectBody<ErrorResponse>()
+        .returnResult()
+        .responseBody!!
     }
   }
 }

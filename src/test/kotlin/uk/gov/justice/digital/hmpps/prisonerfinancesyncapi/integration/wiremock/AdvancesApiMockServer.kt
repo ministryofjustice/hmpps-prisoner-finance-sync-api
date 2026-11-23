@@ -21,6 +21,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.Accou
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceUpdateRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceRepayRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.SyncCreateAdvanceWriteOffRequest
@@ -136,6 +137,28 @@ class AdvancesApiMockServer :
     )
   }
 
+  fun stubUpdateAdvanceReturnsError(errorCode: Int, advanceId: UUID) {
+    stubFor(
+      post(urlPathMatching("/advances/$advanceId/update"))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(errorCode)
+            .withBody(
+              """
+              {
+                  "status": $errorCode,
+                  "errorCode": null,
+                  "userMessage": "GL Server Error",
+                  "developerMessage": "GL Server Error",
+                  "moreInfo": null
+              }
+              """.trimIndent(),
+            ),
+        ),
+    )
+  }
+
   fun stubPostAdvanceRepayment(syncCreateAdvanceRepayRequest: SyncCreateAdvanceRepayRequest, generalLedgerUUID: UUID, advanceUUID: UUID) {
     val advanceRecordResponse = AdvanceRepaymentResponse(
       id = UUID.randomUUID(),
@@ -157,6 +180,39 @@ class AdvancesApiMockServer :
         .withRequestBody(matchingJsonPath("$.description", equalTo(syncCreateAdvanceRepayRequest.description)))
         .withRequestBody(matchingJsonPath("$.entrySequence", equalTo(syncCreateAdvanceRepayRequest.entrySequence.toString())))
         .withRequestBody(matchingJsonPath("$.legacyTransactionId", equalTo(syncCreateAdvanceRepayRequest.transactionId.toString())))
+        .willReturn(
+          aResponse()
+            .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(201)
+            .withBody(mapper.writeValueAsString(advanceRecordResponse)),
+        ),
+    )
+  }
+
+  fun stubPostAdvanceUpdate(advanceUpdateRequest: AdvanceUpdateRequest, advanceUUID: UUID) {
+    val advanceRecordResponse = AdvanceRecordResponse(
+      id = UUID.randomUUID(),
+      amount = 1,
+      createdBy = "TEST",
+      legacyPaymentProfileId = 123,
+      legacyInformationNumber = "123",
+      prisonNumber = "A123XS",
+      prisonID = "LEI",
+      createdOn = Instant.now(),
+      repaymentStartDate = Instant.now(),
+      repaymentAmount = 1,
+      status = AdvanceRecordResponse.Status.ACTIVE,
+      reference = "Test",
+      comment = advanceUpdateRequest.comment,
+      updatedAt = Instant.now(),
+      generalLedgerUUID = UUID.randomUUID(),
+      updatedBy = advanceUpdateRequest.updatedBy,
+    )
+
+    stubFor(
+      post("/advances/$advanceUUID/update")
+        .withRequestBody(matchingJsonPath("$.comment", equalTo(advanceUpdateRequest.comment)))
+        .withRequestBody(matchingJsonPath("$.updatedBy", equalTo(advanceUpdateRequest.updatedBy)))
         .willReturn(
           aResponse()
             .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)

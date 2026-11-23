@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mock
+import org.mockito.Mockito.mock
 import org.mockito.Spy
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
@@ -26,6 +27,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.jpa.repositories.Adva
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceUpdateRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
@@ -440,6 +442,25 @@ class AdvancesServiceTest {
 
       assertThat(response.advanceId).isEqualTo(advanceId)
       assertThat(response.paymentProfileId).isEqualTo(legacyPaymentProfileId)
+    }
+  }
+
+  @Nested
+  inner class UpdateAdvance {
+    val advanceId = UUID.randomUUID()
+    val advanceUpdateReq = AdvanceUpdateRequest(
+      comment = "TEST comment",
+      updatedBy = "TEST",
+    )
+
+    @Test
+    fun `should call the advance client to update the advance record`() {
+      val mockAdvanceRecordResponse = mock<AdvanceRecordResponse>()
+      whenever(advancesApiClient.updateAdvance(advanceId, advanceUpdateReq))
+        .thenReturn(mockAdvanceRecordResponse)
+
+      val res = advancesService.updateAdvance(advanceId, advanceUpdateReq)
+      assertThat(res).isEqualTo(mockAdvanceRecordResponse)
     }
   }
 }

@@ -9,6 +9,7 @@ import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.Accou
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceMigrationRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRecordResponse
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceRepaymentResponse
+import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceUpdateRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.AdvanceWriteOffRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRecordRequest
 import uk.gov.justice.digital.hmpps.prisonerfinancesyncapi.models.advances.CreateAdvanceRepaymentRequest
@@ -84,5 +85,20 @@ class AdvancesApiClient(
       },
     )
     return response ?: throw IllegalStateException("Received null response when retrieving account balance $prisonNumber")
+  }
+
+  fun updateAdvance(advanceId: UUID, updateAdvanceRequest: AdvanceUpdateRequest): AdvanceRecordResponse {
+    log.info("Updating advance for $advanceId")
+
+    val response = handleExceptions(
+      block = {
+        advanceRecordControllerApi.updateAdvance(
+          advanceId = advanceId,
+          advanceUpdateRequest = updateAdvanceRequest,
+        ).block()
+      },
+    )
+
+    return response ?: throw IllegalStateException("Received null response when updating advance $advanceId")
   }
 }

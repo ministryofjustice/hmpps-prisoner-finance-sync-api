@@ -1,1361 +1,2178 @@
 {
-  "openapi" : "3.1.0",
-  "info" : {
-    "title" : "HMPPS Prisoner Finance Advances Api",
-    "contact" : {
-      "name" : "HMPPS Digital Studio",
-      "email" : "feedback@digital.justice.gov.uk"
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HMPPS Prisoner Finance Advances Api",
+    "contact": {
+      "name": "HMPPS Digital Studio",
+      "email": "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-18.219.dcead99"
+    "version": "2026-11-23"
   },
-  "servers" : [ {
-    "url" : "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
-    "description" : "Development"
-  }, {
-    "url" : "https://prisoner-finance-advances-api-preprod.hmpps.service.justice.gov.uk",
-    "description" : "Pre-Production"
-  }, {
-    "url" : "https://prisoner-finance-advances-api.hmpps.service.justice.gov.uk",
-    "description" : "Production"
-  }, {
-    "url" : "http://localhost:8080",
-    "description" : "Local"
-  } ],
-  "security" : [ {
-    "bearer-jwt" : [ "read", "write" ]
-  } ],
-  "tags" : [ {
-    "name" : "ADVANCES",
-    "description" : "Endpoints for advance management and viewing in prisoner finance."
-  } ],
-  "paths" : {
-    "/migrate/advances" : {
-      "post" : {
-        "tags" : [ "Migration Controller" ],
-        "summary" : "Create a new advance record",
-        "description" : "Creates a new advance record for a prisoner's spends account.",
-        "operationId" : "migrateAdvance",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/AdvanceMigrationRequest"
-              }
+  "servers": [
+    {
+      "url": "https://prisoner-finance-advances-api-dev.hmpps.service.justice.gov.uk",
+      "description": "Development"
+    },
+    {
+      "url": "https://prisoner-finance-advances-api-preprod.hmpps.service.justice.gov.uk",
+      "description": "Pre-Production"
+    },
+    {
+      "url": "https://prisoner-finance-advances-api.hmpps.service.justice.gov.uk",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local"
+    }
+  ],
+  "security": [
+    {
+      "bearer-jwt": [
+        "read",
+        "write"
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "ADVANCES",
+      "description": "Endpoints for advance management and viewing in prisoner finance."
+    }
+  ],
+  "paths": {
+    "/queue-admin/retry-dlq/{dlqName}": {
+      "put": {
+        "tags": [
+          "hmpps-queue-resource"
+        ],
+        "operationId": "retryDlq",
+        "parameters": [
+          {
+            "name": "dlqName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Advance record Migrated",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AdvanceRecordResponse"
-                }
-              }
-            }
-          },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryDlqResult"
                 }
               }
             }
           }
-        },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
-        } ]
+        }
       }
     },
-    "/advances" : {
-      "post" : {
-        "tags" : [ "Advance Record Controller" ],
-        "summary" : "Create a new advance record",
-        "description" : "Creates a new advance record for a prisoner's spends account.",
-        "operationId" : "postAdvanceRecord",
-        "parameters" : [ {
-          "name" : "Idempotency-Key",
-          "in" : "header",
-          "description" : "An Idempotency Key to ensure that transactions are not repeated",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
+    "/queue-admin/retry-dlq-messages/{dlqName}": {
+      "put": {
+        "tags": [
+          "hmpps-queue-resource"
+        ],
+        "operationId": "retryDlqMessages",
+        "parameters": [
+          {
+            "name": "dlqName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateAdvanceRecordRequest"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryDlqMessagesBody"
               }
             }
           },
-          "required" : true
+          "required": true
         },
-        "responses" : {
-          "201" : {
-            "description" : "Advance record Created",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AdvanceRecordResponse"
-                }
-              }
-            }
-          },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "502" : {
-            "description" : "Dependency Error - General Ledger Unreachable or throwing an error",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryDlqMessagesResult"
                 }
               }
             }
           }
-        },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
-        } ]
+        }
       }
     },
-    "/advances/{advanceId}/write-off" : {
-      "post" : {
-        "tags" : [ "Advance Record Controller" ],
-        "operationId" : "writeOffAdvance",
-        "parameters" : [ {
-          "name" : "advanceId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/AdvanceWriteOffRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Advance was written off",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AdvanceRecordResponse"
-                }
-              }
-            }
-          },
-          "400" : {
-            "description" : "Bad Request - cannot write off an advance that is not active",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404" : {
-            "description" : "Not found - Advance not found",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+    "/queue-admin/retry-all-dlqs": {
+      "put": {
+        "tags": [
+          "hmpps-queue-resource"
+        ],
+        "operationId": "retryAllDlqs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RetryDlqResult"
+                  }
                 }
               }
             }
           }
-        },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
-        } ]
+        }
       }
     },
-    "/advances/{advanceId}/repay" : {
-      "post" : {
-        "tags" : [ "Advance Repayment Controller" ],
-        "operationId" : "repayAdvance",
-        "parameters" : [ {
-          "name" : "Idempotency-Key",
-          "in" : "header",
-          "description" : "An Idempotency Key to ensure that transactions are not repeated",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
+    "/queue-admin/purge-queue/{queueName}": {
+      "put": {
+        "tags": [
+          "hmpps-queue-resource"
+        ],
+        "operationId": "purgeQueue",
+        "parameters": [
+          {
+            "name": "queueName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
-        }, {
-          "name" : "advanceId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/CreateAdvanceRepaymentRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Advance Repayment Created",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AdvanceRepaymentResponse"
-                }
-              }
-            }
-          },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404" : {
-            "description" : "Not found - Advance not found",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "502" : {
-            "description" : "Bad Gateway - A dependency returned an unexpected error",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurgeQueueResult"
                 }
               }
             }
           }
-        },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
-        } ]
+        }
       }
     },
-    "/hello" : {
-      "get" : {
-        "tags" : [ "Hello World Controller" ],
-        "summary" : "Hello World Endpoint",
-        "operationId" : "hello",
-        "responses" : {
-          "200" : {
-            "description" : "Hello World!",
-            "content" : {
-              "text/plain" : { }
+    "/queue-admin/delete-dlq-messages/{dlqName}": {
+      "put": {
+        "tags": [
+          "hmpps-queue-resource"
+        ],
+        "operationId": "deleteDlqMessages",
+        "parameters": [
+          {
+            "name": "dlqName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
-          },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteDlqMessagesBody"
               }
             }
           },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDlqMessagesResult"
                 }
               }
             }
           }
-        },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RO", "ROLE_PRISONER_FINANCE__ADVANCES__RW" ]
-        } ]
+        }
       }
     },
-    "/advances/{prisonNumber}" : {
-      "get" : {
-        "tags" : [ "Advance Record Controller" ],
-        "operationId" : "getAdvances",
-        "parameters" : [ {
-          "name" : "prisonNumber",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
-          }
-        }, {
-          "name" : "pageNumber",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 1
-          }
-        }, {
-          "name" : "pageSize",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 1
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "Paginated advance records for prisonNumber",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PagedResponseAdvanceRecordResponse"
+    "/migrate/advances": {
+      "post": {
+        "tags": [
+          "Migration Controller"
+        ],
+        "summary": "Create a new advance record",
+        "description": "Creates a new advance record for a prisoner's spends account.",
+        "operationId": "migrateAdvance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceMigrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Advance record Migrated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceRecordResponse"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW", "ROLE_PRISONER_FINANCE__ADVANCES__RO" ]
-        } ]
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW"
+            ]
+          }
+        ]
       }
     },
-    "/advances/{advanceId}/repayments" : {
-      "get" : {
-        "tags" : [ "Advance Repayment Controller" ],
-        "operationId" : "getPrisonerRepayments",
-        "parameters" : [ {
-          "name" : "advanceId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
+    "/advances": {
+      "post": {
+        "tags": [
+          "Advance Record Controller"
+        ],
+        "summary": "Create a new advance record",
+        "description": "Creates a new advance record for a prisoner's spends account.",
+        "operationId": "postAdvanceRecord",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "An Idempotency Key to ensure that transactions are not repeated",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
-        }, {
-          "name" : "pageNumber",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 1
-          }
-        }, {
-          "name" : "pageSize",
-          "in" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "minimum" : 1
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "Prisoner repayments towards an advance",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/PagedResponseAdvancePrisonerRepaymentResponse"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdvanceRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Advance record Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceRecordResponse"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "404" : {
-            "description" : "Not found - Advance was not found",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "502": {
+            "description": "Dependency Error - General Ledger Unreachable or throwing an error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW", "ROLE_PRISONER_FINANCE__ADVANCES__RO" ]
-        } ]
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW"
+            ]
+          }
+        ]
       }
     },
-    "/advances/{advanceId}/balance" : {
-      "get" : {
-        "tags" : [ "Advance Record Controller" ],
-        "operationId" : "getAdvanceBalance",
-        "parameters" : [ {
-          "name" : "advanceId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
+    "/advances/{advanceId}/write-off": {
+      "post": {
+        "tags": [
+          "Advance Record Controller"
+        ],
+        "operationId": "writeOffAdvance",
+        "parameters": [
+          {
+            "name": "advanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "Advance balance",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AdvanceBalanceResponse"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceWriteOffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Advance was written off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceRecordResponse"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "400": {
+            "description": "Bad Request - cannot write off an advance that is not active",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "404" : {
-            "description" : "Not found - Advance not found",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "404": {
+            "description": "Not found - Advance not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW", "ROLE_PRISONER_FINANCE__ADVANCES__RO" ]
-        } ]
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW"
+            ]
+          }
+        ]
       }
     },
-    "/advances/account/{prisonNumber}/balance" : {
-      "get" : {
-        "tags" : [ "Advance Record Controller" ],
-        "operationId" : "getAccountAdvanceBalance",
-        "parameters" : [ {
-          "name" : "prisonNumber",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
+    "/advances/{advanceId}/update": {
+      "post": {
+        "tags": [
+          "Advance Record Controller"
+        ],
+        "operationId": "updateAdvance",
+        "parameters": [
+          {
+            "name": "advanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "Account advance balance",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AccountAdvanceBalanceResponse"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Update advance record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceRecordResponse"
                 }
               }
             }
           },
-          "400" : {
-            "description" : "Bad Request",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "401" : {
-            "description" : "Unauthorized - requires a valid OAuth2 token",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "403" : {
-            "description" : "Forbidden - requires an appropriate role",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           },
-          "500" : {
-            "description" : "Internal Server Error - An unexpected error occurred.",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ErrorResponse"
+          "404": {
+            "description": "Not Found - Advance record to update not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
-        "security" : [ {
-          "bearer-jwt" : [ "ROLE_PRISONER_FINANCE__ADVANCES__RW", "ROLE_PRISONER_FINANCE__ADVANCES__RO" ]
-        } ]
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW"
+            ]
+          }
+        ]
+      }
+    },
+    "/advances/{advanceId}/repay": {
+      "post": {
+        "tags": [
+          "Advance Repayment Controller"
+        ],
+        "operationId": "repayAdvance",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "An Idempotency Key to ensure that transactions are not repeated",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "advanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdvanceRepaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Advance Repayment Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceRepaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - Advance not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway - A dependency returned an unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW"
+            ]
+          }
+        ]
+      }
+    },
+    "/queue-admin/search-dlq-messages/{dlqName}": {
+      "get": {
+        "tags": [
+          "hmpps-queue-resource"
+        ],
+        "operationId": "searchDlqMessages",
+        "parameters": [
+          {
+            "name": "dlqName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "maxMessages",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchDlqResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/queue-admin/get-dlq-messages/{dlqName}": {
+      "get": {
+        "tags": [
+          "hmpps-queue-resource"
+        ],
+        "operationId": "getDlqMessages",
+        "parameters": [
+          {
+            "name": "dlqName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "maxMessages",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDlqResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hello": {
+      "get": {
+        "tags": [
+          "Hello World Controller"
+        ],
+        "summary": "Hello World Endpoint",
+        "operationId": "hello",
+        "responses": {
+          "200": {
+            "description": "Hello World!",
+            "content": {
+              "text/plain": {
+
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RO",
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW"
+            ]
+          }
+        ]
+      }
+    },
+    "/advances/{prisonNumber}": {
+      "get": {
+        "tags": [
+          "Advance Record Controller"
+        ],
+        "operationId": "getAdvances",
+        "parameters": [
+          {
+            "name": "prisonNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated advance records for prisonNumber",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseAdvanceRecordResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW",
+              "ROLE_PRISONER_FINANCE__ADVANCES__RO"
+            ]
+          }
+        ]
+      }
+    },
+    "/advances/{advanceId}/repayments": {
+      "get": {
+        "tags": [
+          "Advance Repayment Controller"
+        ],
+        "operationId": "getPrisonerRepayments",
+        "parameters": [
+          {
+            "name": "advanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prisoner repayments towards an advance",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseAdvancePrisonerRepaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - Advance was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW",
+              "ROLE_PRISONER_FINANCE__ADVANCES__RO"
+            ]
+          }
+        ]
+      }
+    },
+    "/advances/{advanceId}/balance": {
+      "get": {
+        "tags": [
+          "Advance Record Controller"
+        ],
+        "operationId": "getAdvanceBalance",
+        "parameters": [
+          {
+            "name": "advanceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Advance balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceBalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found - Advance not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW",
+              "ROLE_PRISONER_FINANCE__ADVANCES__RO"
+            ]
+          }
+        ]
+      }
+    },
+    "/advances/account/{prisonNumber}/balance": {
+      "get": {
+        "tags": [
+          "Advance Record Controller"
+        ],
+        "operationId": "getAccountAdvanceBalance",
+        "parameters": [
+          {
+            "name": "prisonNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z]\\d{4}[A-Za-z]{2}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account advance balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountAdvanceBalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - requires a valid OAuth2 token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - requires an appropriate role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - An unexpected error occurred.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer-jwt": [
+              "ROLE_PRISONER_FINANCE__ADVANCES__RW",
+              "ROLE_PRISONER_FINANCE__ADVANCES__RO"
+            ]
+          }
+        ]
       }
     }
   },
-  "components" : {
-    "schemas" : {
-      "AdvanceMigrationRequest" : {
-        "type" : "object",
-        "properties" : {
-          "legacyPaymentProfileId" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The payment profile id from NOMIS",
-            "example" : 123456789
-          },
-          "legacyInformationNumber" : {
-            "type" : "string",
-            "description" : "The information number for the advance from NOMIS",
-            "example" : "12345678-1"
-          },
-          "prisonNumber" : {
-            "type" : "string",
-            "description" : "The prison number of the offender this advance was for",
-            "example" : "A9917EC"
-          },
-          "prisonID" : {
-            "type" : "string",
-            "description" : "The prison ID that issued this advance",
-            "example" : "LEI"
-          },
-          "amountIssued" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The total amount in pence issued in the advance",
-            "example" : 500
-          },
-          "amountOutstanding" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The outstanding amount in pence at the time of the migration",
-            "example" : 450
-          },
-          "createdOn" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the advance was created with the time set to midnight",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "migrationTimestamp" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time the advance was migrated",
-            "example" : "2024-06-18T12:05:38.000000"
-          },
-          "repaymentStartDate" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the payments are intended to begin",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "repaymentAmount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount in pence to be repaid weekly",
-            "example" : 50
-          },
-          "reference" : {
-            "type" : [ "string", "null" ],
-            "description" : "The reference from the payment profile ",
-            "example" : "FNC"
-          },
-          "comment" : {
-            "type" : [ "string", "null" ],
-            "description" : "The comment from the payment profile ",
-            "example" : "A comment about this advance"
-          },
-          "createdBy" : {
-            "type" : "string",
-            "description" : "The username that created this advance",
-            "example" : "JOHN_USER"
-          },
-          "status" : {
-            "type" : "string",
-            "description" : "The current status of this advance",
-            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ],
-            "example" : "AdvanceStatus.ACTIVE"
-          },
-          "legacyTransactionId" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int64",
-            "description" : "The legacy transaction ID from NOMIS",
-            "example" : 12345
+  "components": {
+    "schemas": {
+      "RetryDlqResult": {
+        "type": "object",
+        "properties": {
+          "messagesFoundCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "amountIssued", "amountOutstanding", "createdBy", "createdOn", "legacyInformationNumber", "legacyPaymentProfileId", "migrationTimestamp", "prisonID", "prisonNumber", "repaymentAmount", "repaymentStartDate", "status" ]
+        "required": [
+          "messagesFoundCount"
+        ]
       },
-      "AdvanceRecordResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "ID of the repayment"
-          },
-          "legacyPaymentProfileId" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The payment profile id from NOMIS",
-            "example" : 123456789
-          },
-          "legacyInformationNumber" : {
-            "type" : "string",
-            "description" : "The information number for the advance from NOMIS",
-            "example" : "12345678-1"
-          },
-          "prisonNumber" : {
-            "type" : "string",
-            "description" : "The prison number of the offender this advance was for",
-            "example" : "A9917EC"
-          },
-          "prisonID" : {
-            "type" : "string",
-            "description" : "The prison ID that issued this advance",
-            "example" : "LEI"
-          },
-          "amount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount in pence issued in the advance",
-            "example" : 500
-          },
-          "createdOn" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the advance was created with the time set to midnight",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "repaymentStartDate" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the payments are intended to begin",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "repaymentAmount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount in pence to be repaid weekly",
-            "example" : 50
-          },
-          "reference" : {
-            "type" : [ "string", "null" ],
-            "description" : "The reference from the payment profile ",
-            "example" : "FNC"
-          },
-          "comment" : {
-            "type" : [ "string", "null" ],
-            "description" : "The comment from the payment profile ",
-            "example" : "A comment about this advance"
-          },
-          "createdBy" : {
-            "type" : "string",
-            "description" : "The username that created this advance",
-            "example" : "JOHN_USER"
-          },
-          "status" : {
-            "type" : "string",
-            "description" : "The current status of this advance",
-            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ],
-            "example" : "AdvanceStatus.ACTIVE"
-          },
-          "updatedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time",
-            "description" : "Last time this advance record was changed"
-          },
-          "generalLedgerUUID" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid",
-            "description" : "The transaction UUID from General Ledger if one was created"
+      "RetryDlqMessagesBody": {
+        "type": "object",
+        "properties": {
+          "messageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "required" : [ "amount", "createdBy", "createdOn", "id", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "repaymentAmount", "repaymentStartDate", "status" ]
+        "required": [
+          "messageIds"
+        ]
       },
-      "ErrorResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "integer",
-            "format" : "int32"
+      "RetryDlqMessagesResult": {
+        "type": "object",
+        "properties": {
+          "messagesFoundCount": {
+            "type": "integer",
+            "format": "int32"
           },
-          "errorCode" : {
-            "type" : [ "string", "null" ]
+          "messagesRetriedCount": {
+            "type": "integer",
+            "format": "int32"
           },
-          "userMessage" : {
-            "type" : [ "string", "null" ]
-          },
-          "developerMessage" : {
-            "type" : [ "string", "null" ]
-          },
-          "moreInfo" : {
-            "type" : [ "string", "null" ]
-          }
-        },
-        "required" : [ "status" ]
-      },
-      "CreateAdvanceRecordRequest" : {
-        "type" : "object",
-        "properties" : {
-          "legacyPaymentProfileId" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The payment profile id from NOMIS",
-            "example" : 123456789
-          },
-          "legacyInformationNumber" : {
-            "type" : "string",
-            "description" : "The information number for the advance from NOMIS",
-            "example" : "12345678-1"
-          },
-          "prisonNumber" : {
-            "type" : "string",
-            "description" : "The prison number of the offender this advance was for",
-            "example" : "A9917EC"
-          },
-          "prisonID" : {
-            "type" : "string",
-            "description" : "The prison ID that issued this advance",
-            "example" : "LEI"
-          },
-          "amount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount in pence issued in the advance",
-            "example" : 500
-          },
-          "createdOn" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the advance was created with the time set to midnight",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "repaymentStartDate" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the payments are intended to begin",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "repaymentAmount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount in pence to be repaid weekly",
-            "example" : 50
-          },
-          "reference" : {
-            "type" : [ "string", "null" ],
-            "description" : "The reference from the payment profile ",
-            "example" : "FNC"
-          },
-          "comment" : {
-            "type" : [ "string", "null" ],
-            "description" : "The comment from the payment profile ",
-            "example" : "A comment about this advance"
-          },
-          "createdBy" : {
-            "type" : "string",
-            "description" : "The username that created this advance",
-            "example" : "JOHN_USER"
-          },
-          "status" : {
-            "type" : "string",
-            "description" : "The current status of this advance",
-            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ],
-            "example" : "AdvanceStatus.ACTIVE"
-          },
-          "legacyTransactionId" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int64",
-            "description" : "The legacy transaction ID from NOMIS",
-            "example" : 12345
-          }
-        },
-        "required" : [ "amount", "createdBy", "createdOn", "legacyInformationNumber", "legacyPaymentProfileId", "prisonID", "prisonNumber", "repaymentAmount", "repaymentStartDate", "status" ]
-      },
-      "AdvanceWriteOffRequest" : {
-        "type" : "object",
-        "properties" : {
-          "writeOffDateTime" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "writtenOffBy" : {
-            "type" : "string"
-          },
-          "writtenOffAmount" : {
-            "type" : "integer",
-            "format" : "int64"
-          }
-        },
-        "required" : [ "writeOffDateTime", "writtenOffAmount", "writtenOffBy" ]
-      },
-      "CreateAdvanceRepaymentRequest" : {
-        "type" : "object",
-        "properties" : {
-          "amount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount repaid in pence ",
-            "example" : 50
-          },
-          "legacyTransactionId" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int64",
-            "description" : "The legacy transaction ID from NOMIS",
-            "example" : 12345
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the advance repayment was sent",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "createdBy" : {
-            "type" : "string",
-            "description" : "The username that created this repayment",
-            "example" : "JOHN_USER"
-          },
-          "description" : {
-            "type" : "string",
-            "description" : "The description of the repayment transaction",
-            "example" : "A description about this repayment"
-          },
-          "entrySequence" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "The entry sequence of the transaction",
-            "example" : 1
-          }
-        },
-        "required" : [ "amount", "createdAt", "createdBy", "description", "entrySequence" ]
-      },
-      "AdvanceRepaymentResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "ID of the repayment"
-          },
-          "advanceId" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "ID of the advance linked to this repayment"
-          },
-          "amount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount repaid in pence",
-            "example" : 50
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the advance repayment was sent",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "createdBy" : {
-            "type" : "string",
-            "description" : "The username that created this repayment",
-            "example" : "JOHN_USER"
-          },
-          "legacyTransactionId" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int64",
-            "description" : "The legacy transaction ID from NOMIS",
-            "example" : 12345
-          },
-          "transactionId" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "The transaction ID from GL"
-          },
-          "description" : {
-            "type" : "string",
-            "description" : "The description of the repayment transaction",
-            "example" : "A description about this repayment"
-          },
-          "entrySequence" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "The entry sequence of the transaction",
-            "example" : 2
-          }
-        },
-        "required" : [ "advanceId", "amount", "createdAt", "createdBy", "description", "entrySequence", "id", "transactionId" ]
-      },
-      "PagedResponseAdvanceRecordResponse" : {
-        "type" : "object",
-        "properties" : {
-          "content" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AdvanceRecordResponse"
+          "retriedMessageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           },
-          "pageNumber" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "isLastPage" : {
-            "type" : "boolean"
+          "notFoundMessageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
+        "required": [
+          "messagesFoundCount",
+          "messagesRetriedCount",
+          "notFoundMessageIds",
+          "retriedMessageIds"
+        ]
       },
-      "AdvancePrisonerRepaymentResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "ID of the repayment"
-          },
-          "advanceId" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "ID of the advance linked to this repayment"
-          },
-          "amount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "The amount repaid in pence",
-            "example" : 50
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "The date time when the advance repayment was sent",
-            "example" : "2024-06-18T00:00:00.000000"
-          },
-          "createdBy" : {
-            "type" : "string",
-            "description" : "The username that created this repayment",
-            "example" : "JOHN_USER"
-          },
-          "transactionId" : {
-            "type" : "string",
-            "format" : "uuid",
-            "description" : "The transaction ID from GL"
-          },
-          "location" : {
-            "type" : "string",
-            "description" : "The location of the advance",
-            "example" : "LEI"
+      "PurgeQueueResult": {
+        "type": "object",
+        "properties": {
+          "messagesFoundCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
-        "required" : [ "advanceId", "amount", "createdAt", "createdBy", "id", "location", "transactionId" ]
+        "required": [
+          "messagesFoundCount"
+        ]
       },
-      "PagedResponseAdvancePrisonerRepaymentResponse" : {
-        "type" : "object",
-        "properties" : {
-          "content" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AdvancePrisonerRepaymentResponse"
+      "DeleteDlqMessagesBody": {
+        "type": "object",
+        "properties": {
+          "messageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "messageIds"
+        ]
+      },
+      "DeleteDlqMessagesResult": {
+        "type": "object",
+        "properties": {
+          "messagesFoundCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "messagesDeletedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deletedMessageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           },
-          "pageNumber" : {
-            "type" : "integer",
-            "format" : "int32"
+          "notFoundMessageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
-          "pageSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "totalElements" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalPages" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "isLastPage" : {
-            "type" : "boolean"
+          "failedMessageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "required" : [ "content", "isLastPage", "pageNumber", "pageSize", "totalElements", "totalPages" ]
+        "required": [
+          "deletedMessageIds",
+          "failedMessageIds",
+          "messagesDeletedCount",
+          "messagesFoundCount",
+          "notFoundMessageIds"
+        ]
       },
-      "AdvanceBalanceResponse" : {
-        "type" : "object",
-        "properties" : {
-          "advanceAmount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "Initial amount of the advance"
+      "AdvanceMigrationRequest": {
+        "type": "object",
+        "properties": {
+          "legacyPaymentProfileId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The payment profile id from NOMIS",
+            "example": 123456789
           },
-          "balanceOutstanding" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "Remaining balance to pay"
+          "legacyInformationNumber": {
+            "type": "string",
+            "description": "The information number for the advance from NOMIS",
+            "example": "12345678-1"
           },
-          "weeklyPaymentAmount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "Amount paid each week"
+          "prisonNumber": {
+            "type": "string",
+            "description": "The prison number of the offender this advance was for",
+            "example": "A9917EC"
           },
-          "remainingPayments" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "remaining payments (balanceOutstanding / weeklyPayments) rounded up"
+          "prisonID": {
+            "type": "string",
+            "description": "The prison ID that issued this advance",
+            "example": "LEI"
           },
-          "balanceDateTime" : {
-            "type" : "string",
-            "format" : "date-time",
-            "description" : "Time of the balance calculation"
+          "amountIssued": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The total amount in pence issued in the advance",
+            "example": 500
           },
-          "nextPaymentDate" : {
-            "type" : [ "string", "null" ],
-            "format" : "date",
-            "description" : "Date of the next due repayment"
+          "amountOutstanding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The outstanding amount in pence at the time of the migration",
+            "example": 450
           },
-          "status" : {
-            "type" : "string",
-            "description" : "Current status of the advance",
-            "enum" : [ "ACTIVE", "REPAID", "WRITTEN_OFF" ]
+          "createdOn": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the advance was created with the time set to midnight",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "migrationTimestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time the advance was migrated",
+            "example": "2024-06-18T12:05:38.000000"
+          },
+          "repaymentStartDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the payments are intended to begin",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "repaymentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount in pence to be repaid weekly",
+            "example": 50
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The reference from the payment profile ",
+            "example": "FNC"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The comment from the payment profile ",
+            "example": "A comment about this advance"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "The username that created this advance",
+            "example": "JOHN_USER"
+          },
+          "status": {
+            "type": "string",
+            "description": "The current status of this advance",
+            "enum": [
+              "ACTIVE",
+              "REPAID",
+              "WRITTEN_OFF"
+            ],
+            "example": "AdvanceStatus.ACTIVE"
+          },
+          "legacyTransactionId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The legacy transaction ID from NOMIS",
+            "example": 12345
           }
         },
-        "required" : [ "advanceAmount", "balanceDateTime", "balanceOutstanding", "remainingPayments", "status", "weeklyPaymentAmount" ]
+        "required": [
+          "amountIssued",
+          "amountOutstanding",
+          "createdBy",
+          "createdOn",
+          "legacyInformationNumber",
+          "legacyPaymentProfileId",
+          "migrationTimestamp",
+          "prisonID",
+          "prisonNumber",
+          "repaymentAmount",
+          "repaymentStartDate",
+          "status"
+        ]
       },
-      "AccountAdvanceBalanceResponse" : {
-        "type" : "object",
-        "properties" : {
-          "advancesAmount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "Combined initial amount of all advances on the account in pence"
+      "AdvanceRecordResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the repayment"
           },
-          "balancesOutstanding" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "Combined outstanding amount of all advances on the account in pence"
+          "legacyPaymentProfileId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The payment profile id from NOMIS",
+            "example": 123456789
           },
-          "weeklyPaymentAmount" : {
-            "type" : "integer",
-            "format" : "int64",
-            "description" : "Combined maximum weekly payment amount of all advances on the account in pence"
+          "legacyInformationNumber": {
+            "type": "string",
+            "description": "The information number for the advance from NOMIS",
+            "example": "12345678-1"
           },
-          "advanceCount" : {
-            "type" : "integer",
-            "format" : "int32",
-            "description" : "The number of active advances"
+          "prisonNumber": {
+            "type": "string",
+            "description": "The prison number of the offender this advance was for",
+            "example": "A9917EC"
           },
-          "balanceDateTime" : {
-            "type" : "string",
-            "format" : "date-time",
-            "writeOnly" : true
+          "prisonID": {
+            "type": "string",
+            "description": "The prison ID that issued this advance",
+            "example": "LEI"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount in pence issued in the advance",
+            "example": 500
+          },
+          "createdOn": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the advance was created with the time set to midnight",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "repaymentStartDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the payments are intended to begin",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "repaymentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount in pence to be repaid weekly",
+            "example": 50
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The reference from the payment profile ",
+            "example": "FNC"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The comment from the payment profile ",
+            "example": "A comment about this advance"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "The username that created this advance",
+            "example": "JOHN_USER"
+          },
+          "status": {
+            "type": "string",
+            "description": "The current status of this advance",
+            "enum": [
+              "ACTIVE",
+              "REPAID",
+              "WRITTEN_OFF"
+            ],
+            "example": "AdvanceStatus.ACTIVE"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Last time this advance record was changed"
+          },
+          "generalLedgerUUID": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The transaction UUID from General Ledger if one was created"
+          },
+          "updatedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The last user who has updated the Advance Record"
           }
         },
-        "required" : [ "advanceCount", "advancesAmount", "balancesOutstanding", "weeklyPaymentAmount" ]
+        "required": [
+          "amount",
+          "createdBy",
+          "createdOn",
+          "id",
+          "legacyInformationNumber",
+          "legacyPaymentProfileId",
+          "prisonID",
+          "prisonNumber",
+          "repaymentAmount",
+          "repaymentStartDate",
+          "status"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userMessage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "developerMessage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "moreInfo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CreateAdvanceRecordRequest": {
+        "type": "object",
+        "properties": {
+          "legacyPaymentProfileId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The payment profile id from NOMIS",
+            "example": 123456789
+          },
+          "legacyInformationNumber": {
+            "type": "string",
+            "description": "The information number for the advance from NOMIS",
+            "example": "12345678-1"
+          },
+          "prisonNumber": {
+            "type": "string",
+            "description": "The prison number of the offender this advance was for",
+            "example": "A9917EC"
+          },
+          "prisonID": {
+            "type": "string",
+            "description": "The prison ID that issued this advance",
+            "example": "LEI"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount in pence issued in the advance",
+            "example": 500
+          },
+          "createdOn": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the advance was created with the time set to midnight",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "repaymentStartDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the payments are intended to begin",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "repaymentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount in pence to be repaid weekly",
+            "example": 50
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The reference from the payment profile ",
+            "example": "FNC"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The comment from the payment profile ",
+            "example": "A comment about this advance"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "The username that created this advance",
+            "example": "JOHN_USER"
+          },
+          "status": {
+            "type": "string",
+            "description": "The current status of this advance",
+            "enum": [
+              "ACTIVE",
+              "REPAID",
+              "WRITTEN_OFF"
+            ],
+            "example": "AdvanceStatus.ACTIVE"
+          },
+          "legacyTransactionId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The legacy transaction ID from NOMIS",
+            "example": 12345
+          }
+        },
+        "required": [
+          "amount",
+          "createdBy",
+          "createdOn",
+          "legacyInformationNumber",
+          "legacyPaymentProfileId",
+          "prisonID",
+          "prisonNumber",
+          "repaymentAmount",
+          "repaymentStartDate",
+          "status"
+        ]
+      },
+      "AdvanceWriteOffRequest": {
+        "type": "object",
+        "properties": {
+          "writeOffDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "writtenOffBy": {
+            "type": "string"
+          },
+          "writtenOffAmount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "writeOffDateTime",
+          "writtenOffAmount",
+          "writtenOffBy"
+        ]
+      },
+      "AdvanceUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "comment": {
+            "type": "string",
+            "description": "Update the comment on the Advance Record"
+          },
+          "updatedBy": {
+            "type": "string",
+            "description": "Last user that updated the Advance Record"
+          }
+        },
+        "required": [
+          "comment",
+          "updatedBy"
+        ]
+      },
+      "CreateAdvanceRepaymentRequest": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount repaid in pence ",
+            "example": 50
+          },
+          "legacyTransactionId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The legacy transaction ID from NOMIS",
+            "example": 12345
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the advance repayment was sent",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "The username that created this repayment",
+            "example": "JOHN_USER"
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the repayment transaction",
+            "example": "A description about this repayment"
+          },
+          "entrySequence": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The entry sequence of the transaction",
+            "example": 1
+          }
+        },
+        "required": [
+          "amount",
+          "createdAt",
+          "createdBy",
+          "description",
+          "entrySequence"
+        ]
+      },
+      "AdvanceRepaymentResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the repayment"
+          },
+          "advanceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the advance linked to this repayment"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount repaid in pence",
+            "example": 50
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the advance repayment was sent",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "The username that created this repayment",
+            "example": "JOHN_USER"
+          },
+          "legacyTransactionId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The legacy transaction ID from NOMIS",
+            "example": 12345
+          },
+          "transactionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The transaction ID from GL"
+          },
+          "description": {
+            "type": "string",
+            "description": "The description of the repayment transaction",
+            "example": "A description about this repayment"
+          },
+          "entrySequence": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The entry sequence of the transaction",
+            "example": 2
+          }
+        },
+        "required": [
+          "advanceId",
+          "amount",
+          "createdAt",
+          "createdBy",
+          "description",
+          "entrySequence",
+          "id",
+          "transactionId"
+        ]
+      },
+      "DlqMessage": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": {
+
+            }
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "approximateReceiveCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        },
+        "required": [
+          "body",
+          "messageId"
+        ]
+      },
+      "SearchDlqResult": {
+        "type": "object",
+        "properties": {
+          "messagesFoundCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "messagesReturnedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DlqMessage"
+            }
+          }
+        },
+        "required": [
+          "messages",
+          "messagesFoundCount",
+          "messagesReturnedCount"
+        ]
+      },
+      "GetDlqResult": {
+        "type": "object",
+        "properties": {
+          "messagesFoundCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "messagesReturnedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DlqMessage"
+            }
+          }
+        },
+        "required": [
+          "messages",
+          "messagesFoundCount",
+          "messagesReturnedCount"
+        ]
+      },
+      "PagedResponseAdvanceRecordResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvanceRecordResponse"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isLastPage": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "content",
+          "isLastPage",
+          "pageNumber",
+          "pageSize",
+          "totalElements",
+          "totalPages"
+        ]
+      },
+      "AdvancePrisonerRepaymentResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the repayment"
+          },
+          "advanceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the advance linked to this repayment"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The amount repaid in pence",
+            "example": 50
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date time when the advance repayment was sent",
+            "example": "2024-06-18T00:00:00.000000"
+          },
+          "createdBy": {
+            "type": "string",
+            "description": "The username that created this repayment",
+            "example": "JOHN_USER"
+          },
+          "transactionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The transaction ID from GL"
+          },
+          "location": {
+            "type": "string",
+            "description": "The location of the advance",
+            "example": "LEI"
+          }
+        },
+        "required": [
+          "advanceId",
+          "amount",
+          "createdAt",
+          "createdBy",
+          "id",
+          "location",
+          "transactionId"
+        ]
+      },
+      "PagedResponseAdvancePrisonerRepaymentResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvancePrisonerRepaymentResponse"
+            }
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isLastPage": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "content",
+          "isLastPage",
+          "pageNumber",
+          "pageSize",
+          "totalElements",
+          "totalPages"
+        ]
+      },
+      "AdvanceBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "advanceAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Initial amount of the advance"
+          },
+          "balanceOutstanding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Remaining balance to pay"
+          },
+          "weeklyPaymentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Amount paid each week"
+          },
+          "remainingPayments": {
+            "type": "integer",
+            "format": "int64",
+            "description": "remaining payments (balanceOutstanding / weeklyPayments) rounded up"
+          },
+          "balanceDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time of the balance calculation"
+          },
+          "nextPaymentDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Date of the next due repayment"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current status of the advance",
+            "enum": [
+              "ACTIVE",
+              "REPAID",
+              "WRITTEN_OFF"
+            ]
+          }
+        },
+        "required": [
+          "advanceAmount",
+          "balanceDateTime",
+          "balanceOutstanding",
+          "remainingPayments",
+          "status",
+          "weeklyPaymentAmount"
+        ]
+      },
+      "AccountAdvanceBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "advancesAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combined initial amount of all advances on the account in pence"
+          },
+          "balancesOutstanding": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combined outstanding amount of all advances on the account in pence"
+          },
+          "weeklyPaymentAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Combined maximum weekly payment amount of all advances on the account in pence"
+          },
+          "advanceCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The number of active advances"
+          },
+          "balanceDateTime": {
+            "type": "string",
+            "format": "date-time",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "advanceCount",
+          "advancesAmount",
+          "balancesOutstanding",
+          "weeklyPaymentAmount"
+        ]
       }
     },
-    "securitySchemes" : {
-      "bearer-jwt" : {
-        "type" : "http",
-        "description" : "A HMPPS Auth access token with either role: `[ROLE_PRISONER_FINANCE__ADVANCES__RO, ROLE_PRISONER_FINANCE__ADVANCES__RW]`",
-        "name" : "Authorization",
-        "in" : "header",
-        "scheme" : "bearer",
-        "bearerFormat" : "JWT"
+    "securitySchemes": {
+      "bearer-jwt": {
+        "type": "http",
+        "description": "A HMPPS Auth access token with either role: `[ROLE_PRISONER_FINANCE__ADVANCES__RO, ROLE_PRISONER_FINANCE__ADVANCES__RW]`",
+        "name": "Authorization",
+        "in": "header",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }
