@@ -191,13 +191,20 @@ class SubscriptionsIntegrationTest : IntegrationTestBase() {
     val syncUpdateSubscriptionRequest = SyncUpdateSubscriptionRequest(
       startDate = LocalDate.now().minusDays(1),
       endDate = LocalDate.now(),
+      updatedBy = "TEST",
+      comment = "test comment",
     )
 
     @Test
     fun `should return a 200 when the update subscription endpoint is called`() {
       subscriptionsApi.stubPostSubscriptionUpdate(
         subscriptionId,
-        request = UpdateSubscriptionRequest(startDate = syncUpdateSubscriptionRequest.startDate, endDate = syncUpdateSubscriptionRequest.endDate),
+        request = UpdateSubscriptionRequest(
+          startDate = syncUpdateSubscriptionRequest.startDate,
+          endDate = syncUpdateSubscriptionRequest.endDate,
+          updatedBy = syncUpdateSubscriptionRequest.updatedBy,
+          comment = syncUpdateSubscriptionRequest.comment,
+        ),
         response = subscriptionResponse,
       )
 
