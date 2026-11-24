@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-23.179.895d173"
+    "version" : "2026-11-24.189.0b869fe"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-subscriptions-api-dev.hmpps.service.justice.gov.uk",
@@ -418,6 +418,11 @@
             "description" : "The sub-account that the subscription payment is debited from",
             "enum" : [ "CASH", "SPENDS", "SAVINGS" ],
             "example" : "CASH"
+          },
+          "comment" : {
+            "type" : [ "string", "null" ],
+            "description" : "A comment to provide more context on the subscription",
+            "example" : "This is a magazine subscription"
           }
         },
         "required" : [ "amount", "createdAt", "createdBy", "paymentSchedule", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
@@ -497,6 +502,16 @@
             "description" : "The sub-account that the subscription payment is debited from",
             "enum" : [ "CASH", "SPENDS", "SAVINGS" ],
             "example" : "CASH"
+          },
+          "comment" : {
+            "type" : [ "string", "null" ],
+            "description" : "A comment to provide more context on the subscription",
+            "example" : "This is a magazine subscription"
+          },
+          "updatedBy" : {
+            "type" : [ "string", "null" ],
+            "description" : "The user that last updated the record",
+            "example" : "UPDATED_USER"
           }
         },
         "required" : [ "amount", "createdAt", "createdBy", "id", "paymentSchedule", "prisonId", "prisonNumber", "startDate", "subAccountRef", "subscriptionType" ]
@@ -537,8 +552,19 @@
             "format" : "date",
             "description" : "The end date of the subscription. Must be after the start date if set",
             "example" : "2026-12-04"
+          },
+          "comment" : {
+            "type" : [ "string", "null" ],
+            "description" : "The comment to set for the subscription",
+            "example" : "This is a comment"
+          },
+          "updatedBy" : {
+            "type" : "string",
+            "description" : "The user name that updated the record.",
+            "example" : "A739XYY"
           }
-        }
+        },
+        "required" : [ "updatedBy" ]
       },
       "PagedResponseSubscriptionResponse" : {
         "type" : "object",

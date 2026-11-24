@@ -185,9 +185,16 @@ class SubscriptionsServiceTest {
     val syncSubscriptionUpdateRequest = SyncUpdateSubscriptionRequest(
       startDate = expectedRecordResponse.startDate,
       endDate = expectedRecordResponse.endDate,
+      updatedBy = "TEST",
+      comment = "test comment",
     )
 
-    val subscriptionUpdateRequest = UpdateSubscriptionRequest(startDate = syncSubscriptionUpdateRequest.startDate, endDate = syncSubscriptionUpdateRequest.endDate)
+    val subscriptionUpdateRequest = UpdateSubscriptionRequest(
+      startDate = syncSubscriptionUpdateRequest.startDate,
+      endDate = syncSubscriptionUpdateRequest.endDate,
+      updatedBy = syncSubscriptionUpdateRequest.updatedBy,
+      comment = syncSubscriptionUpdateRequest.comment,
+    )
     lateinit var returnedResponse: SubscriptionResponse
 
     @BeforeEach

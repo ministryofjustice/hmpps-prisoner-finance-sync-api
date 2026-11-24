@@ -67,7 +67,15 @@ class SubscriptionsService(
   }
 
   fun updateSubscription(subscriptionId: UUID, updateRequest: SyncUpdateSubscriptionRequest): SubscriptionResponse {
-    val response = subscriptionsApiClient.updateSubscription(subscriptionId, UpdateSubscriptionRequest(startDate = updateRequest.startDate, endDate = updateRequest.endDate))
+    val response = subscriptionsApiClient.updateSubscription(
+      subscriptionId,
+      UpdateSubscriptionRequest(
+        startDate = updateRequest.startDate,
+        endDate = updateRequest.endDate,
+        updatedBy = updateRequest.updatedBy,
+        comment = updateRequest.comment,
+      ),
+    )
     return response
   }
 }
