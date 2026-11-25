@@ -311,12 +311,14 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
 
       val prisonNumber = "AD23451"
       val amount = 500L
+      val updatedBy = "TEST_USER"
 
       holdsApi.stubReleaseHold(
         prisonNumber = prisonNumber,
         releasedAt = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
         amount = amount,
         holdsUUID = holdsUUID,
+        updatedBy = updatedBy,
       )
 
       val response = webTestClient.post().uri("/sync/holds/$legacyHoldNumber/release")
@@ -334,6 +336,7 @@ class HoldsIntegrationTest(@Autowired private val holdsMappingRepository: HoldsM
       assertThat(response.releasedAt).isEqualTo(releaseRequest.releaseDateTime)
       assertThat(response.holdNumber).isEqualTo(legacyHoldNumber)
       assertThat(response.amountReleased).isEqualTo(amount.toPounds())
+      assertThat(response.updatedBy).isEqualTo(updatedBy)
     }
 
     @Test
