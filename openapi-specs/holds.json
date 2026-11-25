@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-25.322.a32cb51"
+    "version" : "2026-11-25.324.fbb3eb5"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-holds-api-dev.hmpps.service.justice.gov.uk",
@@ -1195,10 +1195,10 @@
             "format" : "int64"
           },
           "updatedBy" : {
-            "type" : "string"
+            "type" : [ "string", "null" ]
           }
         },
-        "required" : [ "releaseDateTime", "updatedBy" ]
+        "required" : [ "releaseDateTime" ]
       },
       "ReleasedHoldResponse" : {
         "type" : "object",
