@@ -222,7 +222,7 @@ class HoldsApiMockServer :
     )
   }
 
-  fun stubReleaseHold(prisonNumber: String, releasedAt: Instant, amount: Long, holdsUUID: UUID, updatedBy: String? = "hmpps-prisoner-finance-sync-api-1") = stubFor(
+  fun stubReleaseHold(prisonNumber: String, releasedAt: Instant, amount: Long, holdsUUID: UUID, updatedBy: String? = null) = stubFor(
     post(urlPathEqualTo("/holds/$holdsUUID/release"))
       .withHeader("Idempotency-Key", matching(".*"))
       .willReturn(
