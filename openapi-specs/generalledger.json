@@ -6,7 +6,7 @@
       "name" : "HMPPS Digital Studio",
       "email" : "feedback@digital.justice.gov.uk"
     },
-    "version" : "2026-11-24.846.3e5323a"
+    "version" : "2026-11-24.848.b7aab73"
   },
   "servers" : [ {
     "url" : "https://prisoner-finance-general-ledger-api-dev.hmpps.service.justice.gov.uk",
@@ -1880,6 +1880,10 @@
             "type" : [ "integer", "null" ],
             "format" : "int64",
             "description" : "The legacy transaction ID from NOMIS"
+          },
+          "createdBy" : {
+            "type" : [ "string", "null" ],
+            "description" : "The user who created the transaction"
           }
         },
         "required" : [ "amount", "description", "entrySequence", "postings", "reference", "timestamp" ]
