@@ -523,6 +523,7 @@ class HoldsServiceTest {
       val legacyHoldNumber = 12345L
       val legacyTransactionNumber = 5432L
       val holdNumber = UUID.randomUUID()
+      val updatedBy = "TEST-USER"
 
       val holdMapping = HoldsMapping(
         id = 1L,
@@ -533,11 +534,13 @@ class HoldsServiceTest {
       val releaseHoldRequest = ReleaseHoldRequest(
         releaseDateTime = Instant.now(),
         legacyTransactionId = legacyTransactionNumber,
+        updatedBy = updatedBy,
       )
 
       val syncReleaseHoldRequest = SyncReleaseHoldRequest(
         releaseDateTime = timeConversionService.toLocalDateTime(releaseHoldRequest.releaseDateTime),
         releaseTransactionId = legacyTransactionNumber,
+        updatedBy = updatedBy,
       )
 
       val releasedHoldResponse = ReleasedHoldResponse(
@@ -547,6 +550,7 @@ class HoldsServiceTest {
         amountReleased = 50L,
         releasedAt = releaseHoldRequest.releaseDateTime,
         releasedTransactionId = UUID.randomUUID(),
+        updatedBy = updatedBy,
       )
 
       val expectedSyncHoldResponse = SyncReleasedHoldResponse(
@@ -554,6 +558,7 @@ class HoldsServiceTest {
         holdNumber = legacyHoldNumber,
         amountReleased = releasedHoldResponse.amountReleased.toPounds(),
         releasedAt = syncReleaseHoldRequest.releaseDateTime,
+        updatedBy = updatedBy,
       )
 
       val expectedIdempotencyKey = idempotencyService.genGLTransactionIdempotencyKey(legacyTransactionNumber, 1)

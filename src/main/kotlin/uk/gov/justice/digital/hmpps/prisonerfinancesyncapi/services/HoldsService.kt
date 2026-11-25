@@ -168,6 +168,7 @@ class HoldsService(
     val releaseHoldRequest = ReleaseHoldRequest(
       releaseDateTime = timeConversionService.toUtcInstant(releaseRequest.releaseDateTime),
       legacyTransactionId = releaseRequest.releaseTransactionId,
+      updatedBy = releaseRequest.updatedBy,
     )
 
     val idempotencyKey = idempotencyService.genGLTransactionIdempotencyKey(releaseRequest.releaseTransactionId, 1)
@@ -181,6 +182,7 @@ class HoldsService(
       holdNumber = holdNumber,
       amountReleased = response.amountReleased.toPounds(),
       releasedAt = timeConversionService.toLocalDateTime(response.releasedAt),
+      updatedBy = response.updatedBy,
     )
   }
 }

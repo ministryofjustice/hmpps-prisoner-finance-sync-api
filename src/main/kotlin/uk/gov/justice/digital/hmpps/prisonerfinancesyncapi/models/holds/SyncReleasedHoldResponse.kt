@@ -17,4 +17,7 @@ data class SyncReleasedHoldResponse(
 
   @param:JsonProperty("releasedAt")
   val releasedAt: LocalDateTime,
+
+  @param:JsonProperty("updatedBy")
+  val updatedBy: String?,
 )
