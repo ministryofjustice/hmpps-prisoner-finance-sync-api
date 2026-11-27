@@ -22,7 +22,7 @@ holds-api:
   url: ${HOLDS_API_URL:http://localhost:8082}
 
 advances-api:
-  url: ${ADVANCES_API_URL:http://localhost:8083}
+  url: ${ADVANCES_API_URL:http://localhost:8088}
 
 subscriptions-api:
   url: ${SUBSCRIPTIONS_API_URL:http://localhost:8084}

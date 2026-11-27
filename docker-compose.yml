@@ -76,7 +76,8 @@ services:
       - DB_NAME=holds
       - DB_USER=postgres
       - DB_PASS=postgres
-      - GENERAL_LEDGER_API_URL=hmpps-prisoner-finance-general-ledger-api
+      - GENERAL_LEDGER_API_URL=http://hmpps-prisoner-finance-general-ledger-api:8080
+      - HMPPS_SQS_LOCALSTACK_URL=http://localstack:4566
 
     depends_on:
       hmpps-auth:
@@ -119,8 +120,9 @@ services:
       - DB_NAME=advances
       - DB_USER=postgres
       - DB_PASS=postgres
-      - GENERAL_LEDGER_API_URL=hmpps-prisoner-finance-general-ledger-api
+      - GENERAL_LEDGER_API_URL=http://hmpps-prisoner-finance-general-ledger-api:8080
       - SPRING_DATASOURCE_URL=jdbc:postgresql://hmpps-prisoner-finance-advances-db:5432/advances
+      - HMPPS_SQS_LOCALSTACK_URL=http://localstack:4566
 
     depends_on:
       hmpps-auth:
@@ -202,7 +204,7 @@ services:
       - "4566:4566"
       - 8999:8080
     environment:
-      - SERVICES=sqs
+      - SERVICES=sqs,sns
       - DEFAULT_REGION=eu-west-2
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
