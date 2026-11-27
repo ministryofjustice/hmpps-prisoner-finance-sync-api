@@ -129,6 +129,9 @@ class AdvancesService(
       if (e.message?.contains("duplicate key value violates unique constraint \"uc_legacy_transaction_id_and_entry_sequence\"") == true) {
         return
       }
+      if (e.message?.contains("duplicate key value violates unique constraint \"uc_advance_repayment_mapping_general_ledger_transaction_uuid\"") == true) {
+        return
+      }
       throw e
     }
   }
