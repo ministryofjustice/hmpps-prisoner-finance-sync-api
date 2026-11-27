@@ -4,8 +4,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mock
 import org.mockito.Mockito.mock
@@ -251,14 +253,31 @@ class AdvancesServiceTest {
       assertThat(savedMapping.legacyTransactionId).isEqualTo(syncRepaymentRequest.transactionId)
     }
 
-    @Test
-    fun `should not throw an error if the mapping already exists when saving`() {
+    @ParameterizedTest
+    @CsvSource(
+      "uc_legacy_transaction_id_and_entry_sequence",
+      "uc_advance_repayment_mapping_general_ledger_transaction_uuid",
+    )
+    fun `should not throw an error if the mapping already exists when saving`(constraint: String) {
       whenever { advanceRepaymentMappingRepository.save(any<AdvanceRepaymentMapping>()) }
-        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"uc_legacy_transaction_id_and_entry_sequence\""))
+        .thenThrow(DataIntegrityViolationException("duplicate key value violates unique constraint \"$constraint\""))
 
       val actualResponse = advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
 
       assertThat(actualResponse.repaymentTransactionId).isEqualTo(glUIID)
+    }
+
+    @Test
+    fun `should throw an error if an unexpected DateIntegrityError is thrown`() {
+      val dataIntegrityException = DataIntegrityViolationException("Some Error")
+
+      whenever { advanceRepaymentMappingRepository.save(any<AdvanceRepaymentMapping>()) }
+        .thenThrow(dataIntegrityException)
+
+      val actualException = assertThrows<DataIntegrityViolationException> {
+        advancesService.createAdvanceRepayment(advanceId, syncRepaymentRequest)
+      }
+      assertThat(actualException).isEqualTo(dataIntegrityException)
     }
   }
 
